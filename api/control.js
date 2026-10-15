@@ -1,12 +1,8 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") { res.setHeader("Allow","POST"); return res.status(405).json({ error: "Method not allowed" }); }
   const { action } = req.body || {};
-  const allowed = new Set(["start", "pause", "analyze", "analyze-all", "history", "risk", "emergency-stop"]);
+  const allowed = new Set(["start","pause","analyze-all","history","risk","emergency-stop"]);
   if (!allowed.has(action)) return res.status(400).json({ error: "Unknown action" });
-  // Deliberately fail closed until authenticated persistent settings,
-  // market-data validation, and owner-only Telegram auth are connected.
-  if (action === "emergency-stop") {
-    return res.status(503).json({ error: "Emergency-stop persistence is not configured. Do not rely on this endpoint as a live safety control yet." });
-  }
-  return res.status(503).json({ error: "Control backend is not configured. No action was executed and no signal was generated." });
+  if (action === "emergency-stop") return res.status(503).json({ error: "The bot is already fail-closed and cannot execute trades. Persistent emergency-stop state is not configured." });
+  return res.status(503).json({ error: "This control requires owner authentication and durable storage, which are not configured. No action was executed." });
 }
