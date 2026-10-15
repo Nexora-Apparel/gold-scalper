@@ -1,0 +1,8 @@
+{
+  "name": "gold-scalper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": { "check": "node --check api/status.js && node --check api/market-data.js && node --check api/analyze.js && node --check api/settings.js && node --check api/control.js && node --check lib/strategy.js" }
+}
