@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020"><title>Gold Signal Control</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--card:#141c30;--line:#293550;--muted:#9aabc7;--text:#f4f7ff;--gold:#f4c75e;--green:#4ade80;--red:#fb7185}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#101a31,var(--bg) 45%);font:15px system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);min-height:100vh}
+main{max-width:760px;margin:auto;padding:18px 14px 40px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 20px}.brand{font-weight:800;font-size:21px;letter-spacing:.2px}.sub{font-size:12px;color:var(--muted);margin-top:3px}.pill{border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
+h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{background:rgba(20,28,48,.95);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 8px 24px #0002}.status{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #29355088}.status:last-child{border:0}.label{color:var(--muted);font-size:13px}.value{font-weight:700;font-size:13px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#64748b;margin-right:6px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:1px solid var(--line);background:#202b43;color:var(--text);border-radius:12px;padding:14px 10px;min-height:48px;font-weight:750;font-size:13px;cursor:pointer}.btn.primary{background:var(--gold);color:#17130a;border-color:var(--gold)}.btn.danger{border-color:#7f3044;background:#381b2a;color:#ffd9e0}.btn:disabled{opacity:.55;cursor:wait}.wide{grid-column:1/-1}.settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#0d1425;border:1px solid var(--line);color:var(--text);padding:12px;border-radius:10px;font:inherit}.check{display:flex;gap:9px;align-items:center;padding:8px 0;font-size:13px}.check input{accent-color:var(--gold);width:18px;height:18px}.notice{color:var(--muted);font-size:12px;line-height:1.5}.log{font-size:13px;line-height:1.5;white-space:pre-wrap;color:#dce6f8;min-height:20px}.gold{color:var(--gold)}@media(max-width:420px){.brand{font-size:18px}.card{padding:13px}.btn{padding:13px 7px;font-size:12px}.settings{grid-template-columns:1fr}}
+</style></head>
+<body><main>
+<header class="top"><div><div class="brand"><span class="gold">◆</span> GOLD SIGNAL CONTROL</div><div class="sub">Personal signal desk · mobile-first</div></div><div class="pill" id="modePill">SAFE MODE</div></header>
+<section class="card"><h2>System status</h2>
+<div class="status"><span class="label">Application</span><span class="value" id="appStatus"><i class="dot"></i>Checking</span></div>
+<div class="status"><span class="label">Market data</span><span class="value" id="marketStatus"><i class="dot"></i>Not verified</span></div>
+<div class="status"><span class="label">Telegram</span><span class="value" id="telegramStatus"><i class="dot"></i>Not verified</span></div>
+<div class="status"><span class="label">Signal engine</span><span class="value" id="engineStatus"><i class="dot"></i>Paused by default</span></div>
+</section>
+<section class="card"><h2>Main controls</h2><div class="actions">
+<button class="btn primary" data-action="start">▶ START BOT</button><button class="btn" data-action="pause">Ⅱ PAUSE BOT</button>
+<button class="btn" data-action="analyze" data-symbol="XAUUSD">⌕ ANALYZE GOLD NOW</button><button class="btn" data-action="analyze-all">ANALYZE ENABLED PAIRS</button>
+<button class="btn" data-action="history">SIGNAL HISTORY</button><button class="btn" data-action="risk">RISK SETTINGS</button>
+<button class="btn danger wide" data-action="emergency-stop">EMERGENCY STOP</button>
+</div><p class="notice">Signals only. This application is designed not to place trades or connect to live order execution.</p></section>
+<section class="card"><h2>Strategy settings</h2><div class="settings">
+<div class="field"><label for="balance">Account balance</label><input id="balance" type="number" min="0" step="0.01" value="1000"></div>
+<div class="field"><label for="currency">Account currency</label><select id="currency"><option>USD</option><option>NGN</option><option>EUR</option><option>GBP</option></select></div>
+<div class="field"><label for="riskPct">Risk per trade (%)</label><input id="riskPct" type="number" min="0.1" max="1" step="0.1" value="0.5"></div>
+<div class="field"><label for="minRR">Minimum risk-to-reward</label><select id="minRR"><option value="1.5">1:1.5</option><option value="2" selected>1:2</option><option value="2.5">1:2.5</option><option value="3">1:3</option></select></div>
+<div class="field"><label for="minQuality">Minimum signal quality</label><select id="minQuality"><option value="65">65 / 100</option><option value="70" selected>70 / 100</option><option value="75">75 / 100</option><option value="80">80 / 100</option></select></div>
+<div class="field"><label for="maxSignals">Maximum signals / day</label><select id="maxSignals"><option>1</option><option selected>3</option><option>5</option><option>8</option></select></div>
+<div class="field"><label for="timeframe">Setup timeframe</label><select id="timeframe"><option>M15</option><option>M5 + M15</option></select></div>
+<div class="field"><label for="mode">Publishing mode</label><select id="mode"><option value="manual" selected>Manual approval</option><option value="auto">Automatic publishing</option></select></div>
+</div>
+<div class="check"><input id="goldEnabled" type="checkbox" checked><label for="goldEnabled">Enable XAUUSD (Gold) — priority instrument</label></div>
+<div class="check"><input id="majorsEnabled" type="checkbox"><label for="majorsEnabled">Enable EURUSD, GBPUSD and other majors</label></div>
+<div class="check"><input id="newsEnabled" type="checkbox" checked><label for="newsEnabled">Restrict signals around major US news (only when news feed verified)</label></div>
+<button class="btn primary wide" id="saveSettings">SAVE SETTINGS</button><p class="notice">Default risk is 0.5%. Lot size remains unavailable until broker contract size, tick value, and account-currency conversion are verified.</p>
+</section>
+<section class="card"><h2>Activity / result</h2><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+async function api(path,body){const res=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});let data={};try{data=await res.json()}catch{}if(!res.ok)throw new Error(data.error||('Request failed ('+res.status+')'));return data}
+function setStatus(id,text,ok=false){$(id).innerHTML='<i class="dot" style="background:'+(ok?'#4ade80':'#64748b')+'"></i>'+text}
+async function refresh(){try{const s=await api('/api/status');setStatus('appStatus',s.application||'ONLINE',true);setStatus('marketStatus',s.marketData||'Not configured',s.marketConnected===true);setStatus('telegramStatus',s.telegram||'Not configured',s.telegramConnected===true);setStatus('engineStatus',s.engine||'PAUSED',s.engine==='ACTIVE');$('modePill').textContent=s.safeMode===false?'CONFIGURED':'SAFE MODE';}catch(e){setStatus('appStatus','Backend unavailable');$('activity').textContent='Status check failed: '+e.message+'\nControls are not assumed successful.'}}
+document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',async()=>{const action=b.dataset.action;let payload={action};if(b.dataset.symbol)payload.symbol=b.dataset.symbol;b.disabled=true;$('activity').textContent='Sending '+action+' request…';try{const r=await api('/api/control',payload);$('activity').textContent=r.message||JSON.stringify(r,null,2);await refresh()}catch(e){$('activity').textContent='Action not completed: '+e.message+'\nNo success is assumed.'}finally{b.disabled=false}}));
+$('saveSettings').addEventListener('click',async()=>{const settings={balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minRR:Number($('minRR').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),timeframe:$('timeframe').value,mode:$('mode').value,goldEnabled:$('goldEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:$('newsEnabled').checked};if(!(settings.balance>0)||settings.riskPercent<0.1||settings.riskPercent>1){$('activity').textContent='Invalid settings. Balance must be positive and risk must be between 0.1% and 1%.';return}try{const r=await api('/api/settings',settings);$('activity').textContent=r.message||'Settings saved.'}catch(e){$('activity').textContent='Settings not saved: '+e.message}});
+refresh();
+</script></body></html>
