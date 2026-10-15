@@ -1,3 +1,9 @@
+function parseProviderTime(value) {
+  if (typeof value !== "string") return NaN;
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  return Date.parse(normalized.endsWith("Z") ? normalized : normalized + "Z");
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -22,17 +28,17 @@ export default async function handler(req, res) {
     url.searchParams.set("interval", "15min");
     url.searchParams.set("outputsize", "250");
     url.searchParams.set("format", "JSON");
+    url.searchParams.set("timezone", "UTC");
     url.searchParams.set("apikey", apiKey);
 
     const response = await fetch(url.toString(), {
       method: "GET",
-      headers: { "Accept": "application/json" },
+      headers: { Accept: "application/json" },
       signal: controller.signal
     });
     const payload = await response.json().catch(() => null);
 
     if (!response.ok || !payload || payload.status === "error" || !Array.isArray(payload.values)) {
-      // Never return the upstream request URL or key to the browser.
       const providerMessage = payload && typeof payload.message === "string"
         ? payload.message.slice(0, 240)
         : "Provider returned an unexpected response.";
@@ -45,20 +51,22 @@ export default async function handler(req, res) {
       });
     }
 
-    const candles = payload.values
-      .map((v) => ({
-        time: v.datetime,
-        open: Number(v.open),
-        high: Number(v.high),
-        low: Number(v.low),
-        close: Number(v.close)
-      }))
-      .filter((v) =>
-        typeof v.time === "string" &&
-        [v.open, v.high, v.low, v.close].every(Number.isFinite) &&
-        v.high >= Math.max(v.open, v.close, v.low) &&
-        v.low <= Math.min(v.open, v.close, v.high)
-      );
+    const now = Date.now();
+    const intervalMs = 15 * 60 * 1000;
+    const candles = payload.values.map((v) => ({
+      time: v.datetime,
+      _timeMs: parseProviderTime(v.datetime),
+      open: Number(v.open),
+      high: Number(v.high),
+      low: Number(v.low),
+      close: Number(v.close)
+    })).filter((v) =>
+      Number.isFinite(v._timeMs) &&
+      [v.open, v.high, v.low, v.close].every(Number.isFinite) &&
+      v.high >= Math.max(v.open, v.close, v.low) &&
+      v.low <= Math.min(v.open, v.close, v.high) &&
+      v._timeMs + intervalMs <= now
+    ).sort((a, b) => b._timeMs - a._timeMs);
 
     if (candles.length < 80) {
       return res.status(502).json({
@@ -66,19 +74,34 @@ export default async function handler(req, res) {
         symbol: "XAU/USD",
         interval: "15min",
         candleCount: candles.length,
-        error: "Insufficient valid candle history for analysis. No signal was generated."
+        error: "Insufficient valid completed candle history. No signal should be generated."
       });
     }
 
-    res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=30");
+    const latestAgeMs = now - candles[0]._timeMs;
+    if (latestAgeMs < 0 || latestAgeMs > 45 * 60 * 1000) {
+      return res.status(502).json({
+        ok: false,
+        symbol: "XAU/USD",
+        interval: "15min",
+        candleCount: candles.length,
+        latestCandleTime: candles[0].time,
+        dataFreshness: "stale",
+        error: "Latest completed XAU/USD candle is stale. No signal should be generated."
+      });
+    }
+
+    const cleanCandles = candles.map(({ _timeMs, ...c }) => c);
+    res.setHeader("Cache-Control", "no-store");
     return res.status(200).json({
       ok: true,
       symbol: "XAU/USD",
       interval: "15min",
       source: "Twelve Data",
-      candleCount: candles.length,
-      latestCandleTime: candles[0].time,
-      candles
+      candleCount: cleanCandles.length,
+      latestCandleTime: cleanCandles[0].time,
+      dataFreshness: "verified",
+      candles: cleanCandles
     });
   } catch (error) {
     const timedOut = error && error.name === "AbortError";
@@ -86,7 +109,7 @@ export default async function handler(req, res) {
       ok: false,
       symbol: "XAU/USD",
       interval: "15min",
-      error: timedOut ? "Market-data provider timed out." : "Could not reach market-data provider."
+      error: timedOut ? "Market-data provider timed out." : "Could not verify fresh market data."
     });
   } finally {
     clearTimeout(timeout);
