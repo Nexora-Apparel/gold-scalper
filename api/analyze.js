@@ -120,6 +120,11 @@ export default async function handler(req, res) {
       // trades through its entry. This is request-driven monitoring, not a background worker.
       let active = await getActiveSignal(sql);
       const latestM15 = fifteen[0];
+      if (active && active.state === "WAITING_FOR_ENTRY" && active.expiresAt && Date.now() >= Date.parse(active.expiresAt)) {
+        active = { ...active, state: "EXPIRED", expiredAt: new Date().toISOString() };
+        await saveActiveSignal(sql, active);
+        result.entryMonitoring = { state: "EXPIRED", note: "The setup expired after eight hours without safe entry confirmation; no Telegram signal was sent." };
+      }
       if (active && active.state === "WAITING_FOR_ENTRY" && active.result?.signal) {
         const activeSignal = active.result.signal;
         const activeCandleMs = parseProviderTime(activeSignal.candleTime);
@@ -173,10 +178,11 @@ export default async function handler(req, res) {
         }
       }
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
-        if (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED"].includes(active.state)) {
+        if (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED", "EXPIRED"].includes(active.state)) {
           const newActive = {
             state: "WAITING_FOR_ENTRY",
             createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
             result
           };
           await saveActiveSignal(sql, newActive);
