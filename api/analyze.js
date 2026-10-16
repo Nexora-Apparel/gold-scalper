@@ -123,25 +123,36 @@ export default async function handler(req, res) {
       if (active && active.state === "WAITING_FOR_ENTRY" && active.result?.signal) {
         const activeSignal = active.result.signal;
         const activeCandleMs = parseProviderTime(activeSignal.candleTime);
-        const latestCandleMs = parseProviderTime(latestM15.time);
         const entry = Number(activeSignal.entry);
         const stop = Number(activeSignal.stopLoss);
         const target = Number(activeSignal.takeProfit);
-        const isLaterCandle = Number.isFinite(activeCandleMs) && Number.isFinite(latestCandleMs) && latestCandleMs > activeCandleMs;
-        const touched = Number.isFinite(entry) && isLaterCandle && latestM15.low <= entry && latestM15.high >= entry;
-        // OHLC cannot establish intrabar order. If SL or TP was touched before/with
-        // the entry touch, fail closed rather than send a potentially stale alert.
-        const riskBoundaryTouched = isLaterCandle && (
-          activeSignal.side === "BUY"
-            ? latestM15.low <= stop || latestM15.high >= target
-            : latestM15.high >= stop || latestM15.low <= target
-        );
-        if (riskBoundaryTouched) {
-          active = { ...active, state: "INVALIDATED", invalidatedAt: new Date().toISOString(), invalidationCandleTime: latestM15.time };
+        // Examine every fetched completed candle after the setup candle, oldest first,
+        // so a later button click does not miss an entry that was touched in between.
+        const laterCandles = fifteen
+          .filter((candle) => parseProviderTime(candle.time) > activeCandleMs)
+          .sort((left, right) => parseProviderTime(left.time) - parseProviderTime(right.time));
+        let lifecycleEvent = null;
+        for (const candle of laterCandles) {
+          const riskBoundaryTouched = activeSignal.side === "BUY"
+            ? candle.low <= stop || candle.high >= target
+            : candle.high >= stop || candle.low <= target;
+          const entryTouched = candle.low <= entry && candle.high >= entry;
+          // OHLC cannot prove intrabar order; reject ambiguous candles conservatively.
+          if (riskBoundaryTouched) {
+            lifecycleEvent = { type: "INVALIDATED", candleTime: candle.time };
+            break;
+          }
+          if (entryTouched) {
+            lifecycleEvent = { type: "CONFIRMED", candleTime: candle.time };
+            break;
+          }
+        }
+        if (lifecycleEvent?.type === "INVALIDATED") {
+          active = { ...active, state: "INVALIDATED", invalidatedAt: new Date().toISOString(), invalidationCandleTime: lifecycleEvent.candleTime };
           await saveActiveSignal(sql, active);
           result.entryMonitoring = { state: "INVALIDATED", note: "The stop-loss or target was touched before entry could be safely confirmed; no Telegram signal was sent." };
-        } else if (touched) {
-          active = { ...active, state: "CONFIRMATION_PENDING_DELIVERY", confirmedAt: new Date().toISOString(), confirmationCandleTime: latestM15.time };
+        } else if (lifecycleEvent?.type === "CONFIRMED") {
+          active = { ...active, state: "CONFIRMATION_PENDING_DELIVERY", confirmedAt: new Date().toISOString(), confirmationCandleTime: lifecycleEvent.candleTime };
           await saveActiveSignal(sql, active);
         }
       }
