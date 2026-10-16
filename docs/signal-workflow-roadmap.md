@@ -3,13 +3,26 @@
 ## Objective
 Build a personal XAUUSD signal assistant that can identify a potential setup before price reaches the planned entry, send a clear Telegram alert, and track whether the setup remains valid. It is an analysis/alerting system, not an order-execution bot.
 
-## Current verified baseline
+## Current implementation status (verified from code)
 - Owner-authenticated dashboard and manual on-demand analysis.
-- Twelve Data H1/M15 completed-candle validation and fail-closed handling.
+- Twelve Data H1/M15 completed-candle validation, OHLC validation, freshness limits, and fail-closed handling.
 - H1 EMA20/EMA50 trend filter, M15 MSNR zones/rejection or retest, RSI and ATR filters.
 - Rule-based quality score, configured risk-to-reward target, estimated cash-risk budget.
-- Optional Telegram notification for a candidate.
-- No background scanning, pending-entry lifecycle, entry monitoring, historical backtest, broker lot-size verification, or automated broker orders.
+- Persistent single active-signal lifecycle: `WAITING_FOR_ENTRY`, `CONFIRMATION_PENDING_DELIVERY`, `CONFIRMED_AND_NOTIFIED`, `INVALIDATED`, and `EXPIRED`.
+- Entry monitoring evaluates only completed candles later than the setup candle. A setup is not confirmed by its own candle. Ambiguous stop/target touches fail closed.
+- Telegram send helper and owner-triggered delivery test exist. Confirmed-entry delivery retries while in `CONFIRMATION_PENDING_DELIVERY`.
+- A GitHub Actions monitor workflow exists on `feature/personal-telegram-signal-bot` and is intended to run every 15 minutes. It is **not active on the default branch yet** and has not been verified end-to-end with repository secrets.
+- No historical backtest, broker lot-size verification, or automated broker orders. No profitability/accuracy claim is supported.
+
+## Automation activation checklist
+1. Add a strong `CRON_SECRET` to the Vercel project environment used by the preview deployment. Do not expose it in source code, commit messages, workflow output, or chat.
+2. Add the **same** `CRON_SECRET` as a GitHub Actions repository secret, plus `GOLD_SCALPER_URL` set to the base HTTPS URL of the intended deployment (no `/api/analyze` suffix).
+3. Confirm the deployment has the required database, Twelve Data, and Telegram environment variables; redeploy the preview if environment variables were changed.
+4. Manually run the scheduled monitor workflow and verify the action reports HTTP success **and** `marketDataVerified: true` (or a clearly intentional pause/emergency-stop/disabled-symbol/daily-limit skip).
+5. Verify that the run is visible in the GitHub Actions run history and that a protected `POST /api/analyze` request without the correct bearer secret is rejected.
+6. Review the workflow and signal lifecycle checks, then merge the pull request to the default branch to activate the recurring schedule. Do not merge or call automation ready before steps 1–5 pass.
+7. Verify multiple consecutive runs and the full pending-entry/confirmation lifecycle; confirm that duplicate Telegram alerts are not produced.
+8. Keep the engine paused until operational checks pass. The scheduler cadence is approximate: GitHub may delay scheduled runs, so this is periodic monitoring, not real-time surveillance.
 
 ## Target workflow
 1. **Market-data gate:** retrieve completed H1/M15 candles; reject malformed, stale, incomplete, or unavailable data.
