@@ -2,11 +2,8 @@ name: Gold Scalper scheduled monitor
 # Uses the stable Production domain; Preview deployments remain SSO-protected.
 
 on:
-  # Live analysis must not run automatically on every code push.
-  # Keep schedule as a temporary fallback until external dispatch is verified.
-  schedule:
-    # GitHub scheduled workflows can be delayed; this is not tick-level monitoring.
-    - cron: "7,22,37,52 * * * *"
+  # The verified cron-job.org relay is the sole automatic trigger.
+  # Manual workflow dispatch remains available for safe diagnostics.
   workflow_dispatch:
 
 permissions:
