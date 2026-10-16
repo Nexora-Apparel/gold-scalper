@@ -1,4 +1,5 @@
 name: Gold Scalper scheduled monitor
+# Uses the stable Production domain; Preview deployments remain SSO-protected.
 
 on:
   push:
