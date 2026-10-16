@@ -1,6 +1,6 @@
 import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
-import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, clearActiveSignal } from "../lib/storage.js";
+import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal } from "../lib/storage.js";
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 
@@ -124,7 +124,6 @@ export default async function handler(req, res) {
       // in persistent storage and notify only after a later completed M15 candle
       // trades through its entry. This is request-driven monitoring, not a background worker.
       let active = await getActiveSignal(sql);
-      const latestM15 = fifteen[0];
       if (active && active.state === "WAITING_FOR_ENTRY") {
         const lifecycle = evaluateSignalLifecycle(active, fifteen);
         if (lifecycle.changed) {
