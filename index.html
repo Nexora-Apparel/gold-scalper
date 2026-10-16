@@ -82,9 +82,9 @@ function analysisSummary(r,symbol){
   lastAnalysisVerification=r.marketDataVerified===true?true:r.marketDataVerified===false?false:lastAnalysisVerification;
   if(r.status==='SIGNAL_CANDIDATE'&&r.signal){
     const s=r.signal;
-    return 'SIGNAL CANDIDATE — '+s.side+' '+symbol+'\\nQuality: '+r.quality+'/100\\nEntry: '+s.entry+'\\nStop loss: '+s.stopLoss+'\\nTake profit: '+s.takeProfit+'\\nR:R 1:'+s.riskReward+'\\nRisk: '+s.riskAmount+' '+s.accountCurrency+' ('+s.riskPercent+'%)\\nSetup: '+s.timeframe+'\\nReasons: '+(s.explanation||[]).join('; ')+'\\n\\nManual review only; verify quote, spread and news.\\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'');
+    return 'SIGNAL CANDIDATE — '+s.side+' '+symbol+'\nQuality: '+r.quality+'/100\nEntry: '+s.entry+'\nStop loss: '+s.stopLoss+'\nTake profit: '+s.takeProfit+'\nR:R 1:'+s.riskReward+'\nRisk: '+s.riskAmount+' '+s.accountCurrency+' ('+s.riskPercent+'%)\nSetup: '+s.timeframe+'\nReasons: '+(s.explanation||[]).join('; ')+'\n\nManual review only; verify quote, spread and news.\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'');
   }
-  return symbol+' — NO TRADE\\n'+(r.reason||r.error||'No valid setup.')+'\\nNo signal generated.\\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'');
+  return symbol+' — NO TRADE\n'+(r.reason||r.error||'No valid setup.')+'\nNo signal generated.\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'');
 }
 document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',async()=>{
   const action=b.dataset.action;
@@ -100,17 +100,17 @@ document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click'
       const s=settings(), results=[];
       if(s.goldEnabled){try{results.push(analysisSummary(await api('/api/analyze',s),'XAUUSD'))}catch(e){results.push('XAUUSD — request failed: '+e.message)}}
       if(s.btcEnabled){try{results.push(analysisSummary(await api('/api/analyze-btc',s),'BTCUSD'))}catch(e){results.push('BTCUSD — request failed: '+e.message)}}
-      $('activity').textContent=results.length?results.join('\\n\\n--------------------\\n\\n'):'No markets enabled. Enable XAUUSD or BTCUSD in Strategy settings.';
+      $('activity').textContent=results.length?results.join('\n\n--------------------\n\n'):'No markets enabled. Enable XAUUSD or BTCUSD in Strategy settings.';
     }else{
       const r=await api('/api/control',{action});
       $('activity').textContent=(action==='history'||action==='risk')?JSON.stringify(r,null,2):(r.message||JSON.stringify(r,null,2));
     }
     await refresh();
-  }catch(e){$('activity').textContent='Action not completed: '+e.message+'\\nNo success is assumed.'}
+  }catch(e){$('activity').textContent='Action not completed: '+e.message+'\nNo success is assumed.'}
   finally{b.disabled=false}
 }));
 $('saveSettings').addEventListener('click',async()=>{const s=settings();if(!(s.balance>0)||s.riskPercent<0.1||s.riskPercent>1){$('activity').textContent='Invalid settings. Balance must be positive and risk must be between 0.1% and 1%.';return}try{const r=await api('/api/settings',s);$('activity').textContent=r.message||'Settings saved.'}catch(e){$('activity').textContent='Settings not saved: '+e.message}});
-$('telegramTest').addEventListener('click',async()=>{const b=$('telegramTest');b.disabled=true;$('activity').textContent='Testing Telegram delivery…';try{const r=await api('/api/telegram-test',{});$('activity').textContent=r.message||JSON.stringify(r,null,2)}catch(e){$('activity').textContent='Telegram test failed: '+e.message+'\\nConfigure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Vercel Preview environment variables, then redeploy.'}finally{b.disabled=false}});
+$('telegramTest').addEventListener('click',async()=>{const b=$('telegramTest');b.disabled=true;$('activity').textContent='Testing Telegram delivery…';try{const r=await api('/api/telegram-test',{});$('activity').textContent=r.message||JSON.stringify(r,null,2)}catch(e){$('activity').textContent='Telegram test failed: '+e.message+'\nConfigure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Vercel Preview environment variables, then redeploy.'}finally{b.disabled=false}});
 async function loadSettings(){try{const r=await api('/api/settings');const s=r.settings||{};if(s.balance!==undefined)$('balance').value=s.balance;if(s.currency)$('currency').value=s.currency;if(s.riskPercent!==undefined)$('riskPct').value=s.riskPercent;if(s.minRR!==undefined)$('minRR').value=s.minRR;if(s.minQuality!==undefined)$('minQuality').value=s.minQuality;if(s.maxSignals!==undefined)$('maxSignals').value=s.maxSignals;if(s.timeframe)$('timeframe').value=s.timeframe;if(s.scanMode)$('scanMode').value=s.scanMode;if(s.sessionStart)$('sessionStart').value=s.sessionStart;if(s.sessionEnd)$('sessionEnd').value=s.sessionEnd;updateSessionFields();if(s.goldEnabled!==undefined)$('goldEnabled').checked=s.goldEnabled;if(s.btcEnabled!==undefined)$('btcEnabled').checked=s.btcEnabled;if(s.majorsEnabled!==undefined)$('majorsEnabled').checked=s.majorsEnabled;if(s.newsEnabled!==undefined)$('newsEnabled').checked=s.newsEnabled}catch(e){$('activity').textContent='Could not load saved settings: '+e.message}}
 function updateSessionFields(){const allDay=$('scanMode').value==='24h';$('sessionStart').disabled=allDay;$('sessionEnd').disabled=allDay;$('sessionStart').style.opacity=allDay?'.5':'1';$('sessionEnd').style.opacity=allDay?'.5':'1'}
 $('scanMode').addEventListener('change',updateSessionFields);
