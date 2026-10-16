@@ -45,7 +45,7 @@ jobs:
           set -eu
           response_file="$(mktemp)"
           trap 'rm -f "$response_file"' EXIT
-          code="$(curl --silent --show-error --max-time 20 \
+          code="$(curl --silent --show-error --connect-timeout 8 --max-time 20 --retry 2 --retry-delay 2 --retry-connrefused \
             --output "$response_file" --write-out '%{http_code}' \
             "${GOLD_SCALPER_URL%/}/api/status")"
           test "$code" -ge 200 && test "$code" -lt 300 || {
