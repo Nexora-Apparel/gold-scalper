@@ -7,7 +7,7 @@ Build a personal XAUUSD signal assistant that can identify a potential setup bef
 - Owner-authenticated dashboard and manual on-demand analysis.
 - Twelve Data H1/M15 completed-candle validation, OHLC validation, freshness limits, and fail-closed handling.
 - H1 EMA20/EMA50 trend filter, M15 MSNR zones/rejection or retest, RSI and ATR filters.
-- Rule-based quality score, configured risk-to-reward target, estimated cash-risk budget.
+- Rule-based quality score, configured risk-to-reward target, estimated cash-risk budget, and a hard maximum of three queued/delivered signal candidates per Lagos calendar day.
 - Persistent single active-signal lifecycle: `WAITING_FOR_ENTRY`, `CONFIRMATION_PENDING_DELIVERY`, `CONFIRMED_AND_NOTIFIED`, `INVALIDATED`, and `EXPIRED`.
 - Entry monitoring evaluates only completed candles later than the setup candle. A setup is not confirmed by its own candle. Pending BUY entries are placed above the setup candle high and pending SELL entries below its low, with a volatility-based buffer. Ambiguous stop/target touches fail closed.
 - Telegram send helper and owner-triggered delivery test exist. Confirmed-entry delivery retries while in `CONFIRMATION_PENDING_DELIVERY`.
