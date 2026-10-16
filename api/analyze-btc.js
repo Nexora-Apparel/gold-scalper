@@ -140,6 +140,7 @@ export default async function handler(req, res) {
         latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time },
         dataFreshness: "verified"
       };
+      if (result.signal) result.signal.symbol = "BTCUSD";
       // A candle-based trigger can be crossed before the next scheduled scan.
       // Verify the provider's current quote before persisting any new pending entry.
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
