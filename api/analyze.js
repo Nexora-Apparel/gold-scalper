@@ -38,7 +38,11 @@ export default async function handler(req, res) {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
-  if (!hasOwnerSession(req)) return res.status(401).json({ status: "NO_TRADE", signal: null, error: "Owner login required before analysis." });
+  const cronSecret = process.env.CRON_SECRET;
+  const cronAuthorized = Boolean(cronSecret && req.headers?.authorization === `Bearer ${cronSecret}`);
+  if (!hasOwnerSession(req) && !cronAuthorized) {
+    return res.status(401).json({ status: "NO_TRADE", signal: null, error: "Owner login or valid scheduled-monitor authorization required." });
+  }
 
   let sql;
   try {
