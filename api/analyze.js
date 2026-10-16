@@ -132,7 +132,7 @@ export default async function handler(req, res) {
         return validateCandles(j.values, interval, interval === "1h" ? 60 : 80);
       }
       const [hourly, fifteen] = await Promise.all([candles("1h", 120), candles("15min", 250)]);
-      const result = {
+      let result = {
         ...analyzeGold(hourly, fifteen, settings),
         source: "Twelve Data",
         checkedAt: new Date().toISOString(),
@@ -140,6 +140,41 @@ export default async function handler(req, res) {
         latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time },
         dataFreshness: "verified"
       };
+      // A candle-based trigger can be crossed before the next scheduled scan.
+      // Verify the provider's current quote before persisting any new pending entry.
+      if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
+        const priceUrl = new URL("https://api.twelvedata.com/price");
+        priceUrl.searchParams.set("symbol", "XAU/USD");
+        priceUrl.searchParams.set("apikey", key);
+        const priceResponse = await fetch(priceUrl.toString(), {
+          headers: { Accept: "application/json" },
+          signal: controller.signal
+        });
+        const pricePayload = await priceResponse.json().catch(() => null);
+        const livePrice = Number(pricePayload?.price);
+        if (!priceResponse.ok || !pricePayload || pricePayload.status === "error" ||
+            !Number.isFinite(livePrice) || livePrice <= 0) {
+          result = {
+            ...result, status: "NO_TRADE", signal: null, livePriceVerified: false,
+            reason: "Unable to verify the current XAU/USD quote. The pending entry was not queued."
+          };
+        } else {
+          const triggerStillAhead = result.signal.side === "BUY"
+            ? result.signal.entry > livePrice
+            : result.signal.entry < livePrice;
+          if (!triggerStillAhead) {
+            result = {
+              ...result, status: "NO_TRADE", signal: null, livePriceVerified: true,
+              currentPrice: livePrice,
+              reason: "The proposed pending entry has already been crossed or is no longer ahead of the current quote. No signal was queued."
+            };
+          } else {
+            result.livePriceVerified = true;
+            result.currentPrice = livePrice;
+          }
+        }
+      }
+
       // Lifecycle policy: never alert on a fresh candidate. Keep one active candidate
       // in persistent storage and notify only after a later completed M15 candle
       // trades through its entry. This is request-driven monitoring, not a background worker.
