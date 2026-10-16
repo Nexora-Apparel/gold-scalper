@@ -3,6 +3,7 @@ import { ensureStorage, getControlState } from "../lib/storage.js";
 export default async function handler(req, res) {
   if (req.method !== "GET") { res.setHeader("Allow", "GET"); return res.status(405).json({ error: "Method not allowed" }); }
   const keyConfigured = Boolean(process.env.TWELVEDATA_API_KEY);
+  const telegramConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
   try {
     const sql = await ensureStorage();
     const control = await getControlState(sql);
@@ -12,6 +13,8 @@ export default async function handler(req, res) {
       marketData: keyConfigured ? "Key configured; live feed unverified" : "API key required",
       marketConnected: false,
       marketKeyConfigured: keyConfigured,
+      telegram: telegramConfigured ? "Configured; delivery not yet tested" : "Not configured",
+      telegramConfigured,
       engine: control.emergencyStop ? "EMERGENCY STOP" : (control.engine || "PAUSED"),
       emergencyStop: control.emergencyStop === true,
       safeMode: true,
