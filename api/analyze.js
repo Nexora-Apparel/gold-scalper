@@ -162,7 +162,7 @@ export default async function handler(req, res) {
             result
           };
           await saveActiveSignal(sql, newActive);
-          result.entryMonitoring = { state: "WAITING_FOR_ENTRY", telegramSent: false, note: "No Telegram alert is sent until a later completed M15 candle trades through the entry." };
+          result.entryMonitoring = { state: "WAITING_FOR_ENTRY", created: true, telegramSent: false, note: "No Telegram alert is sent until a later completed M15 candle trades through the entry." };
         } else {
           result.entryMonitoring = { state: active.state, note: "An existing signal is being monitored; this candidate was not sent and did not replace it." };
         }
