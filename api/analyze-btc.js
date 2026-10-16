@@ -87,8 +87,10 @@ export default async function handler(req, res) {
 
     const body = req.body || {};
     const saved = await getStoredSettings(sql);
-    if (saved.btcEnabled === false || body.btcEnabled === false) {
-      const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: "BTCUSD is disabled in saved settings. Enable Bitcoin before analysis." };
+    const existingActiveSignal = await getActiveSignal(sql, "BTCUSD");
+    const activeNeedsMonitoring = existingActiveSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(existingActiveSignal.state);
+    if ((saved.btcEnabled === false || body.btcEnabled === false) && !activeNeedsMonitoring) {
+      const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, symbol: "BTCUSD", reason: "BTCUSD is disabled in saved settings. Enable Bitcoin before analysis." };
       await recordBTCHistory(sql, disabled);
       return res.status(200).json(disabled);
     }
@@ -106,8 +108,6 @@ export default async function handler(req, res) {
     }
 
     const signalCount = await countSignalsToday(sql);
-    const existingActiveSignal = await getActiveSignal(sql, "BTCUSD");
-    const activeNeedsMonitoring = existingActiveSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(existingActiveSignal.state);
     if (signalCount >= settings.maxSignals && !activeNeedsMonitoring) {
       const limited = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional signal will be generated today.` };
       await recordBTCHistory(sql, limited);
