@@ -19,8 +19,12 @@ export default async function handler(req, res) {
     const sql = await ensureStorage();
     const control = await getControlState(sql);
     const settings = await getStoredSettings(sql);
-    const activeSignal = await getActiveSignal(sql);
-    const activeSignalNeedsMonitoring = Boolean(activeSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(activeSignal.state));
+    const activeSignal = await getActiveSignal(sql, "XAUUSD");
+    const activeBtcSignal = await getActiveSignal(sql, "BTCUSD");
+    const isPending = (signal) => Boolean(signal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(signal.state));
+    const goldActiveSignalNeedsMonitoring = isPending(activeSignal);
+    const btcActiveSignalNeedsMonitoring = isPending(activeBtcSignal);
+    const activeSignalNeedsMonitoring = goldActiveSignalNeedsMonitoring || btcActiveSignalNeedsMonitoring;
     const sessionActive = withinSession(settings);
     return res.status(200).json({
       application: "ONLINE",
@@ -39,6 +43,11 @@ export default async function handler(req, res) {
       sessionEnd: settings.sessionEnd || "20:00",
       sessionTimezone: "Africa/Lagos",
       sessionActive,
+      goldSessionActive: sessionActive,
+      goldEnabled: settings.goldEnabled !== false,
+      btcEnabled: settings.btcEnabled !== false,
+      goldActiveSignalNeedsMonitoring,
+      btcActiveSignalNeedsMonitoring,
       activeSignalNeedsMonitoring,
       engine: control.emergencyStop ? "EMERGENCY STOP" : (control.engine || "PAUSED"),
       emergencyStop: control.emergencyStop === true,

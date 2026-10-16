@@ -6,6 +6,7 @@
 - The workflow's `push` trigger has been removed to prevent ordinary code commits from initiating live analysis.
 - `workflow_dispatch` remains available for manual verification.
 - The staggered GitHub `schedule` remains as a temporary fallback.
+- The monitor runs XAUUSD only during its saved Gold session and runs BTCUSD independently when enabled, including weekends. The BTC feed still must pass live candle validation.
 - The production status endpoint reports the application and database online, with `CRON_SECRET`, Twelve Data and Telegram configuration present. A configured value does not by itself prove delivery or end-to-end operation.
 - A successful scheduled execution has not yet been confirmed. Recent run history queries found zero `schedule` and zero `workflow_dispatch` events.
 
@@ -38,14 +39,14 @@ Store the token in the scheduler's protected credential/header settings, not in 
 1. Use GitHub's Actions page to run **Gold Scalper scheduled monitor** manually, or send one dispatch request.
 2. Confirm a new run appears with event `workflow_dispatch`, not `push`.
 3. Inspect every step: scheduler configuration, production preflight, and authenticated analysis/pending-entry check. A green run where analysis is skipped outside the configured session is not proof that live analysis ran.
-4. During the configured `01:00–07:00 Africa/Lagos` session, confirm a dispatched run reaches the analysis step and validates fresh completed H1/M15 candles. A `NO_TRADE` result can be correct; do not force a signal for testing.
-5. Verify Telegram delivery only through a legitimate test or a real qualifying signal; do not infer delivery from `TELEGRAM_BOT_TOKEN` being configured.
+4. During the configured `01:00–07:00 Africa/Lagos` session, confirm the Gold analysis validates fresh completed H1/M15 candles. Independently confirm BTCUSD analysis runs outside Gold hours and on a weekend, with fresh completed BTC/USD H1/M15 candles and a verified current quote. A `NO_TRADE` result can be correct; do not force a signal for testing.
+5. Verify Telegram delivery only through the legitimate test or a real qualifying signal. Confirm BTC alerts are labelled BTCUSD and Gold alerts XAUUSD; do not infer delivery from `TELEGRAM_BOT_TOKEN` being configured.
 6. Confirm no duplicate active setup or duplicate Telegram notification across consecutive monitor runs.
 7. Let the external scheduler run reliably for at least one full session and review failures before removing the GitHub `schedule` fallback. Removing the fallback before this point could leave monitoring inactive if the external job or token fails.
 
 ## Safety boundaries
 
 - Do not alter strategy thresholds just to produce a signal.
-- Respect the emergency stop, engine state, session window, pending-entry lifecycle and daily signal limit.
+- Respect the emergency stop, engine state, Gold session window, BTC 24/7 enable setting, symbol-specific pending-entry lifecycle and shared daily signal limit.
 - This project is in manual-review mode; it does not place broker orders.
 - Do not declare the bot operational until repeated scheduled runs, fresh data validation and end-to-end Telegram behavior are verified.
