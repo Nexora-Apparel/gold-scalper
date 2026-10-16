@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { Script } from "node:vm";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const btc = read("../api/analyze-btc.js");
@@ -54,4 +55,10 @@ test("daily signal cap is shared across symbols", () => {
   const countQuery = storage.slice(storage.indexOf("export async function countSignalsToday"), storage.indexOf("export { defaults"));
   assert.match(countQuery, /COUNT\(\*\)::int AS count/);
   assert.doesNotMatch(countQuery, /WHERE[^\n]*symbol\s*=/);
+});
+
+test("dashboard inline JavaScript parses successfully", () => {
+  const scripts = [...dashboard.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)];
+  assert.ok(scripts.length >= 1, "expected the dashboard's main inline script");
+  for (const match of scripts) new Script(match[1]);
 });
