@@ -39,7 +39,7 @@ export default async function handler(req, res) {
         !(s.riskPercent >= 0.1 && s.riskPercent <= 1) ||
         ![1.5, 2, 2.5, 3].includes(s.minRR) ||
         ![65, 70, 75, 80].includes(s.minQuality) ||
-        ![1, 3, 5, 8].includes(s.maxSignals) ||
+        ![1, 2, 3].includes(s.maxSignals) ||
         s.timeframe !== "M15" ||
         !["session", "24h"].includes(s.scanMode) ||
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.sessionStart) ||
