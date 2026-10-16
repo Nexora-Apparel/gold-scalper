@@ -57,8 +57,8 @@ h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repea
 <div class="field"><label for="mode">Signal handling</label><select id="mode"><option value="manual" selected>Manual review only</option></select></div>
 </div>
 <div class="check"><input id="goldEnabled" type="checkbox" checked><label for="goldEnabled">Enable XAUUSD (Gold) — priority instrument</label></div>
-<div class="check"><input id="majorsEnabled" type="checkbox"><label for="majorsEnabled">Enable EURUSD, GBPUSD and other majors</label></div>
-<div class="check"><input id="newsEnabled" type="checkbox" checked><label for="newsEnabled">Restrict signals around major US news (only when news feed verified)</label></div>
+<div class="check"><input id="majorsEnabled" type="checkbox" disabled><label for="majorsEnabled">Other currency pairs are not implemented yet (XAUUSD only)</label></div>
+<div class="check"><input id="newsEnabled" type="checkbox" disabled><label for="newsEnabled">News filter unavailable — no verified economic-calendar feed connected</label></div>
 <button class="btn primary wide" id="saveSettings">SAVE SETTINGS</button><p class="notice">Default risk is 0.5%. Lot size remains unavailable until broker contract size, tick value, and account-currency conversion are verified.</p>
 </section>
 <section class="card"><h2>Activity / result</h2><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
