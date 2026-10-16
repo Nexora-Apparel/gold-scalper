@@ -1,4 +1,4 @@
-import { ensureStorage, getControlState, getStoredSettings } from "../lib/storage.js";
+import { ensureStorage, getControlState, getStoredSettings, getActiveSignal } from "../lib/storage.js";
 
 function withinSession(settings, now = new Date()) {
   if (settings.scanMode === "24h") return true;
@@ -19,6 +19,8 @@ export default async function handler(req, res) {
     const sql = await ensureStorage();
     const control = await getControlState(sql);
     const settings = await getStoredSettings(sql);
+    const activeSignal = await getActiveSignal(sql);
+    const activeSignalNeedsMonitoring = Boolean(activeSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(activeSignal.state));
     const sessionActive = withinSession(settings);
     return res.status(200).json({
       application: "ONLINE",
