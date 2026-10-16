@@ -19,8 +19,8 @@ The quality score is a rule-based filter, **not** a win probability. This strate
 - Twelve Data candles; invalid, incomplete, stale, or unavailable data fails closed to NO_TRADE.
 - Persistent settings, control state, and analysis history in Neon.
 - Owner-authenticated dashboard, pause, emergency stop, reset, and manual on-demand analysis.
-- Optional Telegram notifications for validated SIGNAL_CANDIDATE results.
-- No automated trading, scheduled scanning, economic-calendar/news filter, verified broker lot sizing, or backtest results.
+- Telegram notifications are intended only after a later completed M15 candle trades through a stored candidate entry; fresh candidates are not sent immediately.\n- Monitoring is currently request-driven: a later authenticated analysis request is required to evaluate the next completed candle. This is not continuous background scanning, so unattended confirmation alerts are not yet available.
+- No automated trading, continuous/background scanning, economic-calendar/news filter, verified broker lot sizing, or backtest results.
 
 ## Required Vercel environment variables
 
