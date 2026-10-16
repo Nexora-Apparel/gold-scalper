@@ -15,12 +15,13 @@ The quality score is a rule-based filter, **not** a win probability. This strate
 
 ## Current scope
 
-- XAUUSD only; H1 trend + M15 MSNR setup.
-- Twelve Data candles; invalid, incomplete, stale, or unavailable data fails closed to NO_TRADE.
+- XAUUSD and BTCUSD; H1 trend + M15 MSNR setup. Gold follows the configured Africa/Lagos session; Bitcoin monitoring is independent and intended to run 24/7, including weekends.
+- BTCUSD uses the same rules-based MSNR engine as Gold, with a separate symbol-specific active-signal lifecycle and feed validation. It has not been independently backtested or calibrated for Bitcoin volatility; treat BTC results as experimental manual-review candidates until independently validated.
+- Twelve Data candles for XAU/USD and BTC/USD; invalid, incomplete, stale, unsupported, or unavailable data fails closed to NO_TRADE. The configured Twelve Data plan must support BTC/USD H1, M15, and quote endpoints; key presence alone does not verify entitlement.
 - Persistent settings, control state, and analysis history in Neon.
 - Owner-authenticated dashboard, pause, emergency stop, reset, and manual on-demand analysis.
 - A valid pending-entry candidate is sent to Telegram immediately only after a fresh live quote confirms its entry is still ahead of price; the message includes the quote observed at alert time. The bot then monitors completed M15 candles and sends a follow-up when entry is confirmed, or an update if the setup is invalidated or expires. Alerts are pre-entry, but the 15-minute scheduler can be delayed and cannot guarantee a 30-minute lead time.
-- Monitoring runs whenever `/api/analyze` is called. The GitHub Actions workflow `.github/workflows/gold-scalper-scheduled-monitor.yml` runs on a 15-minute schedule from the default branch and supports manual dispatch. Scheduled GitHub workflows can be delayed and are not tick-level monitoring. The workflow authenticates with the `CRON_SECRET` repository secret and skips analysis when the engine is paused, emergency stop is active, or the configured session has no pending signal to monitor.
+- Monitoring runs through `/api/analyze` for Gold during the configured session and `/api/analyze-btc` for Bitcoin at any hour when enabled. The GitHub Actions workflow `.github/workflows/gold-scalper-scheduled-monitor.yml` is prepared to call the relevant endpoints every 15 minutes, with manual dispatch also available. Scheduled GitHub workflows can be delayed and are not tick-level monitoring. The workflow will not run on a schedule until it is merged into the repository's default branch and required repository secrets are configured. It sends no signal if the engine is paused or the emergency stop is active.
 - No automated trading, continuous/background scanning, economic-calendar/news filter, verified broker lot sizing, or backtest results.
 
 ## Required Vercel environment variables
@@ -46,7 +47,7 @@ Add `CRON_SECRET` under GitHub repository Settings → Secrets and variables →
 5. Confirm GitHub Actions shows a successful scheduled-monitor run. Runs may be delayed; they are not tick-level monitoring.
 6. A `NO_TRADE` result is valid when the strategy rules do not align; never force a trade.
 7. Confirm history persists after refresh, and test pause and emergency stop. Resetting emergency stop leaves the engine paused.
-8. Do not use a candidate on a live account until independently validated.
+9. Do not use a candidate on a live account until independently validated.
 
 ## Signal interpretation
 
