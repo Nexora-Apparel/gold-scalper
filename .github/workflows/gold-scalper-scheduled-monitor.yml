@@ -23,11 +23,15 @@ jobs:
           GOLD_SCALPER_URL: ${{ secrets.GOLD_SCALPER_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          set -eu
           test -n "$GOLD_SCALPER_URL" || { echo "Missing repository secret GOLD_SCALPER_URL"; exit 1; }
           test -n "$CRON_SECRET" || { echo "Missing repository secret CRON_SECRET"; exit 1; }
           case "$GOLD_SCALPER_URL" in
             https://*) ;;
             *) echo "GOLD_SCALPER_URL must use HTTPS"; exit 1 ;;
+          esac
+          case "$GOLD_SCALPER_URL" in
+            */api/*) echo "GOLD_SCALPER_URL must be the base deployment URL, without an API path"; exit 1 ;;
           esac
 
       - name: Run one authenticated analysis and pending-entry check
@@ -52,16 +56,32 @@ jobs:
           fi
           node --input-type=module - "$response_file" <<'NODE'
           import fs from "node:fs";
-          const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-          console.log(JSON.stringify({
+          let body;
+          try {
+            body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.error("Scheduled analysis returned invalid JSON.");
+            process.exit(1);
+          }
+          const summary = {
             status: body.status ?? "UNKNOWN",
-            marketDataVerified: body.marketDataVerified ?? false,
+            marketDataVerified: body.marketDataVerified === true,
             entryMonitoring: body.entryMonitoring?.state ?? null,
             checkedAt: body.checkedAt ?? null,
+            reason: body.reason ?? null,
             error: body.error ?? null
-          }));
-          if (body.marketDataVerified === false && body.status !== "NO_TRADE") {
-            console.error("Unexpected analysis response shape.");
-            process.exitCode = 1;
+          };
+          console.log(JSON.stringify(summary));
+
+          if (body.marketDataVerified === true) process.exit(0);
+
+          // A deliberate operator pause/stop is not a data-provider failure.
+          const expectedSkip = /Emergency stop is active|Signal engine is paused|XAUUSD is disabled|Daily signal limit reached/i;
+          if (expectedSkip.test(String(body.reason ?? ""))) {
+            console.log("Monitor skipped by an intentional engine control or daily limit.");
+            process.exit(0);
           }
+
+          console.error("Monitor did not verify fresh completed market candles; treating this run as failed.");
+          process.exit(1);
           NODE
