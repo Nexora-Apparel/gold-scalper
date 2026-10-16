@@ -16,7 +16,7 @@ concurrency:
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
       - name: Validate scheduler configuration
         env:
@@ -33,6 +33,48 @@ jobs:
           case "$GOLD_SCALPER_URL" in
             */api/*) echo "GOLD_SCALPER_URL must be the base deployment URL, without an API path"; exit 1 ;;
           esac
+
+      - name: Verify deployed prerequisites
+        env:
+          GOLD_SCALPER_URL: ${{ secrets.GOLD_SCALPER_URL }}
+        run: |
+          set -eu
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          code="$(curl --silent --show-error --max-time 20 \
+            --output "$response_file" --write-out '%{http_code}' \
+            "${GOLD_SCALPER_URL%/}/api/status")"
+          test "$code" -ge 200 && test "$code" -lt 300 || {
+            echo "Status endpoint failed with HTTP $code"
+            exit 1
+          }
+          node --input-type=module - "$response_file" <<'NODE'
+          import fs from "node:fs";
+          let status;
+          try {
+            status = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.error("Status endpoint returned invalid JSON.");
+            process.exit(1);
+          }
+          const checks = {
+            database: status.database === "CONNECTED",
+            marketDataKey: status.marketKeyConfigured === true,
+            telegram: status.telegramConfigured === true,
+            cronSecret: status.cronSecretConfigured === true,
+            engineNotEmergencyStopped: status.emergencyStop !== true
+          };
+          console.log(JSON.stringify({ prerequisiteChecks: checks, engine: status.engine }));
+          const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+          if (failed.length) {
+            console.error("Prerequisite check(s) failed: " + failed.join(", "));
+            process.exit(1);
+          }
+          if (status.engine !== "RUNNING") {
+            console.error("Engine is not RUNNING; refusing to report a scan as successful.");
+            process.exit(1);
+          }
+          NODE
 
       - name: Run one authenticated analysis and pending-entry check
         env:
@@ -74,13 +116,6 @@ jobs:
           console.log(JSON.stringify(summary));
 
           if (body.marketDataVerified === true) process.exit(0);
-
-          // A deliberate operator pause/stop is not a data-provider failure.
-          const expectedSkip = /Emergency stop is active|Signal engine is paused|XAUUSD is disabled|Daily signal limit reached/i;
-          if (expectedSkip.test(String(body.reason ?? ""))) {
-            console.log("Monitor skipped by an intentional engine control or daily limit.");
-            process.exit(0);
-          }
 
           console.error("Monitor did not verify fresh completed market candles; treating this run as failed.");
           process.exit(1);
