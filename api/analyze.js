@@ -1,6 +1,6 @@
 import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
-import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday } from "../lib/storage.js";
+import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, clearActiveSignal } from "../lib/storage.js";
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 
 const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000 };
@@ -113,14 +113,52 @@ export default async function handler(req, res) {
         latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time },
         dataFreshness: "verified"
       };
-      if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
-        const delivery = await sendTelegramMessage(formatSignalMessage(result));
-        result.telegramDelivery = {
-          status: delivery.status,
-          sent: delivery.sent,
-          ...(delivery.message ? { message: delivery.message } : {}),
-          ...(delivery.messageId ? { messageId: delivery.messageId } : {})
+      // Lifecycle policy: never alert on a fresh candidate. Keep one active candidate
+      // in persistent storage and notify only after a later completed M15 candle
+      // trades through its entry. This is request-driven monitoring, not a background worker.
+      let active = await getActiveSignal(sql);
+      const latestM15 = fifteen[0];
+      if (active && active.state === "WAITING_FOR_ENTRY" && active.result?.signal) {
+        const activeSignal = active.result.signal;
+        const activeCandleMs = parseProviderTime(activeSignal.candleTime);
+        const latestCandleMs = parseProviderTime(latestM15.time);
+        const entry = Number(activeSignal.entry);
+        const touched = Number.isFinite(entry) && Number.isFinite(activeCandleMs) &&
+          Number.isFinite(latestCandleMs) && latestCandleMs > activeCandleMs &&
+          latestM15.low <= entry && latestM15.high >= entry;
+        if (touched) {
+          active = { ...active, state: "CONFIRMATION_PENDING_DELIVERY", confirmedAt: new Date().toISOString(), confirmationCandleTime: latestM15.time };
+          await saveActiveSignal(sql, active);
+        }
+      }
+      if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal) {
+        const confirmedResult = {
+          ...active.result,
+          signal: { ...active.result.signal, status: "CONFIRMED" },
+          confirmation: { status: "ENTRY_CONFIRMED", confirmedAt: active.confirmedAt, candleTime: active.confirmationCandleTime }
         };
+        const delivery = await sendTelegramMessage(formatSignalMessage(confirmedResult));
+        result.entryMonitoring = {
+          state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
+          confirmationCandleTime: active.confirmationCandleTime,
+          ...(delivery.message ? { deliveryMessage: delivery.message } : {})
+        };
+        if (delivery.sent) {
+          await saveActiveSignal(sql, { ...active, state: "CONFIRMED_AND_NOTIFIED", telegramMessageId: delivery.messageId ?? null, notifiedAt: new Date().toISOString() });
+        }
+      }
+      if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
+        if (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED"].includes(active.state)) {
+          const newActive = {
+            state: "WAITING_FOR_ENTRY",
+            createdAt: new Date().toISOString(),
+            result
+          };
+          await saveActiveSignal(sql, newActive);
+          result.entryMonitoring = { state: "WAITING_FOR_ENTRY", telegramSent: false, note: "No Telegram alert is sent until a later completed M15 candle trades through the entry." };
+        } else {
+          result.entryMonitoring = { state: active.state, note: "An existing signal is being monitored; this candidate was not sent and did not replace it." };
+        }
       }
       await recordHistory(sql, result);
       res.setHeader("Cache-Control", "no-store");
