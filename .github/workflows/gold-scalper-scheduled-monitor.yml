@@ -35,6 +35,7 @@ jobs:
           esac
 
       - name: Verify deployed prerequisites
+        id: preflight
         env:
           GOLD_SCALPER_URL: ${{ secrets.GOLD_SCALPER_URL }}
         run: |
@@ -69,13 +70,20 @@ jobs:
             console.error("Prerequisite check(s) failed: " + failed.join(", "));
             process.exit(1);
           }
-          if (status.emergencyStop === true || status.engine !== "RUNNING" || (status.sessionActive === false && status.activeSignalNeedsMonitoring !== true)) {
-            console.log(status.sessionActive === false && status.activeSignalNeedsMonitoring !== true ? "Monitor skipped: outside the configured monitoring session with no pending signal to monitor." : "Monitor skipped because the engine is intentionally paused or emergency-stopped.");
+          const skipForPause = status.emergencyStop === true || status.engine !== "RUNNING";
+          const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true;
+          if (skipForPause || skipForSession) {
+            console.log(skipForSession
+              ? "Monitor skipped: outside the configured monitoring session with no pending signal to monitor."
+              : "Monitor skipped because the engine is intentionally paused or emergency-stopped.");
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=false\\n");
             process.exit(0);
           }
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=true\\n");
           NODE
 
       - name: Run one authenticated analysis and pending-entry check
+        if: steps.preflight.outputs.should_run == 'true'
         env:
           GOLD_SCALPER_URL: ${{ secrets.GOLD_SCALPER_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
