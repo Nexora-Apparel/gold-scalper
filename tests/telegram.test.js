@@ -109,3 +109,14 @@ test("labels confirmed entry updates and includes the confirmation candle", () =
   assert.match(message, /BUY XAUUSD — ENTRY CONFIRMED/);
   assert.match(message, /Entry confirmation candle:<\/b> 2026-10-16T09:15:00Z/);
 });
+
+test("formats BTCUSD alerts with the correct market label", () => {
+  const message = formatSignalMessage(candidate({
+    symbol: "BTCUSD",
+    entry: 67000,
+    stopLoss: 66500,
+    takeProfit: 68000
+  }));
+  assert.match(message, /BUY BTCUSD — SIGNAL CANDIDATE/);
+  assert.doesNotMatch(message, /XAUUSD/);
+});
