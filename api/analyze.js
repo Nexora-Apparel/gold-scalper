@@ -175,9 +175,8 @@ export default async function handler(req, res) {
         }
       }
 
-      // Lifecycle policy: never alert on a fresh candidate. Keep one active candidate
-      // in persistent storage and notify only after a later completed M15 candle
-      // trades through its entry. This is request-driven monitoring, not a background worker.
+      // Send a pending-entry alert as soon as a fresh candidate is validated and its entry is still ahead.
+      // Subsequent completed M15 candles monitor confirmation, invalidation, and expiry.
       let active = await getActiveSignal(sql);
       if (active && active.state === "WAITING_FOR_ENTRY") {
         const lifecycle = evaluateSignalLifecycle(active, fifteen);
@@ -185,12 +184,37 @@ export default async function handler(req, res) {
           active = lifecycle.active;
           await saveActiveSignal(sql, active);
           if (lifecycle.event?.type === "INVALIDATED") {
-            result.entryMonitoring = { state: "INVALIDATED", note: "The stop-loss or target was touched before entry could be safely confirmed; no Telegram signal was sent." };
+            let updateNotified = false;
+            if (active.candidateNotification?.sent === true) {
+              const update = await sendTelegramMessage(
+                "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\n" +
+                "Price touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
+              );
+              updateNotified = update.sent;
+            }
+            result.entryMonitoring = {
+              state: "INVALIDATED",
+              updateNotified,
+              note: "The stop-loss or target was touched before entry confirmation; the pending setup is invalid."
+            };
           } else if (lifecycle.event?.type === "EXPIRED") {
-            result.entryMonitoring = { state: "EXPIRED", note: "The setup expired after eight hours without safe entry confirmation; no Telegram signal was sent." };
+            let updateNotified = false;
+            if (active.candidateNotification?.sent === true) {
+              const update = await sendTelegramMessage(
+                "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\n" +
+                "The entry was not confirmed within eight hours. Do not place this expired pending order."
+              );
+              updateNotified = update.sent;
+            }
+            result.entryMonitoring = {
+              state: "EXPIRED",
+              updateNotified,
+              note: "The setup expired after eight hours without entry confirmation."
+            };
           }
         }
       }
+
       if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal) {
         const confirmedResult = {
           ...active.result,
@@ -204,9 +228,13 @@ export default async function handler(req, res) {
           ...(delivery.message ? { deliveryMessage: delivery.message } : {})
         };
         if (delivery.sent) {
-          await saveActiveSignal(sql, { ...active, state: "CONFIRMED_AND_NOTIFIED", telegramMessageId: delivery.messageId ?? null, notifiedAt: new Date().toISOString() });
+          active = { ...active, state: "CONFIRMED_AND_NOTIFIED", telegramMessageId: delivery.messageId ?? null, notifiedAt: new Date().toISOString() };
+        } else {
+          active = { ...active, lastNotificationAttemptAt: new Date().toISOString(), lastNotificationError: delivery.message || "Telegram delivery failed." };
         }
+        await saveActiveSignal(sql, active);
       }
+
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
         if (signalCount >= settings.maxSignals && (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED", "EXPIRED"].includes(active.state))) {
           result.status = "NO_TRADE";
@@ -214,18 +242,57 @@ export default async function handler(req, res) {
           result.reason = `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional candidate was queued.`;
           result.entryMonitoring = { state: "DAILY_LIMIT_REACHED" };
         } else if (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED", "EXPIRED"].includes(active.state)) {
-          const newActive = {
+          active = {
             state: "WAITING_FOR_ENTRY",
             createdAt: new Date().toISOString(),
             expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-            result
+            result,
+            candidateNotification: { sent: false }
           };
-          await saveActiveSignal(sql, newActive);
-          result.entryMonitoring = { state: "WAITING_FOR_ENTRY", created: true, telegramSent: false, note: "No Telegram alert is sent until a later completed M15 candle trades through the entry." };
+          await saveActiveSignal(sql, active);
+          result.entryMonitoring = {
+            state: "WAITING_FOR_ENTRY",
+            created: true,
+            telegramSent: false,
+            note: "Pending-entry alert will be sent immediately while the current quote remains before entry."
+          };
         } else {
-          result.entryMonitoring = { state: active.state, note: "An existing signal is being monitored; this candidate was not sent and did not replace it." };
+          result.entryMonitoring = {
+            state: active.state,
+            note: "An existing signal is being monitored; this new candidate was not queued."
+          };
         }
       }
+
+      // Retry a pending-entry notification on later monitor passes if Telegram was unavailable.
+      // The sent flag is persisted so normal 15-minute scans never repeat an already-delivered alert.
+      if (active && active.state === "WAITING_FOR_ENTRY" && active.result?.signal &&
+          active.candidateNotification?.sent !== true) {
+        const pendingResult = {
+          ...active.result,
+          signal: { ...active.result.signal, status: "PENDING" }
+        };
+        const delivery = await sendTelegramMessage(formatSignalMessage(pendingResult));
+        const attemptedAt = new Date().toISOString();
+        active = {
+          ...active,
+          candidateNotification: delivery.sent
+            ? { sent: true, sentAt: attemptedAt, messageId: delivery.messageId ?? null }
+            : { sent: false, lastAttemptAt: attemptedAt, message: delivery.message || "Telegram delivery failed." }
+        };
+        await saveActiveSignal(sql, active);
+        result.entryMonitoring = {
+          state: "WAITING_FOR_ENTRY",
+          created: result.entryMonitoring?.created === true,
+          telegramSent: delivery.sent,
+          notificationStatus: delivery.sent ? "PENDING_ENTRY_SENT" : "PENDING_ENTRY_DELIVERY_FAILED",
+          note: delivery.sent
+            ? "Pending-entry alert sent before entry. The bot will monitor for confirmation, invalidation, or expiry."
+            : "Telegram delivery failed; the bot will retry on a later monitor pass while entry remains pending.",
+          ...(delivery.message ? { deliveryMessage: delivery.message } : {})
+        };
+      }
+
       await recordHistory(sql, result);
       res.setHeader("Cache-Control", "no-store");
       return res.status(200).json(result);
