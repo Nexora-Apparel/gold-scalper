@@ -142,12 +142,15 @@ export default async function handler(req, res) {
             ? candle.low <= stop || candle.high >= target
             : candle.high >= stop || candle.low <= target;
           const entryTouched = candle.low <= entry && candle.high >= entry;
+          const directionalCloseConfirmed = activeSignal.side === "BUY"
+            ? entryTouched && candle.close > entry && candle.close > candle.open
+            : entryTouched && candle.close < entry && candle.close < candle.open;
           // OHLC cannot prove intrabar order; reject ambiguous candles conservatively.
           if (riskBoundaryTouched) {
             lifecycleEvent = { type: "INVALIDATED", candleTime: candle.time };
             break;
           }
-          if (entryTouched) {
+          if (directionalCloseConfirmed) {
             lifecycleEvent = { type: "CONFIRMED", candleTime: candle.time };
             break;
           }
