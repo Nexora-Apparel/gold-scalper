@@ -154,7 +154,12 @@ export default async function handler(req, res) {
         }
       }
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
-        if (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED", "EXPIRED"].includes(active.state)) {
+        if (signalCount >= settings.maxSignals && (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED", "EXPIRED"].includes(active.state))) {
+          result.status = "NO_TRADE";
+          result.signal = null;
+          result.reason = `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional candidate was queued.`;
+          result.entryMonitoring = { state: "DAILY_LIMIT_REACHED" };
+        } else if (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED", "EXPIRED"].includes(active.state)) {
           const newActive = {
             state: "WAITING_FOR_ENTRY",
             createdAt: new Date().toISOString(),
