@@ -18,6 +18,7 @@ The quality score is a rule-based filter, **not** a win probability. This strate
 - XAUUSD and BTCUSD; both use the existing H1 trend + M15 MSNR rules-based analysis.
 - Gold follows the configured Africa/Lagos monitoring session. BTCUSD is independent of Gold's session and is intended to run 24/7, including weekends, when enabled.
 - BTCUSD has its own active-signal lifecycle state and history symbol. The daily cap of up to 3 signal candidates is shared across both markets.
+- BTCUSD is sourced from the Twelve Data BTC/USD crypto market feed, not a broker-specific CFD quote. Confirm the quote and contract specifications on the broker where you would place any manual trade.
 - BTCUSD has not been independently backtested or calibrated for Bitcoin volatility. Treat BTC results as experimental manual-review candidates until independently validated.
 - Twelve Data candles for XAU/USD and BTC/USD; invalid, incomplete, stale, unsupported, or unavailable data fails closed to NO_TRADE. Key presence alone does not verify BTC symbol entitlement; the configured plan must support BTC/USD H1, M15, and live-quote endpoints.
 - Persistent settings, control state, active signal lifecycles, and analysis history in Neon.
