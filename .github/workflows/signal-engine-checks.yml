@@ -3,7 +3,7 @@ name: Signal engine checks
 on:
   push:
     branches:
-      - feature/personal-telegram-signal-bot
+      - main
   pull_request:
     branches:
       - main
