@@ -12,6 +12,19 @@ function parseProviderTime(value) {
   return Date.parse(normalized.endsWith("Z") ? normalized : normalized + "Z");
 }
 
+function isWithinSession(settings, now = new Date()) {
+  if (settings.scanMode === "24h") return true;
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const hour = Number(parts.find(p => p.type === "hour")?.value);
+  const minute = Number(parts.find(p => p.type === "minute")?.value);
+  const current = hour * 60 + minute;
+  const startParts = String(settings.sessionStart || "08:00").split(":").map(Number);
+  const endParts = String(settings.sessionEnd || "20:00").split(":").map(Number);
+  const start = startParts[0] * 60 + startParts[1];
+  const end = endParts[0] * 60 + endParts[1];
+  return start < end ? current >= start && current < end : current >= start || current < end;
+}
+
 function validateCandles(values, interval, minimum) {
   if (!Array.isArray(values)) throw new Error("Provider returned no candle data");
   const intervalMs = INTERVAL_MS[interval];
