@@ -4,6 +4,7 @@ export default async function handler(req, res) {
   if (req.method !== "GET") { res.setHeader("Allow", "GET"); return res.status(405).json({ error: "Method not allowed" }); }
   const keyConfigured = Boolean(process.env.TWELVEDATA_API_KEY);
   const telegramConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
+  const cronSecretConfigured = Boolean(process.env.CRON_SECRET);
   try {
     const sql = await ensureStorage();
     const control = await getControlState(sql);
@@ -13,8 +14,12 @@ export default async function handler(req, res) {
       marketData: keyConfigured ? "Key configured; live feed unverified" : "API key required",
       marketConnected: false,
       marketKeyConfigured: keyConfigured,
-      telegram: telegramConfigured ? "Configured; delivery not yet tested" : "Not configured",
+      telegram: telegramConfigured ? "Configured; run a test to verify current deployment delivery" : "Not configured",
       telegramConfigured,
+      scheduler: cronSecretConfigured
+        ? "API scheduler authentication configured; GitHub Actions secret and workflow activation must also be verified"
+        : "Not configured; CRON_SECRET is missing, so scheduled monitoring cannot authenticate",
+      cronSecretConfigured,
       engine: control.emergencyStop ? "EMERGENCY STOP" : (control.engine || "PAUSED"),
       emergencyStop: control.emergencyStop === true,
       safeMode: true,
@@ -30,6 +35,8 @@ export default async function handler(req, res) {
       marketData: keyConfigured ? "Key configured; live feed unverified" : "API key required",
       marketConnected: false,
       marketKeyConfigured: keyConfigured,
+      scheduler: cronSecretConfigured ? "API secret configured; GitHub Actions workflow not verified" : "Not configured; CRON_SECRET is missing",
+      cronSecretConfigured,
       engine: "PAUSED",
       emergencyStop: true,
       safeMode: true,
