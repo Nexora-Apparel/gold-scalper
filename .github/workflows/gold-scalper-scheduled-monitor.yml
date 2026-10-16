@@ -75,59 +75,82 @@ jobs:
             process.exit(1);
           }
           const skipForPause = status.emergencyStop === true || status.engine !== "RUNNING";
-          const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true;
-          if (skipForPause || skipForSession) {
-            console.log(skipForSession
-              ? "Monitor skipped: outside the configured monitoring session with no pending signal to monitor."
-              : "Monitor skipped because the engine is intentionally paused or emergency-stopped.");
+          const goldShouldRun = status.goldEnabled !== false &&
+            (status.goldSessionActive === true || status.goldActiveSignalNeedsMonitoring === true);
+          const btcShouldRun = status.btcEnabled === true || status.btcActiveSignalNeedsMonitoring === true;
+          if (skipForPause || (!goldShouldRun && !btcShouldRun)) {
+            console.log(skipForPause
+              ? "Monitor skipped because the engine is intentionally paused or emergency-stopped."
+              : "Monitor skipped: no enabled market is due for analysis.");
             fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=false\n");
             process.exit(0);
           }
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=true\n");
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,
+            "should_run=true\n" +
+            "gold_should_run=" + String(goldShouldRun) + "\n" +
+            "btc_should_run=" + String(btcShouldRun) + "\n");
           NODE
 
-      - name: Run one authenticated analysis and pending-entry check
+      - name: Run authenticated analysis for enabled markets
         if: steps.preflight.outputs.should_run == 'true'
         env:
           GOLD_SCALPER_URL: https://gold-scalper-nexora-apparel.vercel.app
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          GOLD_SHOULD_RUN: ${{ steps.preflight.outputs.gold_should_run }}
+          BTC_SHOULD_RUN: ${{ steps.preflight.outputs.btc_should_run }}
         run: |
           set -eu
-          response_file="$(mktemp)"
-          trap 'rm -f "$response_file"' EXIT
-          code="$(curl --silent --show-error --max-time 90 \
-            --output "$response_file" --write-out '%{http_code}' \
-            --request POST "${GOLD_SCALPER_URL%/}/api/analyze" \
-            --header "Authorization: Bearer $CRON_SECRET" \
-            --header "Content-Type: application/json" \
-            --data '{}')"
-          echo "Analysis endpoint HTTP status: $code"
-          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
-            echo "Scheduled analysis failed; response (secrets are not included):"
-            cat "$response_file"
-            exit 1
-          fi
-          node --input-type=module - "$response_file" <<'NODE'
-          import fs from "node:fs";
-          let body;
-          try {
-            body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-          } catch {
-            console.error("Scheduled analysis returned invalid JSON.");
-            process.exit(1);
+          run_market() {
+            api_path="$1"
+            symbol="$2"
+            response_file="$(mktemp)"
+            code="$(curl --silent --show-error --connect-timeout 8 --max-time 90 \
+              --output "$response_file" --write-out '%{http_code}' \
+              --request POST "${GOLD_SCALPER_URL%/}${api_path}" \
+              --header "Authorization: Bearer $CRON_SECRET" \
+              --header "Content-Type: application/json" \
+              --data '{}')"
+            echo "$symbol analysis endpoint HTTP status: $code"
+            if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+              echo "$symbol analysis failed; response (secrets are not included):"
+              cat "$response_file"
+              rm -f "$response_file"
+              return 1
+            fi
+            node --input-type=module - "$response_file" "$symbol" <<'NODE'
+            import fs from "node:fs";
+            const file = process.argv[2];
+            const symbol = process.argv[3];
+            let body;
+            try {
+              body = JSON.parse(fs.readFileSync(file, "utf8"));
+            } catch {
+              console.error(symbol + " analysis returned invalid JSON.");
+              process.exit(1);
+            }
+            const summary = {
+              symbol,
+              status: body.status ?? "UNKNOWN",
+              marketDataVerified: body.marketDataVerified === true,
+              latestCompletedCandle: body.latestCompletedCandle ?? null,
+              entryMonitoring: body.entryMonitoring?.state ?? null,
+              checkedAt: body.checkedAt ?? null,
+              reason: body.reason ?? null,
+              error: body.error ?? null
+            };
+            console.log(JSON.stringify(summary));
+            if (body.marketDataVerified !== true) {
+              console.error(symbol + " analysis did not verify fresh completed candles.");
+              process.exit(1);
+            }
+            NODE
+            result=$?
+            rm -f "$response_file"
+            return "$result"
           }
-          const summary = {
-            status: body.status ?? "UNKNOWN",
-            marketDataVerified: body.marketDataVerified === true,
-            entryMonitoring: body.entryMonitoring?.state ?? null,
-            checkedAt: body.checkedAt ?? null,
-            reason: body.reason ?? null,
-            error: body.error ?? null
-          };
-          console.log(JSON.stringify(summary));
-
-          if (body.marketDataVerified === true) process.exit(0);
-
-          console.error("Monitor did not verify fresh completed market candles; treating this run as failed.");
-          process.exit(1);
-          NODE
+          if [ "$GOLD_SHOULD_RUN" = "true" ]; then
+            run_market "/api/analyze" "XAUUSD"
+          fi
+          if [ "$BTC_SHOULD_RUN" = "true" ]; then
+            run_market "/api/analyze-btc" "BTCUSD"
+          fi
