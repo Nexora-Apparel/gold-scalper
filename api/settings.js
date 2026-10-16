@@ -42,8 +42,8 @@ export default async function handler(req, res) {
         ![1, 3, 5, 8].includes(s.maxSignals) ||
         s.timeframe !== "M15" ||
         !["session", "24h"].includes(s.scanMode) ||
-        !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s.sessionStart) ||
-        !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s.sessionEnd) ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.sessionStart) ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.sessionEnd) ||
         s.sessionStart === s.sessionEnd ||
         b.mode !== "manual") {
       return res.status(400).json({ error: "Invalid settings." });
