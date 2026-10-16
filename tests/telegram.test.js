@@ -91,3 +91,15 @@ test("caps explanation lines and strips HTML angle brackets from free text", () 
   assert.doesNotMatch(message, /reason 5/);
   assert.equal((message.match(/• /g) || []).length, 4);
 });
+
+
+test("labels confirmed entry updates and includes the confirmation candle", () => {
+  const base = candidate();
+  const message = formatSignalMessage({
+    ...base,
+    signal: { ...base.signal, status: "CONFIRMED" },
+    confirmation: { status: "ENTRY_CONFIRMED", candleTime: "2026-10-16T09:15:00Z" }
+  });
+  assert.match(message, /BUY XAUUSD — ENTRY CONFIRMED/);
+  assert.match(message, /Entry confirmation candle:<\/b> 2026-10-16T09:15:00Z/);
+});
