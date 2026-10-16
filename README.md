@@ -20,32 +20,32 @@ The quality score is a rule-based filter, **not** a win probability. This strate
 - Persistent settings, control state, and analysis history in Neon.
 - Owner-authenticated dashboard, pause, emergency stop, reset, and manual on-demand analysis.
 - Telegram notifications are intended only after a later completed M15 candle retests the stored candidate entry and closes in the signal direction; fresh candidates are not sent immediately.
-- Monitoring runs whenever `/api/analyze` is called. The workflow `.github/workflows/gold-scalper-scheduled-monitor.yml` is prepared to call it every 15 minutes using GitHub Actions, with manual dispatch also available. Scheduled GitHub workflows can be delayed and are not tick-level monitoring. The workflow will not run on a schedule until it is merged into the repository's default branch and the required repository secrets are configured. It sends no signal if the engine is paused or the emergency stop is active.
+- Monitoring runs whenever `/api/analyze` is called. The GitHub Actions workflow `.github/workflows/gold-scalper-scheduled-monitor.yml` runs on a 15-minute schedule from the default branch and supports manual dispatch. Scheduled GitHub workflows can be delayed and are not tick-level monitoring. The workflow authenticates with the `CRON_SECRET` repository secret and skips analysis when the engine is paused, emergency stop is active, or the configured session has no pending signal to monitor.
 - No automated trading, continuous/background scanning, economic-calendar/news filter, verified broker lot sizing, or backtest results.
 
 ## Required Vercel environment variables
 
-Configure these for **Preview** first, then redeploy the branch:
+Configure the appropriate values for **Preview and Production**. Keep their database URLs separate; Preview uses the preview Neon branch and Production uses the Neon `main` branch. Redeploy after changing environment variables:
 
-- `DATABASE_URL` — Neon database URL for the Preview branch.
+- `DATABASE_URL` — Neon connection string for the matching environment's database branch.
 - `TWELVEDATA_API_KEY` — Twelve Data API key.
 - `DASHBOARD_PASSWORD` — strong owner password.
 - `SESSION_SECRET` — random secret at least 32 characters.
-- `CRON_SECRET` — a separate random secret at least 32 characters; the scheduler must send it as `Authorization: Bearer <CRON_SECRET>`. Add the same value as a GitHub Actions repository secret named `CRON_SECRET`.
+- `CRON_SECRET` — a random secret at least 32 characters; the scheduled monitor sends it as `Authorization: Bearer <CRON_SECRET>`. The same value must be available to the Vercel Production environment and as a GitHub Actions repository secret named `CRON_SECRET`.
 - `TELEGRAM_BOT_TOKEN` — token from Telegram's official BotFather.
 - `TELEGRAM_CHAT_ID` — the private chat or group ID where the bot should send messages.
 
-Also add a GitHub Actions repository secret named `GOLD_SCALPER_URL` containing the base HTTPS URL of the deployment to monitor (for example, your chosen production deployment URL, without `/api/analyze`). Do not put credentials in the URL. Add both `GOLD_SCALPER_URL` and `CRON_SECRET` under GitHub repository Settings → Secrets and variables → Actions. Use the same `CRON_SECRET` value in Vercel and GitHub. Merge the workflow into the repository's default branch only after the deployment URL and environment variables are confirmed. Never commit tokens or passwords to Git. In Telegram, create a bot through BotFather, open the bot and press Start, then determine the chat ID using a trusted method. For a group, add the bot and verify it is allowed to post. Set both Telegram environment variables in Vercel Preview and redeploy.
+Add `CRON_SECRET` under GitHub repository Settings → Secrets and variables → Actions. The scheduled workflow uses the stable Production deployment URL in its workflow file, so a `GOLD_SCALPER_URL` repository secret is not required. Never commit tokens or passwords to Git. In Telegram, create a bot through BotFather, open the bot and press Start, then determine the chat ID using a trusted method. For a group, add the bot and verify it is allowed to post. Set both Telegram environment variables in Vercel Preview and Production, then redeploy.
 
 ## First-run checklist
 
-1. Sign in to the Preview dashboard.
+1. Open the Production dashboard at `https://gold-scalper-nexora-apparel.vercel.app` and sign in with the owner password.
 2. Confirm system/database status and saved settings.
-3. Use **TEST TELEGRAM DELIVERY**. Do not consider Telegram configured until the test message arrives.
-4. Press START BOT; this enables manual on-demand analysis only.
-5. Run ANALYZE GOLD NOW. A NO_TRADE result is valid when the entry rules do not align.
-6. Confirm history persists after refresh.
-7. Test pause and emergency stop. Resetting emergency stop leaves the engine paused.
+3. Use **TEST TELEGRAM DELIVERY** if you need to re-verify delivery on this deployment.
+4. Press START BOT to enable scheduled monitoring; the deployed engine state is stored persistently.
+5. Confirm GitHub Actions shows a successful scheduled-monitor run. Runs may be delayed; they are not tick-level monitoring.
+6. A `NO_TRADE` result is valid when the strategy rules do not align; never force a trade.
+7. Confirm history persists after refresh, and test pause and emergency stop. Resetting emergency stop leaves the engine paused.
 8. Do not use a candidate on a live account until independently validated.
 
 ## Signal interpretation
