@@ -184,35 +184,42 @@ export default async function handler(req, res) {
           active = lifecycle.active;
           await saveActiveSignal(sql, active);
           if (lifecycle.event?.type === "INVALIDATED") {
-            let updateNotified = false;
-            if (active.candidateNotification?.sent === true) {
-              const update = await sendTelegramMessage(
-                "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\n" +
-                "Price touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
-              );
-              updateNotified = update.sent;
-            }
             result.entryMonitoring = {
               state: "INVALIDATED",
-              updateNotified,
               note: "The stop-loss or target was touched before entry confirmation; the pending setup is invalid."
             };
           } else if (lifecycle.event?.type === "EXPIRED") {
-            let updateNotified = false;
-            if (active.candidateNotification?.sent === true) {
-              const update = await sendTelegramMessage(
-                "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\n" +
-                "The entry was not confirmed within eight hours. Do not place this expired pending order."
-              );
-              updateNotified = update.sent;
-            }
             result.entryMonitoring = {
               state: "EXPIRED",
-              updateNotified,
               note: "The setup expired after eight hours without entry confirmation."
             };
           }
         }
+      }
+
+      // Persist and retry invalidation/expiry updates so a transient Telegram failure cannot silently strand a pending order.
+      if (active && ["INVALIDATED", "EXPIRED"].includes(active.state) &&
+          active.candidateNotification?.sent === true && active.lifecycleNotification?.sent !== true) {
+        const invalidated = active.state === "INVALIDATED";
+        const update = await sendTelegramMessage(invalidated
+          ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
+          : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
+        const attemptedAt = new Date().toISOString();
+        active = {
+          ...active,
+          lifecycleNotification: update.sent
+            ? { sent: true, sentAt: attemptedAt, messageId: update.messageId ?? null }
+            : { sent: false, lastAttemptAt: attemptedAt, message: update.message || "Telegram delivery failed." }
+        };
+        await saveActiveSignal(sql, active);
+        result.entryMonitoring = {
+          state: active.state,
+          updateNotified: update.sent,
+          note: update.sent
+            ? "The pending setup update was delivered to Telegram."
+            : "Telegram delivery failed; the setup update will be retried on a later monitor pass.",
+          ...(update.message ? { deliveryMessage: update.message } : {})
+        };
       }
 
       if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal) {
@@ -235,13 +242,18 @@ export default async function handler(req, res) {
         await saveActiveSignal(sql, active);
       }
 
+      const activeCanBeReplaced = !active ||
+        active.state === "CONFIRMED_AND_NOTIFIED" ||
+        (["INVALIDATED", "EXPIRED"].includes(active.state) &&
+          (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
+
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
-        if (signalCount >= settings.maxSignals && (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED", "EXPIRED"].includes(active.state))) {
+        if (signalCount >= settings.maxSignals && activeCanBeReplaced) {
           result.status = "NO_TRADE";
           result.signal = null;
           result.reason = `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional candidate was queued.`;
           result.entryMonitoring = { state: "DAILY_LIMIT_REACHED" };
-        } else if (!active || ["CONFIRMED_AND_NOTIFIED", "INVALIDATED", "EXPIRED"].includes(active.state)) {
+        } else if (activeCanBeReplaced) {
           active = {
             state: "WAITING_FOR_ENTRY",
             createdAt: new Date().toISOString(),
@@ -255,6 +267,12 @@ export default async function handler(req, res) {
             created: true,
             telegramSent: false,
             note: "Pending-entry alert will be sent immediately while the current quote remains before entry."
+          };
+        } else if (active && ["INVALIDATED", "EXPIRED"].includes(active.state)) {
+          result.entryMonitoring = {
+            state: active.state,
+            updateNotified: false,
+            note: "Waiting for Telegram to deliver the previous setup update; this new candidate was not queued."
           };
         } else {
           result.entryMonitoring = {
