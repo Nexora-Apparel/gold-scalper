@@ -51,10 +51,16 @@ test("formats a SELL candidate and uses the red direction marker", () => {
   assert.match(message, /SL:<\/b> 4191\.00/);
 });
 
-test("labels pending entries without changing directional price validation", () => {
+test("labels pending entries and includes the quote observed before entry", () => {
   const base = candidate();
-  const message = formatSignalMessage({ ...base, signal: { ...base.signal, status: "PENDING" } });
+  const message = formatSignalMessage({
+    ...base,
+    currentPrice: 4168.5,
+    signal: { ...base.signal, status: "PENDING" }
+  });
   assert.match(message, /BUY XAUUSD — PENDING ENTRY/);
+  assert.match(message, /Current price at alert:<\/b> 4168\.50/);
+  assert.match(message, /Wait for price to reach the entry; do not enter early/);
 });
 
 test("rejects missing signals and invalid directions", () => {
