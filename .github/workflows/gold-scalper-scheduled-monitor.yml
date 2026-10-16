@@ -1,6 +1,9 @@
 name: Gold Scalper scheduled monitor
 
 on:
+  push:
+    branches:
+      - feature/personal-telegram-signal-bot
   schedule:
     # GitHub scheduled workflows can be delayed; this is not tick-level monitoring.
     - cron: "*/15 * * * *"
@@ -20,11 +23,11 @@ jobs:
     steps:
       - name: Validate scheduler configuration
         env:
-          GOLD_SCALPER_URL: ${{ secrets.GOLD_SCALPER_URL }}
+          GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -eu
-          test -n "$GOLD_SCALPER_URL" || { echo "Missing repository secret GOLD_SCALPER_URL"; exit 1; }
+          test -n "$GOLD_SCALPER_URL" || { echo "Missing GOLD_SCALPER_URL configuration"; exit 1; }
           test -n "$CRON_SECRET" || { echo "Missing repository secret CRON_SECRET"; exit 1; }
           case "$GOLD_SCALPER_URL" in
             https://*) ;;
@@ -37,7 +40,7 @@ jobs:
       - name: Verify deployed prerequisites
         id: preflight
         env:
-          GOLD_SCALPER_URL: ${{ secrets.GOLD_SCALPER_URL }}
+          GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
         run: |
           set -eu
           response_file="$(mktemp)"
@@ -85,7 +88,7 @@ jobs:
       - name: Run one authenticated analysis and pending-entry check
         if: steps.preflight.outputs.should_run == 'true'
         env:
-          GOLD_SCALPER_URL: ${{ secrets.GOLD_SCALPER_URL }}
+          GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -eu
