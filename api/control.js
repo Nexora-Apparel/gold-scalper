@@ -38,12 +38,12 @@ export default async function handler(req, res) {
       if (state.emergencyStop) return res.status(409).json({ error: "Emergency stop is active. Confirm a reset first." });
       const next = { ...state, engine: "RUNNING", mode: "manual", updatedAt: new Date().toISOString() };
       await saveControlState(sql, next);
-      return res.status(200).json({ message: "On-demand XAUUSD analysis enabled in manual-review mode. No background scanning or trades will run automatically.", control: next });
+      return res.status(200).json({ message: "Scheduled XAUUSD monitoring enabled. GitHub Actions will attempt scans every 15 minutes within your saved monitoring schedule; runs may be delayed. Signal-only; no broker orders are placed.", control: next });
     }
     if (action === "pause") {
       const next = { ...state, engine: "PAUSED", mode: "manual", updatedAt: new Date().toISOString() };
       await saveControlState(sql, next);
-      return res.status(200).json({ message: "On-demand analysis paused. No new signal candidates will be generated.", control: next });
+      return res.status(200).json({ message: "Scheduled monitoring paused. No new scans or signal candidates will be generated until START BOT is pressed again.", control: next });
     }
   } catch (error) {
     console.error("Control storage failure:", error?.message || "unknown error");
