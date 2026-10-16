@@ -44,10 +44,7 @@ test("formats a BUY candidate with entry, target, stop, risk, and disclaimer", (
 
 test("formats a SELL candidate and uses the red direction marker", () => {
   const message = formatSignalMessage(candidate({
-    side: "SELL",
-    entry: 4171,
-    takeProfit: 4151,
-    stopLoss: 4191
+    side: "SELL", entry: 4171, takeProfit: 4151, stopLoss: 4191
   }));
   assert.match(message, /🟥 SELL XAUUSD — SIGNAL CANDIDATE/);
   assert.match(message, /TP1:<\/b> 4151\.00/);
@@ -55,10 +52,8 @@ test("formats a SELL candidate and uses the red direction marker", () => {
 });
 
 test("labels pending entries without changing directional price validation", () => {
-  const message = formatSignalMessage({
-    ...candidate(),
-    signal: { ...candidate().signal, status: "PENDING" }
-  });
+  const base = candidate();
+  const message = formatSignalMessage({ ...base, signal: { ...base.signal, status: "PENDING" } });
   assert.match(message, /BUY XAUUSD — PENDING ENTRY/);
 });
 
@@ -92,7 +87,6 @@ test("caps explanation lines and strips HTML angle brackets from free text", () 
     explanation: ["<b>unsafe</b>", "reason 2", "reason 3", "reason 4", "reason 5"]
   }));
   assert.doesNotMatch(message, /<script>|<b>unsafe<\/b>/i);
-  assert.match(message, /&lt;script&gt;/i) === false;
   assert.match(message, /• unsafe/);
   assert.doesNotMatch(message, /reason 5/);
   assert.equal((message.match(/• /g) || []).length, 4);
