@@ -78,7 +78,8 @@ export default async function handler(req, res) {
       });
     }
 
-    const latestAgeMs = now - candles[0]._timeMs;
+    // Provider timestamps mark candle open time; freshness is measured from close.
+    const latestAgeMs = now - (candles[0]._timeMs + intervalMs);
     if (latestAgeMs < 0 || latestAgeMs > 45 * 60 * 1000) {
       return res.status(502).json({
         ok: false,
