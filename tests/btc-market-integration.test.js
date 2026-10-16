@@ -58,9 +58,9 @@ test("daily signal cap is shared across symbols", () => {
 });
 
 test("dashboard inline JavaScript parses successfully", () => {
-  const scriptStart = dashboard.indexOf("<script>\\n");
+  const scriptStart = dashboard.indexOf("<script>\n");
   assert.ok(scriptStart >= 0, "expected the dashboard's main inline script");
-  const contentStart = scriptStart + "<script>\\n".length;
+  const contentStart = scriptStart + "<script>\n".length;
   const scriptEnd = dashboard.indexOf("</script>", contentStart);
   assert.ok(scriptEnd > contentStart, "expected the main inline script to close");
   new Script(dashboard.slice(contentStart, scriptEnd));
