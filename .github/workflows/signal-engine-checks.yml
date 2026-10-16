@@ -1,0 +1,22 @@
+name: Signal engine checks
+
+on:
+  push:
+    branches:
+      - feature/personal-telegram-signal-bot
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --package-lock-only --ignore-scripts
+      - run: npm install --ignore-scripts
+      - run: npm run check
