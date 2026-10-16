@@ -34,6 +34,12 @@ export default async function handler(req, res) {
         ? "API scheduler authentication configured; GitHub Actions secret and workflow activation must also be verified"
         : "Not configured; CRON_SECRET is missing, so scheduled monitoring cannot authenticate",
       cronSecretConfigured,
+      scanMode: settings.scanMode || "session",
+      sessionStart: settings.sessionStart || "08:00",
+      sessionEnd: settings.sessionEnd || "20:00",
+      sessionTimezone: "Africa/Lagos",
+      sessionActive,
+      activeSignalNeedsMonitoring,
       engine: control.emergencyStop ? "EMERGENCY STOP" : (control.engine || "PAUSED"),
       emergencyStop: control.emergencyStop === true,
       safeMode: true,
