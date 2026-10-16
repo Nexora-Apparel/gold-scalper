@@ -15,39 +15,41 @@ The quality score is a rule-based filter, **not** a win probability. This strate
 
 ## Current scope
 
-- XAUUSD and BTCUSD; H1 trend + M15 MSNR setup. Gold follows the configured Africa/Lagos session; Bitcoin monitoring is independent and intended to run 24/7, including weekends.
-- BTCUSD uses the same rules-based MSNR engine as Gold, with a separate symbol-specific active-signal lifecycle and feed validation. It has not been independently backtested or calibrated for Bitcoin volatility; treat BTC results as experimental manual-review candidates until independently validated.
-- Twelve Data candles for XAU/USD and BTC/USD; invalid, incomplete, stale, unsupported, or unavailable data fails closed to NO_TRADE. The configured Twelve Data plan must support BTC/USD H1, M15, and quote endpoints; key presence alone does not verify entitlement.
-- Persistent settings, control state, and analysis history in Neon.
+- XAUUSD and BTCUSD; both use the existing H1 trend + M15 MSNR rules-based analysis.
+- Gold follows the configured Africa/Lagos monitoring session. BTCUSD is independent of Gold's session and is intended to run 24/7, including weekends, when enabled.
+- BTCUSD has its own active-signal lifecycle state and history symbol. The daily cap of up to 3 signal candidates is shared across both markets.
+- BTCUSD has not been independently backtested or calibrated for Bitcoin volatility. Treat BTC results as experimental manual-review candidates until independently validated.
+- Twelve Data candles for XAU/USD and BTC/USD; invalid, incomplete, stale, unsupported, or unavailable data fails closed to NO_TRADE. Key presence alone does not verify BTC symbol entitlement; the configured plan must support BTC/USD H1, M15, and live-quote endpoints.
+- Persistent settings, control state, active signal lifecycles, and analysis history in Neon.
 - Owner-authenticated dashboard, pause, emergency stop, reset, and manual on-demand analysis.
-- A valid pending-entry candidate is sent to Telegram immediately only after a fresh live quote confirms its entry is still ahead of price; the message includes the quote observed at alert time. The bot then monitors completed M15 candles and sends a follow-up when entry is confirmed, or an update if the setup is invalidated or expires. Alerts are pre-entry, but the 15-minute scheduler can be delayed and cannot guarantee a 30-minute lead time.
-- Monitoring runs through `/api/analyze` for Gold during the configured session and `/api/analyze-btc` for Bitcoin at any hour when enabled. The GitHub Actions workflow `.github/workflows/gold-scalper-scheduled-monitor.yml` is prepared to call the relevant endpoints every 15 minutes, with manual dispatch also available. Scheduled GitHub workflows can be delayed and are not tick-level monitoring. The workflow will not run on a schedule until it is merged into the repository's default branch and required repository secrets are configured. It sends no signal if the engine is paused or the emergency stop is active.
-- No automated trading, continuous/background scanning, economic-calendar/news filter, verified broker lot sizing, or backtest results.
+- Telegram notifications are intended only after a later completed M15 candle retests the stored candidate entry and closes in the signal direction; fresh candidates are not sent as immediate market orders.
+- Monitoring runs through `/api/analyze` for Gold during the configured session and `/api/analyze-btc` for Bitcoin at any hour when enabled. The GitHub Actions workflow `.github/workflows/gold-scalper-scheduled-monitor.yml` is prepared to call the relevant endpoints every 15 minutes, with manual dispatch also available. Scheduled GitHub workflows can be delayed and are not tick-level monitoring.
+- No automated trading, continuous tick-level scanning, economic-calendar/news filter, verified broker lot sizing, or historical backtest results.
 
 ## Required Vercel environment variables
 
-Configure the appropriate values for **Preview and Production**. Keep their database URLs separate; Preview uses the preview Neon branch and Production uses the Neon `main` branch. Redeploy after changing environment variables:
+Configure these for **Preview** first, then redeploy the branch:
 
-- `DATABASE_URL` — Neon connection string for the matching environment's database branch.
+- `DATABASE_URL` — Neon database URL for the Preview branch.
 - `TWELVEDATA_API_KEY` — Twelve Data API key.
 - `DASHBOARD_PASSWORD` — strong owner password.
 - `SESSION_SECRET` — random secret at least 32 characters.
-- `CRON_SECRET` — a random secret at least 32 characters; the scheduled monitor sends it as `Authorization: Bearer <CRON_SECRET>`. The same value must be available to the Vercel Production environment and as a GitHub Actions repository secret named `CRON_SECRET`.
-- `TELEGRAM_BOT_TOKEN` — token from Telegram's official BotFather.
-- `TELEGRAM_CHAT_ID` — the private chat or group ID where the bot should send messages.
+- `CRON_SECRET` — a separate random secret at least 32 characters; the scheduler must send it as `Authorization: Bearer <CRON_SECRET>`. Add the same value as a GitHub Actions repository secret named `CRON_SECRET`.
+- `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` — Telegram delivery configuration.
 
-Add `CRON_SECRET` under GitHub repository Settings → Secrets and variables → Actions. The scheduled workflow uses the stable Production deployment URL in its workflow file, so a `GOLD_SCALPER_URL` repository secret is not required. Never commit tokens or passwords to Git. In Telegram, create a bot through BotFather, open the bot and press Start, then determine the chat ID using a trusted method. For a group, add the bot and verify it is allowed to post. Set both Telegram environment variables in Vercel Preview and Production, then redeploy.
+Also add a GitHub Actions repository secret named `GOLD_SCALPER_URL` containing the base HTTPS URL of the deployment to monitor (without an API path). Keep credentials private and never commit tokens or passwords to Git.
 
 ## First-run checklist
 
-1. Open the Production dashboard at `https://gold-scalper-nexora-apparel.vercel.app` and sign in with the owner password.
+1. Open the dashboard and sign in with the owner password.
 2. Confirm system/database status and saved settings.
-3. Use **TEST TELEGRAM DELIVERY** if you need to re-verify delivery on this deployment.
-4. Press START BOT to enable scheduled monitoring; the deployed engine state is stored persistently.
-5. Confirm GitHub Actions shows a successful scheduled-monitor run. Runs may be delayed; they are not tick-level monitoring.
-6. A `NO_TRADE` result is valid when the strategy rules do not align; never force a trade.
-7. Confirm history persists after refresh, and test pause and emergency stop. Resetting emergency stop leaves the engine paused.
-9. Do not use a candidate on a live account until independently validated.
+3. Use **TEST TELEGRAM DELIVERY** and verify that the test message arrives.
+4. Confirm both XAUUSD and BTCUSD are enabled as intended.
+5. Test `/api/market-data` and `/api/market-data-btc` separately; both must report fresh completed candles before relying on the relevant market. A successful Gold feed does not verify BTC access.
+6. Press START BOT to enable scheduled monitoring. No broker execution is enabled.
+7. Run ANALYZE GOLD NOW during its configured session and ANALYZE BTC NOW at any time. A NO_TRADE result is valid when the setup rules do not align.
+8. Confirm symbol-labelled history persists after refresh; test pause and emergency stop. Resetting emergency stop leaves the engine paused.
+9. Do not use any candidate on a live account until independently validated.
 
 ## Signal interpretation
 
