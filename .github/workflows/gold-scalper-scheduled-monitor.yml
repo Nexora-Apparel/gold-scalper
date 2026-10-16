@@ -1,0 +1,132 @@
+name: Gold Scalper scheduled monitor
+
+on:
+  push:
+    branches:
+      - feature/personal-telegram-signal-bot
+  schedule:
+    # GitHub scheduled workflows can be delayed; this is not tick-level monitoring.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gold-scalper-scheduled-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Validate scheduler configuration
+        env:
+          GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -eu
+          test -n "$GOLD_SCALPER_URL" || { echo "Missing GOLD_SCALPER_URL configuration"; exit 1; }
+          test -n "$CRON_SECRET" || { echo "Missing repository secret CRON_SECRET"; exit 1; }
+          case "$GOLD_SCALPER_URL" in
+            https://*) ;;
+            *) echo "GOLD_SCALPER_URL must use HTTPS"; exit 1 ;;
+          esac
+          case "$GOLD_SCALPER_URL" in
+            */api/*) echo "GOLD_SCALPER_URL must be the base deployment URL, without an API path"; exit 1 ;;
+          esac
+
+      - name: Verify deployed prerequisites
+        id: preflight
+        env:
+          GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
+        run: |
+          set -eu
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          code="$(curl --silent --show-error --connect-timeout 8 --max-time 20 --retry 2 --retry-delay 2 --retry-connrefused \
+            --output "$response_file" --write-out '%{http_code}' \
+            "${GOLD_SCALPER_URL%/}/api/status")"
+          test "$code" -ge 200 && test "$code" -lt 300 || {
+            echo "Status endpoint failed with HTTP $code"
+            exit 1
+          }
+          node --input-type=module - "$response_file" <<'NODE'
+          import fs from "node:fs";
+          let status;
+          try {
+            status = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.error("Status endpoint returned invalid JSON.");
+            process.exit(1);
+          }
+          const checks = {
+            database: status.database === "CONNECTED",
+            marketDataKey: status.marketKeyConfigured === true,
+            telegram: status.telegramConfigured === true,
+            cronSecret: status.cronSecretConfigured === true,
+          };
+          console.log(JSON.stringify({ prerequisiteChecks: checks, engine: status.engine, emergencyStop: status.emergencyStop }));
+          const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+          if (failed.length) {
+            console.error("Prerequisite check(s) failed: " + failed.join(", "));
+            process.exit(1);
+          }
+          const skipForPause = status.emergencyStop === true || status.engine !== "RUNNING";
+          const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true;
+          if (skipForPause || skipForSession) {
+            console.log(skipForSession
+              ? "Monitor skipped: outside the configured monitoring session with no pending signal to monitor."
+              : "Monitor skipped because the engine is intentionally paused or emergency-stopped.");
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=false\n");
+            process.exit(0);
+          }
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=true\n");
+          NODE
+
+      - name: Run one authenticated analysis and pending-entry check
+        if: steps.preflight.outputs.should_run == 'true'
+        env:
+          GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -eu
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          code="$(curl --silent --show-error --max-time 90 \
+            --output "$response_file" --write-out '%{http_code}' \
+            --request POST "${GOLD_SCALPER_URL%/}/api/analyze" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{}')"
+          echo "Analysis endpoint HTTP status: $code"
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "Scheduled analysis failed; response (secrets are not included):"
+            cat "$response_file"
+            exit 1
+          fi
+          node --input-type=module - "$response_file" <<'NODE'
+          import fs from "node:fs";
+          let body;
+          try {
+            body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.error("Scheduled analysis returned invalid JSON.");
+            process.exit(1);
+          }
+          const summary = {
+            status: body.status ?? "UNKNOWN",
+            marketDataVerified: body.marketDataVerified === true,
+            entryMonitoring: body.entryMonitoring?.state ?? null,
+            checkedAt: body.checkedAt ?? null,
+            reason: body.reason ?? null,
+            error: body.error ?? null
+          };
+          console.log(JSON.stringify(summary));
+
+          if (body.marketDataVerified === true) process.exit(0);
+
+          console.error("Monitor did not verify fresh completed market candles; treating this run as failed.");
+          process.exit(1);
+          NODE
