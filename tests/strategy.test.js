@@ -56,3 +56,29 @@ test("never emits a malformed trade candidate", () => {
     assert.equal(result.signal, null);
   }
 });
+
+
+test("fails closed when any supplied candle is malformed", () => {
+  const hourly = makeCandles(100, 60 * 60 * 1000, "flat");
+  const fifteen = makeCandles(120, 15 * 60 * 1000, "wave");
+  fifteen[15] = { ...fifteen[15], high: Number.NaN };
+  const result = analyzeGold(hourly, fifteen);
+  assert.equal(result.status, "NO_TRADE");
+  assert.equal(result.signal, null);
+  assert.match(result.reason, /Malformed|missing OHLC/i);
+});
+
+test("neutral RSI is 50 when all completed candles have unchanged closes", () => {
+  const hourly = makeCandles(100, 60 * 60 * 1000, "flat");
+  const fifteen = makeCandles(120, 15 * 60 * 1000, "flat");
+  const result = analyzeGold(hourly, fifteen);
+  assert.equal(result.status, "NO_TRADE");
+  assert.equal(result.indicators.rsi, 50);
+});
+
+test("rejects missing candle arrays without throwing", () => {
+  const result = analyzeGold(null, []);
+  assert.equal(result.status, "NO_TRADE");
+  assert.equal(result.signal, null);
+  assert.match(result.reason, /Malformed|missing OHLC/i);
+});
