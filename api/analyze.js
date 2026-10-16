@@ -95,7 +95,7 @@ export default async function handler(req, res) {
       maxSignals: Number(body.maxSignals ?? saved.maxSignals ?? 3)
     };
     if (!(settings.balance > 0) || !(settings.riskPercent >= 0.1 && settings.riskPercent <= 1) ||
-        ![1.5, 2, 2.5, 3].includes(settings.minRR) || ![65, 70, 75, 80].includes(settings.minQuality) || ![1, 3, 5, 8].includes(settings.maxSignals)) {
+        ![1.5, 2, 2.5, 3].includes(settings.minRR) || ![65, 70, 75, 80].includes(settings.minQuality) || ![1, 2, 3].includes(settings.maxSignals)) {
       return res.status(400).json({ status: "NO_TRADE", signal: null, error: "Invalid risk settings." });
     }
 
