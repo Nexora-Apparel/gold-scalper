@@ -20,7 +20,7 @@ The quality score is a rule-based filter, **not** a win probability. This strate
 - Persistent settings, control state, and analysis history in Neon.
 - Owner-authenticated dashboard, pause, emergency stop, reset, and manual on-demand analysis.
 - Telegram notifications are intended only after a later completed M15 candle retests the stored candidate entry and closes in the signal direction; fresh candidates are not sent immediately.
-- Monitoring runs whenever `/api/analyze` is called. For unattended monitoring, configure a trusted external scheduler to POST to `/api/analyze` every 5–15 minutes with `Authorization: Bearer <CRON_SECRET>` and a JSON body `{}`. Add a strong `CRON_SECRET` in Vercel first. The endpoint still respects START/PAUSE and emergency stop; no scheduler is configured by this code alone.
+- Monitoring runs whenever `/api/analyze` is called. The workflow `.github/workflows/gold-scalper-scheduled-monitor.yml` is prepared to call it every 15 minutes using GitHub Actions, with manual dispatch also available. Scheduled GitHub workflows can be delayed and are not tick-level monitoring. The workflow will not run on a schedule until it is merged into the repository's default branch and the required repository secrets are configured. It sends no signal if the engine is paused or the emergency stop is active.
 - No automated trading, continuous/background scanning, economic-calendar/news filter, verified broker lot sizing, or backtest results.
 
 ## Required Vercel environment variables
@@ -31,11 +31,11 @@ Configure these for **Preview** first, then redeploy the branch:
 - `TWELVEDATA_API_KEY` — Twelve Data API key.
 - `DASHBOARD_PASSWORD` — strong owner password.
 - `SESSION_SECRET` — random secret at least 32 characters.
-- `CRON_SECRET` — a separate random secret at least 32 characters for a trusted external scheduler to POST to `/api/analyze` with `Authorization: Bearer <CRON_SECRET>`.
+- `CRON_SECRET` — a separate random secret at least 32 characters; the scheduler must send it as `Authorization: Bearer <CRON_SECRET>`. Add the same value as a GitHub Actions repository secret named `CRON_SECRET`.
 - `TELEGRAM_BOT_TOKEN` — token from Telegram's official BotFather.
 - `TELEGRAM_CHAT_ID` — the private chat or group ID where the bot should send messages.
 
-Never commit tokens or passwords to Git. In Telegram, create a bot through BotFather, open the bot and press Start, then determine the chat ID using a trusted method. For a group, add the bot and verify it is allowed to post. Set both Telegram environment variables in Vercel Preview and redeploy.
+Also add a GitHub Actions repository secret named `GOLD_SCALPER_URL` containing the base HTTPS URL of the deployment to monitor (for example, your chosen production deployment URL, without `/api/analyze`). Do not put credentials in the URL. Add both `GOLD_SCALPER_URL` and `CRON_SECRET` under GitHub repository Settings → Secrets and variables → Actions. Use the same `CRON_SECRET` value in Vercel and GitHub. Merge the workflow into the repository's default branch only after the deployment URL and environment variables are confirmed. Never commit tokens or passwords to Git. In Telegram, create a bot through BotFather, open the bot and press Start, then determine the chat ID using a trusted method. For a group, add the bot and verify it is allowed to post. Set both Telegram environment variables in Vercel Preview and redeploy.
 
 ## First-run checklist
 
