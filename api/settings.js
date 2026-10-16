@@ -29,7 +29,11 @@ export default async function handler(req, res) {
       mode: "manual",
       goldEnabled: b.goldEnabled === true,
       majorsEnabled: b.majorsEnabled === true,
-      newsEnabled: b.newsEnabled === true
+      newsEnabled: b.newsEnabled === true,
+      scanMode: b.scanMode,
+      sessionStart: b.sessionStart,
+      sessionEnd: b.sessionEnd,
+      timezone: "Africa/Lagos"
     };
     if (!(s.balance > 0) || !["USD", "NGN", "EUR", "GBP"].includes(s.currency) ||
         !(s.riskPercent >= 0.1 && s.riskPercent <= 1) ||
@@ -37,6 +41,10 @@ export default async function handler(req, res) {
         ![65, 70, 75, 80].includes(s.minQuality) ||
         ![1, 3, 5, 8].includes(s.maxSignals) ||
         s.timeframe !== "M15" ||
+        !["session", "24h"].includes(s.scanMode) ||
+        !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s.sessionStart) ||
+        !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s.sessionEnd) ||
+        s.sessionStart === s.sessionEnd ||
         b.mode !== "manual") {
       return res.status(400).json({ error: "Invalid settings." });
     }
