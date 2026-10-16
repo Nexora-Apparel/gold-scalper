@@ -17,7 +17,7 @@ test("BTCUSD endpoint fetches BTC/USD H1 and M15 candles and a live quote", () =
   assert.match(btc, /candles\("15min", 250\)/);
   assert.match(btc, /api\.twelvedata\.com\/price/);
   assert.match(btcFeed, /symbol: "BTC\/USD"/);
-  assert.match(btcFeed, /Latest completed BTC\\/USD candle is stale/);
+  assert.match(btcFeed, /Latest completed BTC\/USD candle is stale/);
 });
 
 test("BTC signal lifecycle and history are isolated from XAUUSD", () => {
