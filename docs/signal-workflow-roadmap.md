@@ -11,7 +11,7 @@ Build a personal XAUUSD signal assistant that can identify a potential setup bef
 - Persistent single active-signal lifecycle: `WAITING_FOR_ENTRY`, `CONFIRMATION_PENDING_DELIVERY`, `CONFIRMED_AND_NOTIFIED`, `INVALIDATED`, and `EXPIRED`.
 - Entry monitoring evaluates only completed candles later than the setup candle. A setup is not confirmed by its own candle. Ambiguous stop/target touches fail closed.
 - Telegram send helper and owner-triggered delivery test exist. Confirmed-entry delivery retries while in `CONFIRMATION_PENDING_DELIVERY`.
-- A GitHub Actions monitor workflow exists on `feature/personal-telegram-signal-bot` and is intended to run every 15 minutes. It is **not active on the default branch yet** and has not been verified end-to-end with repository secrets.
+- A GitHub Actions monitor workflow exists on `feature/personal-telegram-signal-bot` and is intended to run every 15 minutes. The dashboard now supports selected-hour monitoring (default 08:00–20:00 Africa/Lagos) or 24-hour monitoring; START/PAUSE controls govern scheduled scans, and active pending signals continue to be checked outside selected hours. The workflow is **not active on the default branch yet** and has not been verified end-to-end with repository secrets.
 - No historical backtest, broker lot-size verification, or automated broker orders. No profitability/accuracy claim is supported.
 
 ## Automation activation checklist
