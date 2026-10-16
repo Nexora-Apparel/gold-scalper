@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "check": "node --check api/status.js && node --check api/market-data.js && node --check api/analyze.js && node --check api/settings.js && node --check api/control.js && node --check lib/strategy.js && node --check lib/telegram.js && node --check lib/storage.js && node --check api/telegram-test.js && node --test tests/strategy.test.js tests/telegram.test.js"
+    "check": "node --check api/status.js && node --check api/market-data.js && node --check api/analyze.js && node --check api/settings.js && node --check api/control.js && node --check lib/strategy.js && node --check lib/telegram.js && node --check lib/storage.js && node --check api/telegram-test.js && node --test tests/strategy.test.js tests/telegram.test.js tests/signal-lifecycle.test.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2"
