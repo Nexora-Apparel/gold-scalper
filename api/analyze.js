@@ -25,10 +25,9 @@ function isWithinSession(settings, now = new Date()) {
   return start < end ? current >= start && current < end : current >= start || current < end;
 }
 
-function validateCandles(values, interval, minimum) {
+export function validateCandles(values, interval, minimum, now = Date.now()) {
   if (!Array.isArray(values)) throw new Error("Provider returned no candle data");
   const intervalMs = INTERVAL_MS[interval];
-  const now = Date.now();
   const parsed = values.map((v) => {
     const timeMs = parseProviderTime(v?.datetime);
     const candle = { time: v?.datetime, open: Number(v?.open), high: Number(v?.high), low: Number(v?.low), close: Number(v?.close), _timeMs: timeMs };
@@ -41,7 +40,8 @@ function validateCandles(values, interval, minimum) {
   });
   const completed = parsed.filter((c) => c._timeMs + intervalMs <= now).sort((a, b) => b._timeMs - a._timeMs);
   if (completed.length < minimum) throw new Error("Insufficient completed candle history");
-  const latestAgeMs = now - completed[0]._timeMs;
+  // Provider timestamps mark candle open time; freshness must be measured from candle close.
+  const latestAgeMs = now - (completed[0]._timeMs + intervalMs);
   const freshnessLimit = interval === "15min" ? 45 * 60 * 1000 : 90 * 60 * 1000;
   if (latestAgeMs < 0 || latestAgeMs > freshnessLimit) throw new Error(`Stale ${interval} candles; latest completed candle is not fresh`);
   return completed.map(({ _timeMs, ...c }) => c);
