@@ -82,7 +82,7 @@ export default async function handler(req, res) {
 
     const signalCount = await countSignalsToday(sql);
     if (signalCount >= settings.maxSignals) {
-      const limited = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: `Daily signal limit reached (${signalCount}/${settings.maxSignals} UTC). No additional signal will be generated today.` };
+      const limited = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional signal will be generated today.` };
       await recordHistory(sql, limited);
       return res.status(200).json(limited);
     }
