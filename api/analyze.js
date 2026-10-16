@@ -1,6 +1,6 @@
 import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
-import { ensureStorage, getControlState, getStoredSettings, recordHistory } from "../lib/storage.js";
+import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday } from "../lib/storage.js";
 
 const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000 };
 
@@ -62,16 +62,29 @@ export default async function handler(req, res) {
 
     const body = req.body || {};
     const saved = await getStoredSettings(sql);
+    if (saved.goldEnabled === false || body.goldEnabled === false) {
+      const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: "XAUUSD is disabled in saved settings. Enable Gold before analysis." };
+      await recordHistory(sql, disabled);
+      return res.status(200).json(disabled);
+    }
     const settings = {
       balance: Number(body.balance ?? saved.balance ?? 1000),
       currency: ["USD", "NGN", "EUR", "GBP"].includes(body.currency ?? saved.currency) ? (body.currency ?? saved.currency) : "USD",
       riskPercent: Number(body.riskPercent ?? saved.riskPercent ?? 0.5),
       minRR: Number(body.minRR ?? saved.minRR ?? 2),
-      minQuality: Number(body.minQuality ?? saved.minQuality ?? 70)
+      minQuality: Number(body.minQuality ?? saved.minQuality ?? 70),
+      maxSignals: Number(body.maxSignals ?? saved.maxSignals ?? 3)
     };
     if (!(settings.balance > 0) || !(settings.riskPercent >= 0.1 && settings.riskPercent <= 1) ||
-        ![1.5, 2, 2.5, 3].includes(settings.minRR) || ![65, 70, 75, 80].includes(settings.minQuality)) {
+        ![1.5, 2, 2.5, 3].includes(settings.minRR) || ![65, 70, 75, 80].includes(settings.minQuality) || ![1, 3, 5, 8].includes(settings.maxSignals)) {
       return res.status(400).json({ status: "NO_TRADE", signal: null, error: "Invalid risk settings." });
+    }
+
+    const signalCount = await countSignalsToday(sql);
+    if (signalCount >= settings.maxSignals) {
+      const limited = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: `Daily signal limit reached (${signalCount}/${settings.maxSignals} UTC). No additional signal will be generated today.` };
+      await recordHistory(sql, limited);
+      return res.status(200).json(limited);
     }
 
     const controller = new AbortController();
