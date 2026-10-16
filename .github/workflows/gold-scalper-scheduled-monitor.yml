@@ -69,8 +69,8 @@ jobs:
             console.error("Prerequisite check(s) failed: " + failed.join(", "));
             process.exit(1);
           }
-          if (status.emergencyStop === true || status.engine !== "RUNNING") {
-            console.log("Monitor skipped because the engine is intentionally paused or emergency-stopped.");
+          if (status.emergencyStop === true || status.engine !== "RUNNING" || status.sessionActive === false) {
+            console.log(status.sessionActive === false ? "Monitor skipped: outside the configured monitoring session." : "Monitor skipped because the engine is intentionally paused or emergency-stopped.");
             process.exit(0);
           }
           NODE
