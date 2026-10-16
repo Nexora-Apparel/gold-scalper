@@ -139,9 +139,14 @@ jobs:
               error: body.error ?? null
             };
             console.log(JSON.stringify(summary));
-            if (body.marketDataVerified !== true) {
+            const deliberateDailyCap = body.status === "NO_TRADE" &&
+              /daily signal limit reached/i.test(String(body.reason || ""));
+            if (body.marketDataVerified !== true && !deliberateDailyCap) {
               console.error(symbol + " analysis did not verify fresh completed candles.");
               process.exit(1);
+            }
+            if (deliberateDailyCap) {
+              console.log(symbol + " scan safely skipped because the shared daily signal cap was reached.");
             }
             NODE
             result=$?
