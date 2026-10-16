@@ -29,6 +29,7 @@ test("BTC signal lifecycle and history are isolated from XAUUSD", () => {
   assert.match(storage, /active_signal:\$\{symbol\}/);
   assert.match(storage, /const symbol = result\?\.signal\?\.symbol \|\| result\?\.symbol \|\| "XAUUSD"/);
   assert.match(telegram, /const symbol = safeText\(s\.symbol \|\| "XAUUSD"\)/);
+  assert.ok(telegram.includes('} ${side} ${symbol} — ${status}</b>'));
 });
 
 test("BTC analysis is independent of Gold's configured session hours", () => {
