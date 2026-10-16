@@ -82,3 +82,14 @@ test("rejects missing candle arrays without throwing", () => {
   assert.equal(result.signal, null);
   assert.match(result.reason, /Malformed|missing OHLC/i);
 });
+
+
+test("fails closed when timestamped candles are not newest-first", () => {
+  const hourly = makeCandles(100, 60 * 60 * 1000, "flat");
+  const fifteen = makeCandles(120, 15 * 60 * 1000, "wave");
+  [fifteen[0], fifteen[1]] = [fifteen[1], fifteen[0]];
+  const result = analyzeGold(hourly, fifteen);
+  assert.equal(result.status, "NO_TRADE");
+  assert.equal(result.signal, null);
+  assert.match(result.reason, /Malformed|missing OHLC/i);
+});
