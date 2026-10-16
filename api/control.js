@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: "Saved risk settings", settings });
     }
     if (action === "analyze-all") {
-      return res.status(200).json({ message: "Only XAUUSD is currently supported by the verified strategy. Use ANALYZE GOLD NOW; other pairs were not analyzed.", supportedSymbols: ["XAUUSD"] });
+      return res.status(200).json({ message: "The dashboard analyses XAUUSD and BTCUSD through separate market-specific endpoints. This control action reports supported symbols but does not itself run analysis.", supportedSymbols: ["XAUUSD", "BTCUSD"] });
     }
     if (action === "emergency-stop") {
       const next = { ...state, engine: "PAUSED", emergencyStop: true, mode: "manual", updatedAt: new Date().toISOString() };
