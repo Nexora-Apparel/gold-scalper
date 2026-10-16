@@ -88,7 +88,7 @@ export default async function handler(req, res) {
     const body = req.body || {};
     const saved = await getStoredSettings(sql);
     if (saved.btcEnabled === false || body.btcEnabled === false) {
-      const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: "BTCUSD is disabled in saved settings. Enable Gold before analysis." };
+      const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: "BTCUSD is disabled in saved settings. Enable Bitcoin before analysis." };
       await recordBTCHistory(sql, disabled);
       return res.status(200).json(disabled);
     }
