@@ -39,6 +39,8 @@ export default async function handler(req, res) {
       sessionEnd: settings.sessionEnd || "20:00",
       sessionTimezone: "Africa/Lagos",
       sessionActive,
+      goldSessionActive: sessionActive,
+      btcEnabled: settings.btcEnabled !== false,
       activeSignalNeedsMonitoring,
       engine: control.emergencyStop ? "EMERGENCY STOP" : (control.engine || "PAUSED"),
       emergencyStop: control.emergencyStop === true,
