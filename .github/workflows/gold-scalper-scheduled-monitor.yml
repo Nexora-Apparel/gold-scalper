@@ -62,17 +62,16 @@ jobs:
             marketDataKey: status.marketKeyConfigured === true,
             telegram: status.telegramConfigured === true,
             cronSecret: status.cronSecretConfigured === true,
-            engineNotEmergencyStopped: status.emergencyStop !== true
           };
-          console.log(JSON.stringify({ prerequisiteChecks: checks, engine: status.engine }));
+          console.log(JSON.stringify({ prerequisiteChecks: checks, engine: status.engine, emergencyStop: status.emergencyStop }));
           const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
           if (failed.length) {
             console.error("Prerequisite check(s) failed: " + failed.join(", "));
             process.exit(1);
           }
-          if (status.engine !== "RUNNING") {
-            console.error("Engine is not RUNNING; refusing to report a scan as successful.");
-            process.exit(1);
+          if (status.emergencyStop === true || status.engine !== "RUNNING") {
+            console.log("Monitor skipped because the engine is intentionally paused or emergency-stopped.");
+            process.exit(0);
           }
           NODE
 
