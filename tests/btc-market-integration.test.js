@@ -50,6 +50,7 @@ test("dashboard exposes BTC enable, manual analysis, and analyze-enabled-markets
   assert.match(dashboard, /data-action="analyze-btc"/);
   assert.match(dashboard, /api\('\/api\/analyze-btc',s\)/);
   assert.match(dashboard, /btcEnabled:\$\('btcEnabled'\)\.checked/);
+  assert.match(dashboard, /lastBtcAnalysisVerification/);
 });
 
 test("daily signal cap is shared across symbols", () => {
