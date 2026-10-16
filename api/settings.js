@@ -37,7 +37,7 @@ export default async function handler(req, res) {
         ![65, 70, 75, 80].includes(s.minQuality) ||
         ![1, 3, 5, 8].includes(s.maxSignals) ||
         s.timeframe !== "M15" ||
-        !["manual", "auto"].includes(b.mode)) {
+        b.mode !== "manual") {
       return res.status(400).json({ error: "Invalid settings." });
     }
     await saveStoredSettings(sql, s);
