@@ -2,6 +2,7 @@ import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
 import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, clearActiveSignal } from "../lib/storage.js";
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
+import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 
 const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000 };
 
@@ -124,48 +125,16 @@ export default async function handler(req, res) {
       // trades through its entry. This is request-driven monitoring, not a background worker.
       let active = await getActiveSignal(sql);
       const latestM15 = fifteen[0];
-      if (active && active.state === "WAITING_FOR_ENTRY" && active.expiresAt && Date.now() >= Date.parse(active.expiresAt)) {
-        active = { ...active, state: "EXPIRED", expiredAt: new Date().toISOString() };
-        await saveActiveSignal(sql, active);
-        result.entryMonitoring = { state: "EXPIRED", note: "The setup expired after eight hours without safe entry confirmation; no Telegram signal was sent." };
-      }
-      if (active && active.state === "WAITING_FOR_ENTRY" && active.result?.signal) {
-        const activeSignal = active.result.signal;
-        const activeCandleMs = parseProviderTime(activeSignal.candleTime);
-        const entry = Number(activeSignal.entry);
-        const stop = Number(activeSignal.stopLoss);
-        const target = Number(activeSignal.takeProfit);
-        // Examine every fetched completed candle after the setup candle, oldest first,
-        // so a later button click does not miss an entry that was touched in between.
-        const laterCandles = fifteen
-          .filter((candle) => parseProviderTime(candle.time) > activeCandleMs)
-          .sort((left, right) => parseProviderTime(left.time) - parseProviderTime(right.time));
-        let lifecycleEvent = null;
-        for (const candle of laterCandles) {
-          const riskBoundaryTouched = activeSignal.side === "BUY"
-            ? candle.low <= stop || candle.high >= target
-            : candle.high >= stop || candle.low <= target;
-          const entryTouched = candle.low <= entry && candle.high >= entry;
-          const directionalCloseConfirmed = activeSignal.side === "BUY"
-            ? entryTouched && candle.close > entry && candle.close > candle.open
-            : entryTouched && candle.close < entry && candle.close < candle.open;
-          // OHLC cannot prove intrabar order; reject ambiguous candles conservatively.
-          if (riskBoundaryTouched) {
-            lifecycleEvent = { type: "INVALIDATED", candleTime: candle.time };
-            break;
-          }
-          if (directionalCloseConfirmed) {
-            lifecycleEvent = { type: "CONFIRMED", candleTime: candle.time };
-            break;
-          }
-        }
-        if (lifecycleEvent?.type === "INVALIDATED") {
-          active = { ...active, state: "INVALIDATED", invalidatedAt: new Date().toISOString(), invalidationCandleTime: lifecycleEvent.candleTime };
+      if (active && active.state === "WAITING_FOR_ENTRY") {
+        const lifecycle = evaluateSignalLifecycle(active, fifteen);
+        if (lifecycle.changed) {
+          active = lifecycle.active;
           await saveActiveSignal(sql, active);
-          result.entryMonitoring = { state: "INVALIDATED", note: "The stop-loss or target was touched before entry could be safely confirmed; no Telegram signal was sent." };
-        } else if (lifecycleEvent?.type === "CONFIRMED") {
-          active = { ...active, state: "CONFIRMATION_PENDING_DELIVERY", confirmedAt: new Date().toISOString(), confirmationCandleTime: lifecycleEvent.candleTime };
-          await saveActiveSignal(sql, active);
+          if (lifecycle.event?.type === "INVALIDATED") {
+            result.entryMonitoring = { state: "INVALIDATED", note: "The stop-loss or target was touched before entry could be safely confirmed; no Telegram signal was sent." };
+          } else if (lifecycle.event?.type === "EXPIRED") {
+            result.entryMonitoring = { state: "EXPIRED", note: "The setup expired after eight hours without safe entry confirmation; no Telegram signal was sent." };
+          }
         }
       }
       if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal) {
