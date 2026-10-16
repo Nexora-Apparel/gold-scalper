@@ -35,6 +35,7 @@ test("BTC signal lifecycle and history are isolated from XAUUSD", () => {
 test("BTC analysis is independent of Gold's configured session hours", () => {
   assert.doesNotMatch(btc, /if \(!isWithinSession\(saved\)/);
   assert.match(btc, /saved\.btcEnabled === false/);
+  assert.ok(btc.includes("(saved.btcEnabled === false || body.btcEnabled === false) && !activeNeedsMonitoring"));
   assert.match(storage, /btcEnabled: true/);
 });
 
