@@ -1,4 +1,14 @@
-import { ensureStorage, getControlState } from "../lib/storage.js";
+import { ensureStorage, getControlState, getStoredSettings } from "../lib/storage.js";
+
+function withinSession(settings, now = new Date()) {
+  if (settings.scanMode === "24h") return true;
+  const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const current = Number(p.find(x => x.type === "hour")?.value) * 60 + Number(p.find(x => x.type === "minute")?.value);
+  const a = String(settings.sessionStart || "08:00").split(":").map(Number);
+  const b = String(settings.sessionEnd || "20:00").split(":").map(Number);
+  const start = a[0] * 60 + a[1], end = b[0] * 60 + b[1];
+  return start < end ? current >= start && current < end : current >= start || current < end;
+}
 
 export default async function handler(req, res) {
   if (req.method !== "GET") { res.setHeader("Allow", "GET"); return res.status(405).json({ error: "Method not allowed" }); }
@@ -8,6 +18,8 @@ export default async function handler(req, res) {
   try {
     const sql = await ensureStorage();
     const control = await getControlState(sql);
+    const settings = await getStoredSettings(sql);
+    const sessionActive = withinSession(settings);
     return res.status(200).json({
       application: "ONLINE",
       database: "CONNECTED",
