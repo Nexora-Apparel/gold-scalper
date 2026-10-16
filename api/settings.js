@@ -6,8 +6,8 @@ export default async function handler(req, res) {
     res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
-  if (req.method === "POST" && !hasOwnerSession(req)) {
-    return res.status(401).json({ error: "Owner login required. Sign in before saving settings." });
+  if (!hasOwnerSession(req)) {
+    return res.status(401).json({ error: "Owner login required to view or change saved settings." });
   }
 
   try {
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
         ![1.5, 2, 2.5, 3].includes(s.minRR) ||
         ![65, 70, 75, 80].includes(s.minQuality) ||
         ![1, 3, 5, 8].includes(s.maxSignals) ||
-        !["M15", "M5 + M15"].includes(s.timeframe) ||
+        s.timeframe !== "M15" ||
         !["manual", "auto"].includes(b.mode)) {
       return res.status(400).json({ error: "Invalid settings." });
     }
