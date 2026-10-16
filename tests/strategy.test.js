@@ -51,6 +51,12 @@ test("never emits a malformed trade candidate", () => {
     assert.ok(result.signal.stopLoss > 0);
     assert.ok(result.signal.takeProfit > 0);
     assert.ok(result.signal.riskReward >= 1.5);
+    const setupCandle = fifteen.find((row) => row.time === result.signal.candleTime);
+    assert.ok(setupCandle, "candidate must reference its setup candle");
+    assert.ok(
+      result.signal.side === "BUY" ? result.signal.entry > setupCandle.close : result.signal.entry < setupCandle.close,
+      "pending entry must be beyond the setup candle close in the trade direction"
+    );
     assert.match(result.signal.timeframe, /MSNR/);
   } else {
     assert.equal(result.signal, null);
