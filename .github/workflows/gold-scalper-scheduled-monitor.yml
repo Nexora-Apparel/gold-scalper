@@ -3,7 +3,7 @@ name: Gold Scalper scheduled monitor
 on:
   push:
     branches:
-      - feature/personal-telegram-signal-bot
+      - main
   schedule:
     # GitHub scheduled workflows can be delayed; this is not tick-level monitoring.
     - cron: "*/15 * * * *"
@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Validate scheduler configuration
         env:
-          GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
+          GOLD_SCALPER_URL: https://gold-scalper-nexora-apparel.vercel.app
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -eu
@@ -40,7 +40,7 @@ jobs:
       - name: Verify deployed prerequisites
         id: preflight
         env:
-          GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
+          GOLD_SCALPER_URL: https://gold-scalper-nexora-apparel.vercel.app
         run: |
           set -eu
           response_file="$(mktemp)"
@@ -62,6 +62,7 @@ jobs:
             process.exit(1);
           }
           const checks = {
+            application: status.application === "ONLINE",
             database: status.database === "CONNECTED",
             marketDataKey: status.marketKeyConfigured === true,
             telegram: status.telegramConfigured === true,
@@ -88,7 +89,7 @@ jobs:
       - name: Run one authenticated analysis and pending-entry check
         if: steps.preflight.outputs.should_run == 'true'
         env:
-          GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
+          GOLD_SCALPER_URL: https://gold-scalper-nexora-apparel.vercel.app
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -eu
