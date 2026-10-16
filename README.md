@@ -2,10 +2,21 @@
 
 Personal XAUUSD signal dashboard. The application generates rules-based **manual-review candidates only**. It does not place broker orders and does not promise profitable or accurate predictions.
 
+## Current strategy
+
+- **MSNR (Multiple Support and Resistance):** builds price zones from confirmed H1 and M15 swing highs/lows, clustering nearby levels and tracking their source and touch count.
+- **H1 trend filter:** EMA 20 versus EMA 50 determines the permitted direction.
+- **M15 entry confirmation:** looks for a confirmed support/resistance rejection or a breakout-and-retest / breakdown-and-retest candle.
+- **Momentum filter:** M15 RSI must support the H1 direction; M15 EMA 20 is an additional quality check.
+- **Risk controls:** ATR-based stop-loss bounds, configured risk-to-reward target, and rejection when a nearby opposing zone does not leave enough room for the target.
+- Only completed candles are used; pivot levels require right-side candle confirmation. The engine returns NO_TRADE when conditions do not align.
+
+The quality score is a rule-based filter, **not** a win probability. This strategy has not yet been historically backtested and must not be assumed profitable.
+
 ## Current scope
 
-- XAUUSD only; H1 trend alignment + completed M15 breakout checks.
-- Twelve Data market candles; invalid, incomplete, stale, or unavailable data fails closed to NO_TRADE.
+- XAUUSD only; H1 trend + M15 MSNR setup.
+- Twelve Data candles; invalid, incomplete, stale, or unavailable data fails closed to NO_TRADE.
 - Persistent settings, control state, and analysis history in Neon.
 - Owner-authenticated dashboard, pause, emergency stop, reset, and manual on-demand analysis.
 - Optional Telegram notifications for validated SIGNAL_CANDIDATE results.
