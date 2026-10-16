@@ -123,10 +123,22 @@ export default async function handler(req, res) {
         const activeCandleMs = parseProviderTime(activeSignal.candleTime);
         const latestCandleMs = parseProviderTime(latestM15.time);
         const entry = Number(activeSignal.entry);
-        const touched = Number.isFinite(entry) && Number.isFinite(activeCandleMs) &&
-          Number.isFinite(latestCandleMs) && latestCandleMs > activeCandleMs &&
-          latestM15.low <= entry && latestM15.high >= entry;
-        if (touched) {
+        const stop = Number(activeSignal.stopLoss);
+        const target = Number(activeSignal.takeProfit);
+        const isLaterCandle = Number.isFinite(activeCandleMs) && Number.isFinite(latestCandleMs) && latestCandleMs > activeCandleMs;
+        const touched = Number.isFinite(entry) && isLaterCandle && latestM15.low <= entry && latestM15.high >= entry;
+        // OHLC cannot establish intrabar order. If SL or TP was touched before/with
+        // the entry touch, fail closed rather than send a potentially stale alert.
+        const riskBoundaryTouched = isLaterCandle && (
+          activeSignal.side === "BUY"
+            ? latestM15.low <= stop || latestM15.high >= target
+            : latestM15.high >= stop || latestM15.low <= target
+        );
+        if (riskBoundaryTouched) {
+          active = { ...active, state: "INVALIDATED", invalidatedAt: new Date().toISOString(), invalidationCandleTime: latestM15.time };
+          await saveActiveSignal(sql, active);
+          result.entryMonitoring = { state: "INVALIDATED", note: "The stop-loss or target was touched before entry could be safely confirmed; no Telegram signal was sent." };
+        } else if (touched) {
           active = { ...active, state: "CONFIRMATION_PENDING_DELIVERY", confirmedAt: new Date().toISOString(), confirmationCandleTime: latestM15.time };
           await saveActiveSignal(sql, active);
         }
