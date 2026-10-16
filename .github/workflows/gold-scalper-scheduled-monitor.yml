@@ -76,10 +76,10 @@ jobs:
             console.log(skipForSession
               ? "Monitor skipped: outside the configured monitoring session with no pending signal to monitor."
               : "Monitor skipped because the engine is intentionally paused or emergency-stopped.");
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=false\\n");
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=false\n");
             process.exit(0);
           }
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=true\\n");
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=true\n");
           NODE
 
       - name: Run one authenticated analysis and pending-entry check
