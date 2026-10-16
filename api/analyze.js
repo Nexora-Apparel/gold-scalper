@@ -1,6 +1,7 @@
 import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
 import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday } from "../lib/storage.js";
+import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 
 const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000 };
 
@@ -112,6 +113,15 @@ export default async function handler(req, res) {
         latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time },
         dataFreshness: "verified"
       };
+      if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
+        const delivery = await sendTelegramMessage(formatSignalMessage(result));
+        result.telegramDelivery = {
+          status: delivery.status,
+          sent: delivery.sent,
+          ...(delivery.message ? { message: delivery.message } : {}),
+          ...(delivery.messageId ? { messageId: delivery.messageId } : {})
+        };
+      }
       await recordHistory(sql, result);
       res.setHeader("Cache-Control", "no-store");
       return res.status(200).json(result);
