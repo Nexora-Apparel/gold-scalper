@@ -72,3 +72,23 @@ test("ignores already-final lifecycle states", () => {
   assert.equal(result.changed, false);
   assert.equal(result.active.state, "CONFIRMED_AND_NOTIFIED");
 });
+
+
+test("fails closed on malformed OHLC candles", () => {
+  const result = evaluateSignalLifecycle(active(), [
+    candle("2026-10-16T08:15:00Z", 4171, 4160, 4168, 4175)
+  ], Date.parse("2026-10-16T08:30:00Z"));
+  assert.equal(result.changed, false);
+  assert.equal(result.active.state, "WAITING_FOR_ENTRY");
+});
+
+test("fails closed when stored signal prices contradict direction", () => {
+  const invalid = active("BUY", { result: { signal: {
+    side: "BUY", entry: 4171, stopLoss: 4180, takeProfit: 4191, candleTime: "2026-10-16T08:00:00Z"
+  } } });
+  const result = evaluateSignalLifecycle(invalid, [
+    candle("2026-10-16T08:15:00Z", 4171, 4180, 4168, 4175)
+  ], Date.parse("2026-10-16T08:30:00Z"));
+  assert.equal(result.changed, false);
+  assert.equal(result.active.state, "WAITING_FOR_ENTRY");
+});
