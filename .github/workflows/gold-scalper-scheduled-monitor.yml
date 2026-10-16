@@ -1,0 +1,67 @@
+name: Gold Scalper scheduled monitor
+
+on:
+  schedule:
+    # GitHub scheduled workflows can be delayed; this is not tick-level monitoring.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gold-scalper-scheduled-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Validate scheduler configuration
+        env:
+          GOLD_SCALPER_URL: ${{ secrets.GOLD_SCALPER_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$GOLD_SCALPER_URL" || { echo "Missing repository secret GOLD_SCALPER_URL"; exit 1; }
+          test -n "$CRON_SECRET" || { echo "Missing repository secret CRON_SECRET"; exit 1; }
+          case "$GOLD_SCALPER_URL" in
+            https://*) ;;
+            *) echo "GOLD_SCALPER_URL must use HTTPS"; exit 1 ;;
+          esac
+
+      - name: Run one authenticated analysis and pending-entry check
+        env:
+          GOLD_SCALPER_URL: ${{ secrets.GOLD_SCALPER_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -eu
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          code="$(curl --silent --show-error --max-time 90 \
+            --output "$response_file" --write-out '%{http_code}' \
+            --request POST "${GOLD_SCALPER_URL%/}/api/analyze" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{}')"
+          echo "Analysis endpoint HTTP status: $code"
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "Scheduled analysis failed; response (secrets are not included):"
+            cat "$response_file"
+            exit 1
+          fi
+          node --input-type=module - "$response_file" <<'NODE'
+          import fs from "node:fs";
+          const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          console.log(JSON.stringify({
+            status: body.status ?? "UNKNOWN",
+            marketDataVerified: body.marketDataVerified ?? false,
+            entryMonitoring: body.entryMonitoring?.state ?? null,
+            checkedAt: body.checkedAt ?? null,
+            error: body.error ?? null
+          }));
+          if (body.marketDataVerified === false && body.status !== "NO_TRADE") {
+            console.error("Unexpected analysis response shape.");
+            process.exitCode = 1;
+          }
+          NODE
