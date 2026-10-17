@@ -251,10 +251,16 @@ export default async function handler(req, res) {
       }
 
       // Persist and retry invalidation/expiry updates so a transient Telegram failure cannot silently strand a pending order.
-      if (active && ["INVALIDATED", "EXPIRED"].includes(active.state) &&
+      if (active && ["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE"].includes(active.state) &&
           active.candidateNotification?.sent === true && active.lifecycleNotification?.sent !== true) {
         const invalidated = active.state === "INVALIDATED";
-        const update = await sendTelegramMessage(invalidated
+        const confirmationExpired = active.state === "CONFIRMATION_EXPIRED";
+        const cancelled = active.state === "CANCELLED_BY_PAUSE";
+        const update = await sendTelegramMessage(confirmationExpired
+          ? "BTCUSD confirmation expired; do not act on a delayed confirmation."
+          : cancelled
+            ? "BTCUSD pending setup cancelled because the engine was paused."
+            : invalidated
           ? "⚠️ <b>BTCUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
           : "⌛ <b>BTCUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
         const attemptedAt = new Date().toISOString();
@@ -356,7 +362,7 @@ export default async function handler(req, res) {
 
       const activeCanBeReplaced = !active ||
         active.state === "CLOSED_WITH_OUTCOME" ||
-        (["INVALIDATED", "EXPIRED"].includes(active.state) &&
+        (["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE"].includes(active.state) &&
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
 
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
