@@ -296,7 +296,7 @@ export default async function handler(req, res) {
                 state: "CONFIRMATION_EXPIRED",
                 note: "Price has reached the stop-loss/target boundary; no stale confirmation was sent."
               };
-            } else if (active.lastLivePriceCheckFailed !== true) {
+            } else {
               const confirmedResult = {
                 ...active.result,
                 signal: { ...active.result.signal, status: "CONFIRMED" },
