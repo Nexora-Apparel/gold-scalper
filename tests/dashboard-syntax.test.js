@@ -16,6 +16,7 @@ test("dashboard inline JavaScript parses without executing it", () => {
 
 test("dashboard exposes BTC controls and keeps broker execution disconnected", () => {
   assert.match(html, /ANALYZE BTCUSD NOW/);
+  assert.match(html, /SUPPORTED PAIRS/);
   assert.match(html, /id="btcEnabled"/);
   assert.match(html, /\/api\/analyze-btc/);
   assert.match(html, /No broker order execution or automatic trading is connected/);
