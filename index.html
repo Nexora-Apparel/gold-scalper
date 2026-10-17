@@ -66,6 +66,17 @@ h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repea
 <div class="check"><input id="newsEnabled" type="checkbox" disabled><label for="newsEnabled">News filter unavailable — no verified economic-calendar feed connected</label></div>
 <button class="btn primary wide" id="saveSettings">SAVE SETTINGS</button><p class="notice">24-hour monitoring is the default while START BOT is active. To limit scans, choose Selected hours and set the Lagos-time window (for example, 01:00–07:00); the initial selected-hours values are 08:00–20:00. Existing pending signals continue to be checked outside the window until confirmed, invalidated, or expired. Scheduled runs can be delayed. Maximum signals per day defaults to 3. No broker orders are placed.</p>
 </section>
+<section class="card"><h2>Manual trade outcome log</h2>
+<p class="notice">After you decide what happened to a signal you manually traded (or chose not to take), record it here. This is for forward-testing statistics only; it does not place, modify, or close orders.</p>
+<div class="settings">
+<div class="field wide"><label for="outcomeSignal">Signal reference</label><select id="outcomeSignal"><option value="">Load signal history first</option></select></div>
+<div class="field"><label for="outcomeValue">Outcome</label><select id="outcomeValue"><option value="WIN">Win</option><option value="LOSS">Loss</option><option value="BREAKEVEN">Breakeven</option><option value="NOT_TAKEN">Not taken</option><option value="CANCELLED">Cancelled</option></select></div>
+<div class="field"><label for="realizedR">Realized R (optional)</label><input id="realizedR" type="number" step="0.1" min="-20" max="20" placeholder="e.g. 2 or -1"></div>
+<div class="field wide"><label for="outcomeNotes">Notes (optional)</label><input id="outcomeNotes" type="text" maxlength="500" placeholder="e.g. spread, slippage, early exit"></div>
+</div>
+<div class="actions"><button class="btn" id="loadOutcomes">LOAD SIGNAL HISTORY</button><button class="btn primary" id="saveOutcome">SAVE OUTCOME</button></div>
+<div class="log" id="outcomeStats">No forward-test outcome statistics loaded.</div>
+</section>
 <section class="card"><h2>Activity / result</h2><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
 </main>
 <script>
@@ -78,6 +89,26 @@ async function refresh(){try{const s=await api('/api/status');setStatus('appStat
 document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',async()=>{const action=b.dataset.action;if(action==='reset-emergency-stop'&&!window.confirm('Reset the emergency stop? The engine will remain paused until you press START BOT.'))return;b.disabled=true;$('activity').textContent='Processing '+action+'…';try{if(action==='analyze'){const r=await api('/api/analyze',settings());lastAnalysisVerification=r.marketDataVerified===true?true:r.marketDataVerified===false?false:null;if(r.status==='SIGNAL_CANDIDATE'&&r.signal){const s=r.signal;$('activity').textContent='SIGNAL CANDIDATE — '+s.side+' XAUUSD\nQuality: '+r.quality+'/100\nEntry: '+s.entry+'\nStop loss: '+s.stopLoss+'\nTake profit: '+s.takeProfit+'\nR:R 1:'+s.riskReward+'\nRisk: '+s.riskAmount+' '+s.accountCurrency+' ('+s.riskPercent+'%)\nSetup: '+s.timeframe+'\nReasons: '+s.explanation.join('; ')+'\n\nRules-based candidate only; verify quote, spread and news before considering it.\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'')}else{$('activity').textContent='NO TRADE\n'+(r.reason||r.error||'No valid setup.')+'\nNo signal generated.\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'')}}else{const r=await api('/api/control',{action});$('activity').textContent=(action==='history'||action==='risk')?JSON.stringify(r,null,2):(r.message||JSON.stringify(r,null,2))}await refresh()}catch(e){$('activity').textContent='Action not completed: '+e.message+'\nNo success is assumed.'}finally{b.disabled=false}}));
 $('saveSettings').addEventListener('click',async()=>{const s=settings();if(!(s.balance>0)||s.riskPercent<0.1||s.riskPercent>1){$('activity').textContent='Invalid settings. Balance must be positive and risk must be between 0.1% and 1%.';return}try{const r=await api('/api/settings',s);$('activity').textContent=r.message||'Settings saved.'}catch(e){$('activity').textContent='Settings not saved: '+e.message}});
 $('telegramTest').addEventListener('click',async()=>{const b=$('telegramTest');b.disabled=true;$('activity').textContent='Testing Telegram delivery…';try{const r=await api('/api/telegram-test',{});$('activity').textContent=r.message||JSON.stringify(r,null,2)}catch(e){$('activity').textContent='Telegram test failed: '+e.message+'\\nConfigure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Vercel Preview environment variables, then redeploy.'}finally{b.disabled=false}});
+async function loadOutcomeHistory(){
+  const r=await api('/api/outcomes');
+  const select=$('outcomeSignal');
+  const previous=select.value;
+  select.innerHTML='';
+  const rows=r.signals||[];
+  if(!rows.length){select.innerHTML='<option value="">No signal candidates recorded yet</option>'}
+  rows.forEach(row=>{
+    const option=document.createElement('option');
+    option.value=row.signal.signalRef;
+    const when=row.signal.candleTime||row.createdAt||'time unknown';
+    option.textContent=when+' · '+row.signal.side+' · entry '+row.signal.entry+(row.outcome?' · '+row.outcome:' · unrecorded');
+    select.appendChild(option);
+  });
+  if(previous&&[...select.options].some(o=>o.value===previous))select.value=previous;
+  const s=r.statistics||{};
+  $('outcomeStats').textContent='Decided trades: '+(s.decided||0)+' · Wins: '+(s.wins||0)+' · Losses: '+(s.losses||0)+' · Win rate: '+(s.winRate===null?'N/A':s.winRate+'%')+' · Recorded net R: '+(s.netR??0);
+}
+$('loadOutcomes').addEventListener('click',async()=>{const b=$('loadOutcomes');b.disabled=true;$('outcomeStats').textContent='Loading recorded signals…';try{await loadOutcomeHistory()}catch(e){$('outcomeStats').textContent='Could not load outcome history: '+e.message}finally{b.disabled=false}});
+$('saveOutcome').addEventListener('click',async()=>{const signalRef=$('outcomeSignal').value;if(!signalRef){$('outcomeStats').textContent='Select a signal reference first.';return}const raw=$('realizedR').value;const body={signalRef,outcome:$('outcomeValue').value,realizedR:raw===''?null:Number(raw),notes:$('outcomeNotes').value};const b=$('saveOutcome');b.disabled=true;try{const r=await api('/api/outcomes',body);$('outcomeStats').textContent=r.message||'Outcome saved.';await loadOutcomeHistory()}catch(e){$('outcomeStats').textContent='Outcome not saved: '+e.message}finally{b.disabled=false}});
 async function loadSettings(){try{const r=await api('/api/settings');const s=r.settings||{};if(s.balance!==undefined)$('balance').value=s.balance;if(s.currency)$('currency').value=s.currency;if(s.riskPercent!==undefined)$('riskPct').value=s.riskPercent;if(s.minRR!==undefined)$('minRR').value=s.minRR;if(s.minQuality!==undefined)$('minQuality').value=s.minQuality;if(s.maxSignals!==undefined)$('maxSignals').value=s.maxSignals;if(s.timeframe)$('timeframe').value=s.timeframe;if(s.scanMode)$('scanMode').value=s.scanMode;if(s.sessionStart)$('sessionStart').value=s.sessionStart;if(s.sessionEnd)$('sessionEnd').value=s.sessionEnd;updateSessionFields();if(s.goldEnabled!==undefined)$('goldEnabled').checked=s.goldEnabled;if(s.majorsEnabled!==undefined)$('majorsEnabled').checked=s.majorsEnabled;if(s.newsEnabled!==undefined)$('newsEnabled').checked=s.newsEnabled}catch(e){$('activity').textContent='Could not load saved settings: '+e.message}}
 function updateSessionFields(){const allDay=$('scanMode').value==='24h';$('sessionStart').disabled=allDay;$('sessionEnd').disabled=allDay;$('sessionStart').style.opacity=allDay?'.5':'1';$('sessionEnd').style.opacity=allDay?'.5':'1'}
 $('scanMode').addEventListener('change',updateSessionFields);
