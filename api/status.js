@@ -38,6 +38,8 @@ function marketHealth(latest, keyConfigured, now = Date.now()) {
 }
 
 export default async function handler(req, res) {
+  // Status is live operational telemetry; never let an intermediary reuse an old health snapshot.
+  res.setHeader("Cache-Control", "no-store, max-age=0");
   if (req.method !== "GET") { res.setHeader("Allow", "GET"); return res.status(405).json({ error: "Method not allowed" }); }
   const keyConfigured = Boolean(process.env.TWELVEDATA_API_KEY);
   const telegramConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
