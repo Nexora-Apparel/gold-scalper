@@ -114,7 +114,7 @@ export default async function handler(req, res) {
     const body = req.body || {};
     const saved = await getStoredSettings(sql);
     const existingActiveSignal = await getActiveSignal(sql, "BTCUSD");
-    const activeNeedsMonitoring = existingActiveSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(existingActiveSignal.state);
+    const activeNeedsMonitoring = Boolean(existingActiveSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(existingActiveSignal.state) || (["CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE", "INVALIDATED", "EXPIRED"].includes(existingActiveSignal.state) && existingActiveSignal.candidateNotification?.sent === true && existingActiveSignal.lifecycleNotification?.sent !== true)));
     if ((saved.btcEnabled === false || body.btcEnabled === false) && !activeNeedsMonitoring) {
       const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, symbol: "BTCUSD", monitorSkipped: true, skipReason: "BTC_DISABLED", reason: "BTCUSD is disabled in saved settings. Enable Bitcoin before analysis." };
       await recordBTCHistory(sql, disabled);
