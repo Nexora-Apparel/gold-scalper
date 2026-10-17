@@ -262,7 +262,7 @@ export default async function handler(req, res) {
               };
               await saveActiveSignal(sql, active);
             } else {
-              active = { ...active, lastLivePriceCheckAt: new Date().toISOString(), lastLivePrice: livePrice };
+              active = { ...active, lastLivePriceCheckAt: new Date().toISOString(), lastLivePrice: livePrice, lastLivePriceCheckFailed: false };
               await saveActiveSignal(sql, active);
             }
           }
@@ -273,9 +273,12 @@ export default async function handler(req, res) {
       if (active && ["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED"].includes(active.state) &&
           active.candidateNotification?.sent === true && active.lifecycleNotification?.sent !== true) {
         const invalidated = active.state === "INVALIDATED";
-        const update = await sendTelegramMessage(invalidated
-          ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
-          : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
+        const confirmationExpired = active.state === "CONFIRMATION_EXPIRED";
+        const update = await sendTelegramMessage(confirmationExpired
+          ? "⚠️ <b>XAUUSD ENTRY CONFIRMATION EXPIRED</b>\nThe confirmation alert was delayed or the live price had already reached the stop-loss/target boundary. Do not act on the delayed entry confirmation; check the current market manually."
+          : invalidated
+            ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
+            : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
         const attemptedAt = new Date().toISOString();
         active = {
           ...active,
@@ -294,7 +297,7 @@ export default async function handler(req, res) {
         };
       }
 
-      if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal) {
+      if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal && active.lastLivePriceCheckFailed !== true) {
         const confirmedResult = {
           ...active.result,
           signal: { ...active.result.signal, status: "CONFIRMED" },
