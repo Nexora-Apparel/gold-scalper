@@ -64,6 +64,39 @@ export default async function handler(req, res) {
     sql = await ensureStorage();
     const control = await getControlState(sql);
     if (control.emergencyStop || control.engine !== "RUNNING") {
+      let pausedSignal = await getActiveSignal(sql);
+      if (pausedSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(pausedSignal.state)) {
+        pausedSignal = {
+          ...pausedSignal,
+          state: pausedSignal.state === "CONFIRMATION_PENDING_DELIVERY" ? "CONFIRMATION_EXPIRED" : "CANCELLED_BY_PAUSE",
+          pausedAt: new Date().toISOString(),
+          confirmationExpiryReason: "The engine was paused before the confirmation alert could be safely delivered."
+        };
+        await saveActiveSignal(sql, pausedSignal);
+      }
+      const needsPauseNotice = pausedSignal &&
+        ["CANCELLED_BY_PAUSE", "CONFIRMATION_EXPIRED", "INVALIDATED", "EXPIRED"].includes(pausedSignal.state) &&
+        pausedSignal.candidateNotification?.sent === true &&
+        pausedSignal.lifecycleNotification?.sent !== true;
+      if (needsPauseNotice) {
+        const confirmationExpired = pausedSignal.state === "CONFIRMATION_EXPIRED";
+        const cancelled = pausedSignal.state === "CANCELLED_BY_PAUSE";
+        const message = confirmationExpired
+          ? "⚠️ <b>XAUUSD CONFIRMATION EXPIRED</b>\\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
+          : cancelled
+            ? "⏸️ <b>XAUUSD PENDING SETUP CANCELLED</b>\\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually."
+            : pausedSignal.state === "INVALIDATED"
+              ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\\nPrice touched the stop-loss or target before entry confirmation. Cancel this pending order if you placed it manually."
+              : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\\nThe entry was not confirmed within eight hours. Do not place this expired pending order.";
+        const delivery = await sendTelegramMessage(message);
+        pausedSignal = {
+          ...pausedSignal,
+          lifecycleNotification: delivery.sent
+            ? { sent: true, sentAt: new Date().toISOString(), messageId: delivery.messageId ?? null }
+            : { sent: false, lastAttemptAt: new Date().toISOString(), message: delivery.message || "Telegram delivery failed." }
+        };
+        await saveActiveSignal(sql, pausedSignal);
+      }
       const blocked = {
         status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "ENGINE_PAUSED",
         reason: control.emergencyStop ? "Emergency stop is active. Reset it explicitly before starting the engine." : "Signal engine is paused. Press START BOT before analysis.",
@@ -285,7 +318,7 @@ export default async function handler(req, res) {
       }
 
       // Persist and retry invalidation/expiry updates so a transient Telegram failure cannot silently strand a pending order.
-      if (active && ["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED"].includes(active.state) &&
+      if (active && ["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE"].includes(active.state) &&
           active.candidateNotification?.sent === true && active.lifecycleNotification?.sent !== true) {
         const invalidated = active.state === "INVALIDATED";
         const confirmationExpired = active.state === "CONFIRMATION_EXPIRED";
@@ -333,7 +366,7 @@ export default async function handler(req, res) {
       }
 
       const activeCanBeReplaced = !active ||
-        active.state === "CLOSED_WITH_OUTCOME" ||
+        ["CLOSED_WITH_OUTCOME", "CANCELLED_BY_PAUSE"].includes(active.state) && active.lifecycleNotification?.sent === true ||
         (["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED"].includes(active.state) &&
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
 
