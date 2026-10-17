@@ -1,3 +1,5 @@
+import { hasOwnerSession } from "../lib/auth.js";
+
 function parseProviderTime(value) {
   if (typeof value !== "string") return NaN;
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
@@ -8,6 +10,12 @@ export default async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const cronSecret = process.env.CRON_SECRET;
+  const cronAuthorized = Boolean(cronSecret && req.headers?.authorization === `Bearer ${cronSecret}`);
+  if (!hasOwnerSession(req) && !cronAuthorized) {
+    return res.status(401).json({ ok: false, error: "Owner login or valid scheduled-monitor authorization required." });
   }
 
   const apiKey = process.env.TWELVEDATA_API_KEY;
