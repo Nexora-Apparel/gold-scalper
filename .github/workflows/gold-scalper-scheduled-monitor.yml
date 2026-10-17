@@ -71,7 +71,7 @@ jobs:
             console.error("Prerequisite check(s) failed: " + failed.join(", "));
             process.exit(1);
           }
-          const skipForPause = status.emergencyStop === true || status.engine !== "RUNNING";
+          const skipForPause = (status.emergencyStop === true || status.engine !== "RUNNING") && status.activeSignalNeedsMonitoring !== true;
           const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true;
           if (skipForPause || skipForSession) {
             console.log(skipForSession
