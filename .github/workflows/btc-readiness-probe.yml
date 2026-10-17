@@ -81,18 +81,15 @@ jobs:
           set -euo pipefail
           response_file="$(mktemp)"
           trap 'rm -f "$response_file"' EXIT
-          code="$(curl --silent --show-error --connect-timeout 8 --max-time 30 \
-            --output "$response_file" --write-out '%{http_code}' \
-            --request POST "${GOLD_SCALPER_URL%/}/api/diagnose-btc" \
-            --header "Authorization: Bearer $CRON_SECRET" \
-            --header "Content-Type: application/json" \
-            --data '{"diagnostic":true}' || true)"
-          if [ "$code" != "200" ]; then
-            echo "Read-only BTC diagnostic failed with HTTP ${code:-network-error}."
-            cat "$response_file"
-            exit 1
-          fi
-          node --input-type=module - "$response_file" <<'NODE'
+          for attempt in $(seq 1 12); do
+            code="$(curl --silent --show-error --connect-timeout 8 --max-time 30 \
+              --output "$response_file" --write-out '%{http_code}' \
+              --request POST "${GOLD_SCALPER_URL%/}/api/diagnose-btc" \
+              --header "Authorization: Bearer $CRON_SECRET" \
+              --header "Content-Type: application/json" \
+              --data '{"diagnostic":true}' || true)"
+            if [ "$code" = "200" ]; then
+              node --input-type=module - "$response_file" <<'NODE'
           import fs from "node:fs";
           let body;
           try {
@@ -125,3 +122,15 @@ jobs:
             process.exit(1);
           }
           NODE
+              exit $?
+            fi
+            if [ "$code" = "401" ] || [ "$code" = "403" ]; then
+              echo "BTC diagnostic authorization failed (HTTP $code)."
+              exit 1
+            fi
+            echo "BTC diagnostic route not ready or provider unavailable (HTTP ${code:-network-error}); retry $attempt/12."
+            sleep 15
+          done
+          echo "Read-only BTC diagnostic did not verify fresh H1/M15 data and current quote after 12 attempts."
+          cat "$response_file"
+          exit 1
