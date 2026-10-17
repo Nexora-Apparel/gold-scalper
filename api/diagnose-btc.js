@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { analyzeGold } from "../lib/strategy.js";
 import { validateCandles } from "./analyze-btc.js";
 
-function bearerMatches(header, expected) {
+export function bearerMatches(header, expected) {
   if (typeof header !== "string" || !expected) return false;
   const match = /^Bearer\s+(.+)$/i.exec(header);
   if (!match) return false;
