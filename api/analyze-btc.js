@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
-import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal } from "../lib/storage.js";
+import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, claimMonitorLock, releaseMonitorLock } from "../lib/storage.js";
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 
@@ -116,6 +117,7 @@ export default async function handler(req, res) {
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
+    let monitorLockToken = null;
     try {
       async function candles(interval, size) {
         const u = new URL("https://api.twelvedata.com/time_series");
@@ -176,6 +178,22 @@ export default async function handler(req, res) {
         }
       }
 
+      // Serialize state changes across BTCUSD and XAUUSD serverless monitor passes.
+      monitorLockToken = randomUUID();
+      const lockAcquired = await claimMonitorLock(sql, monitorLockToken);
+      if (!lockAcquired) {
+        monitorLockToken = null;
+        const skipped = {
+          status: "NO_TRADE", signal: null, symbol: "BTCUSD", marketDataVerified: true,
+          monitorSkipped: true, skipReason: "MONITOR_ALREADY_RUNNING",
+          reason: "Another market monitor owns the state lock; this BTCUSD pass was safely skipped.",
+          checkedAt: new Date().toISOString()
+        };
+        await recordBTCHistory(sql, skipped);
+        res.setHeader("Cache-Control", "no-store");
+        return res.status(200).json(skipped);
+      }
+
       // Send a pending-entry alert as soon as a fresh candidate is validated and its entry is still ahead.
       // Subsequent completed M15 candles monitor confirmation, invalidation, and expiry.
       let active = await getActiveSignal(sql, "BTCUSD");
@@ -224,23 +242,82 @@ export default async function handler(req, res) {
       }
 
       if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal) {
-        const confirmedResult = {
-          ...active.result,
-          signal: { ...active.result.signal, status: "CONFIRMED" },
-          confirmation: { status: "ENTRY_CONFIRMED", confirmedAt: active.confirmedAt, candleTime: active.confirmationCandleTime }
-        };
-        const delivery = await sendTelegramMessage(formatSignalMessage(confirmedResult));
-        result.entryMonitoring = {
-          state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
-          confirmationCandleTime: active.confirmationCandleTime,
-          ...(delivery.message ? { deliveryMessage: delivery.message } : {})
-        };
-        if (delivery.sent) {
-          active = { ...active, state: "CONFIRMED_AND_NOTIFIED", telegramMessageId: delivery.messageId ?? null, notifiedAt: new Date().toISOString() };
+        const confirmedAtMs = Date.parse(active.confirmedAt || "");
+        const confirmationAge = Date.now() - confirmedAtMs;
+        if (!Number.isFinite(confirmedAtMs) || confirmationAge > 15 * 60 * 1000) {
+          active = {
+            ...active,
+            state: "CONFIRMATION_EXPIRED",
+            confirmationExpiredAt: new Date().toISOString(),
+            confirmationExpiryReason: "Confirmation notification was not delivered within 15 minutes."
+          };
+          await saveActiveSignal(sql, active, "BTCUSD");
+          result.entryMonitoring = {
+            state: "CONFIRMATION_EXPIRED",
+            note: "The confirmation alert is too old to deliver safely; no delayed entry confirmation was sent."
+          };
         } else {
-          active = { ...active, lastNotificationAttemptAt: new Date().toISOString(), lastNotificationError: delivery.message || "Telegram delivery failed." };
+          // A confirmation is sent only after checking a current BTC/USD quote and its risk boundaries.
+          const liveUrl = new URL("https://api.twelvedata.com/price");
+          liveUrl.searchParams.set("symbol", "BTC/USD");
+          liveUrl.searchParams.set("apikey", key);
+          const liveResponse = await fetch(liveUrl.toString(), {
+            headers: { Accept: "application/json" }, signal: controller.signal
+          });
+          const livePayload = await liveResponse.json().catch(() => null);
+          const livePrice = Number(livePayload?.price);
+          if (!liveResponse.ok || !livePayload || livePayload.status === "error" ||
+              !Number.isFinite(livePrice) || livePrice <= 0) {
+            active = {
+              ...active,
+              lastLivePriceCheckAt: new Date().toISOString(),
+              lastLivePriceCheckFailed: true
+            };
+            await saveActiveSignal(sql, active, "BTCUSD");
+            result.entryMonitoring = {
+              state: "CONFIRMED_AWAITING_LIVE_PRICE",
+              note: "Live BTC/USD quote could not be verified; confirmation delivery is deferred."
+            };
+          } else {
+            const signal = active.result.signal;
+            const outsideRiskRange = signal.side === "BUY"
+              ? livePrice <= Number(signal.stopLoss) || livePrice >= Number(signal.takeProfit)
+              : livePrice >= Number(signal.stopLoss) || livePrice <= Number(signal.takeProfit);
+            if (outsideRiskRange) {
+              active = {
+                ...active,
+                state: "CONFIRMATION_EXPIRED",
+                confirmationExpiredAt: new Date().toISOString(),
+                confirmationExpiryReason: "Live price is already at or beyond the stop-loss/target boundary.",
+                confirmationPriceAtExpiry: livePrice
+              };
+              await saveActiveSignal(sql, active, "BTCUSD");
+              result.entryMonitoring = {
+                state: "CONFIRMATION_EXPIRED",
+                note: "Price has reached the stop-loss/target boundary; no stale confirmation was sent."
+              };
+            } else if (active.lastLivePriceCheckFailed !== true) {
+              const confirmedResult = {
+                ...active.result,
+                signal: { ...active.result.signal, status: "CONFIRMED" },
+                currentPrice: livePrice,
+                confirmation: { status: "ENTRY_CONFIRMED", confirmedAt: active.confirmedAt, candleTime: active.confirmationCandleTime }
+              };
+              const delivery = await sendTelegramMessage(formatSignalMessage(confirmedResult));
+              result.entryMonitoring = {
+                state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
+                confirmationCandleTime: active.confirmationCandleTime,
+                ...(delivery.message ? { deliveryMessage: delivery.message } : {})
+              };
+              if (delivery.sent) {
+                active = { ...active, state: "CONFIRMED_AND_NOTIFIED", telegramMessageId: delivery.messageId ?? null, notifiedAt: new Date().toISOString(), lastLivePrice, lastLivePriceCheckFailed: false };
+              } else {
+                active = { ...active, lastNotificationAttemptAt: new Date().toISOString(), lastNotificationError: delivery.message || "Telegram delivery failed.", lastLivePrice, lastLivePriceCheckFailed: false };
+              }
+              await saveActiveSignal(sql, active, "BTCUSD");
+            }
+          }
         }
-        await saveActiveSignal(sql, active, "BTCUSD");
       }
 
       const activeCanBeReplaced = !active ||
@@ -326,6 +403,10 @@ export default async function handler(req, res) {
       await recordBTCHistory(sql, unavailable);
       return res.status(timedOut ? 504 : 502).json(unavailable);
     } finally {
+      if (monitorLockToken) {
+        try { await releaseMonitorLock(sql, monitorLockToken); }
+        catch (lockError) { console.error("BTC monitor lock release failed:", lockError?.message || "unknown error"); }
+      }
       clearTimeout(timer);
     }
   } catch (error) {
