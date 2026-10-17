@@ -138,7 +138,20 @@ export default async function handler(req, res) {
     }
 
     let signalCount = await countSignalsToday(sql);
-    const existingActiveSignal = await getActiveSignal(sql);
+    let existingActiveSignal = await getActiveSignal(sql);
+    // Resolve stale confirmed signals before session/daily-cap short-circuits, without inventing outcomes.
+    if (existingActiveSignal?.state === "CONFIRMED_AND_NOTIFIED") {
+      const signalRef = existingActiveSignal.result?.signal?.signalRef;
+      const recordedOutcome = signalRef ? await getRecordedOutcome(sql, signalRef) : null;
+      const notifiedMs = Date.parse(existingActiveSignal.notifiedAt || existingActiveSignal.confirmedAt || "");
+      if (recordedOutcome) {
+        existingActiveSignal = { ...existingActiveSignal, state: "CLOSED_WITH_OUTCOME", closedAt: recordedOutcome.recordedAt || new Date().toISOString(), recordedOutcome: recordedOutcome.outcome };
+        await saveActiveSignal(sql, existingActiveSignal);
+      } else if (Number.isFinite(notifiedMs) && Date.now() - notifiedMs > 24 * 60 * 60 * 1000) {
+        existingActiveSignal = { ...existingActiveSignal, state: "CLOSED_WITHOUT_OUTCOME", closedAt: new Date().toISOString() };
+        await saveActiveSignal(sql, existingActiveSignal);
+      }
+    }
     const activeNeedsMonitoring = Boolean(existingActiveSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(existingActiveSignal.state) || (existingActiveSignal.state === "CONFIRMATION_EXPIRED" && existingActiveSignal.lifecycleNotification?.sent !== true)));
     if (!isWithinSession(saved) && !activeNeedsMonitoring) {
       const outside = { status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "OUTSIDE_SESSION",
