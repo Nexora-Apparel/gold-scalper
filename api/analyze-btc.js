@@ -344,7 +344,7 @@ export default async function handler(req, res) {
               if (delivery.sent) {
                 active = { ...active, state: "CONFIRMED_AND_NOTIFIED", telegramMessageId: delivery.messageId ?? null, notifiedAt: new Date().toISOString(), lastLivePrice: livePrice, lastLivePriceCheckFailed: false };
               } else {
-                active = { ...active, lastNotificationAttemptAt: new Date().toISOString(), lastNotificationError: delivery.message || "Telegram delivery failed.", lastLivePrice, lastLivePriceCheckFailed: false };
+                active = { ...active, lastNotificationAttemptAt: new Date().toISOString(), lastNotificationError: delivery.message || "Telegram delivery failed.", lastLivePrice: livePrice, lastLivePriceCheckFailed: false };
               }
               await saveActiveSignal(sql, active, "BTCUSD");
             }
