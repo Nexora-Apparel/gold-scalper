@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateCandles } from "../api/analyze-btc.js";
+import { validateCandles, isWithinSession } from "../api/analyze-btc.js";
 
 const HOUR = 60 * 60 * 1000;
 const M15 = 15 * 60 * 1000;
@@ -39,4 +39,22 @@ test("BTC validator accepts fresh completed H1 candles", () => {
   const now = Date.parse("2026-10-17T09:31:00Z");
   const values = candles("2026-10-17T08:00:00Z", HOUR, 100);
   assert.equal(validateCandles(values, "1h", 60, now).length, 100);
+});
+
+
+test("BTC monitoring respects configured Africa/Lagos session boundaries", () => {
+  const settings = { scanMode: "session", sessionStart: "01:00", sessionEnd: "07:00" };
+  assert.equal(isWithinSession(settings, new Date("2026-10-17T00:30:00Z")), true); // 01:30 Lagos
+  assert.equal(isWithinSession(settings, new Date("2026-10-17T06:00:00Z")), false); // 07:00 Lagos, end is exclusive
+});
+
+test("BTC monitoring supports overnight sessions", () => {
+  const settings = { scanMode: "session", sessionStart: "22:00", sessionEnd: "06:00" };
+  assert.equal(isWithinSession(settings, new Date("2026-10-17T00:00:00Z")), true); // 01:00 Lagos
+  assert.equal(isWithinSession(settings, new Date("2026-10-17T06:00:00Z")), false); // 07:00 Lagos
+});
+
+test("BTC 24h scan mode ignores configured session hours", () => {
+  const settings = { scanMode: "24h", sessionStart: "01:00", sessionEnd: "07:00" };
+  assert.equal(isWithinSession(settings, new Date("2026-10-17T18:00:00Z")), true);
 });
