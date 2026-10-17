@@ -13,7 +13,7 @@ function parseProviderTime(value) {
   return Date.parse(normalized.endsWith("Z") ? normalized : normalized + "Z");
 }
 
-function isWithinSession(settings, now = new Date()) {
+export function isWithinSession(settings, now = new Date()) {
   if (settings.scanMode === "24h") return true;
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
   const hour = Number(parts.find(p => p.type === "hour")?.value);
@@ -126,7 +126,10 @@ export default async function handler(req, res) {
       riskPercent: Number(body.riskPercent ?? saved.riskPercent ?? 0.5),
       minRR: Number(body.minRR ?? saved.minRR ?? 2),
       minQuality: Number(body.minQuality ?? saved.minQuality ?? 70),
-      maxSignals: Number(body.maxSignals ?? saved.maxSignals ?? 3)
+      maxSignals: Number(body.maxSignals ?? saved.maxSignals ?? 3),
+      scanMode: saved.scanMode || "session",
+      sessionStart: saved.sessionStart || "08:00",
+      sessionEnd: saved.sessionEnd || "20:00"
     };
     if (!(settings.balance > 0) || !(settings.riskPercent >= 0.1 && settings.riskPercent <= 1) ||
         ![2, 2.5, 3].includes(settings.minRR) || ![65, 70, 75, 80].includes(settings.minQuality) || ![1, 2, 3].includes(settings.maxSignals)) {
@@ -372,7 +375,12 @@ export default async function handler(req, res) {
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
 
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
-        if (signalCount >= settings.maxSignals && activeCanBeReplaced) {
+        if (!isWithinSession(settings)) {
+          result.status = "NO_TRADE";
+          result.signal = null;
+          result.reason = "Outside the configured Africa/Lagos monitoring session. Existing XAUUSD setups will still be monitored, but no new setup was queued.";
+          result.entryMonitoring = { state: "OUTSIDE_SESSION" };
+        } else if (signalCount >= settings.maxSignals && activeCanBeReplaced) {
           result.status = "NO_TRADE";
           result.signal = null;
           result.reason = `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional candidate was queued.`;
