@@ -116,6 +116,7 @@ export default async function handler(req, res) {
       return res.status(200).json(limited);
     }
 
+    let monitorLockToken = null;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
     try {
