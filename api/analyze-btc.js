@@ -133,7 +133,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ status: "NO_TRADE", signal: null, error: "Invalid risk settings." });
     }
 
-    const signalCount = await countSignalsToday(sql);
+    let signalCount = await countSignalsToday(sql);
     if (signalCount >= settings.maxSignals && !activeNeedsMonitoring) {
       const limited = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional signal will be generated today.` };
       await recordBTCHistory(sql, limited);
@@ -219,6 +219,8 @@ export default async function handler(req, res) {
         return res.status(200).json(skipped);
       }
 
+      // Recount after acquiring the shared lock so concurrent Gold/BTC passes cannot exceed the shared daily cap.
+      signalCount = await countSignalsToday(sql);
       // Send a pending-entry alert as soon as a fresh candidate is validated and its entry is still ahead.
       // Subsequent completed M15 candles monitor confirmation, invalidation, and expiry.
       let active = await getActiveSignal(sql, "BTCUSD");
