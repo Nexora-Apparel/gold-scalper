@@ -333,7 +333,7 @@ export default async function handler(req, res) {
       }
 
       const activeCanBeReplaced = !active ||
-        ["CONFIRMED_AND_NOTIFIED", "CLOSED_WITH_OUTCOME"].includes(active.state) ||
+        active.state === "CLOSED_WITH_OUTCOME" ||
         (["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED"].includes(active.state) &&
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
 
