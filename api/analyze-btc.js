@@ -85,8 +85,8 @@ export default async function handler(req, res) {
           pausedSignal.candidateNotification?.sent === true && pausedSignal.lifecycleNotification?.sent !== true) {
         const confirmationExpired = pausedSignal.state === "CONFIRMATION_EXPIRED";
         const delivery = await sendTelegramMessage(confirmationExpired
-          ? "⚠️ <b>BTCUSD CONFIRMATION EXPIRED</b>\\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
-          : "⏸️ <b>BTCUSD PENDING SETUP CANCELLED</b>\\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually.");
+          ? "⚠️ <b>BTCUSD CONFIRMATION EXPIRED</b>\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
+          : "⏸️ <b>BTCUSD PENDING SETUP CANCELLED</b>\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually.");
         pausedSignal = {
           ...pausedSignal,
           lifecycleNotification: delivery.sent
@@ -236,6 +236,14 @@ export default async function handler(req, res) {
           await saveActiveSignal(sql, active, "BTCUSD");
         }
       }
+      // Safety valve: a confirmed signal with no recorded outcome must not block new signals forever.
+      if (active?.state === "CONFIRMED_AND_NOTIFIED") {
+        const notifiedMs = Date.parse(active.notifiedAt || active.confirmedAt || "");
+        if (Number.isFinite(notifiedMs) && Date.now() - notifiedMs > 24 * 60 * 60 * 1000) {
+          active = { ...active, state: "CLOSED_WITHOUT_OUTCOME", closedAt: new Date().toISOString() };
+          await saveActiveSignal(sql, active, "BTCUSD");
+        }
+      }
       if (active && active.state === "WAITING_FOR_ENTRY") {
         const lifecycle = evaluateSignalLifecycle(active, fifteen);
         if (lifecycle.changed) {
@@ -367,6 +375,7 @@ export default async function handler(req, res) {
 
       const activeCanBeReplaced = !active ||
         active.state === "CLOSED_WITH_OUTCOME" ||
+        active.state === "CLOSED_WITHOUT_OUTCOME" ||
         (["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE"].includes(active.state) &&
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
 

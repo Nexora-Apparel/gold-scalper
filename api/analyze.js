@@ -83,12 +83,12 @@ export default async function handler(req, res) {
         const confirmationExpired = pausedSignal.state === "CONFIRMATION_EXPIRED";
         const cancelled = pausedSignal.state === "CANCELLED_BY_PAUSE";
         const message = confirmationExpired
-          ? "⚠️ <b>XAUUSD CONFIRMATION EXPIRED</b>\\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
+          ? "⚠️ <b>XAUUSD CONFIRMATION EXPIRED</b>\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
           : cancelled
-            ? "⏸️ <b>XAUUSD PENDING SETUP CANCELLED</b>\\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually."
+            ? "⏸️ <b>XAUUSD PENDING SETUP CANCELLED</b>\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually."
             : pausedSignal.state === "INVALIDATED"
-              ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\\nPrice touched the stop-loss or target before entry confirmation. Cancel this pending order if you placed it manually."
-              : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\\nThe entry was not confirmed within eight hours. Do not place this expired pending order.";
+              ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Cancel this pending order if you placed it manually."
+              : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.";
         const delivery = await sendTelegramMessage(message);
         pausedSignal = {
           ...pausedSignal,
@@ -246,6 +246,14 @@ export default async function handler(req, res) {
           await saveActiveSignal(sql, active);
         }
       }
+      // Safety valve: a confirmed signal with no recorded outcome must not block new signals forever.
+      if (active?.state === "CONFIRMED_AND_NOTIFIED") {
+        const notifiedMs = Date.parse(active.notifiedAt || active.confirmedAt || "");
+        if (Number.isFinite(notifiedMs) && Date.now() - notifiedMs > 24 * 60 * 60 * 1000) {
+          active = { ...active, state: "CLOSED_WITHOUT_OUTCOME", closedAt: new Date().toISOString() };
+          await saveActiveSignal(sql, active);
+        }
+      }
       if (active && active.state === "WAITING_FOR_ENTRY") {
         const lifecycle = evaluateSignalLifecycle(active, fifteen);
         if (lifecycle.changed) {
@@ -372,6 +380,7 @@ export default async function handler(req, res) {
 
       const activeCanBeReplaced = !active ||
         active.state === "CLOSED_WITH_OUTCOME" ||
+        active.state === "CLOSED_WITHOUT_OUTCOME" ||
         (active.state === "CANCELLED_BY_PAUSE" && (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true)) ||
         (["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED"].includes(active.state) &&
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
