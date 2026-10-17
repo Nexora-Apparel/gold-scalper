@@ -18,5 +18,9 @@ BTC is disabled by default. Do not enable it in Production until all of the foll
 5. Telegram formatting and delivery are verified without sending fabricated or test trade signals.
 6. BTC MSNR parameters have been reviewed against historical/forward-test results. The shared Gold-derived strategy is not yet independently calibrated for BTC volatility.
 
-## Current blocker
-Vercel's deployment API has returned `api-deployments-free-per-day` / HTTP 402, so the latest preview build cannot currently be created. Keep this change in draft and keep BTC disabled until preview verification is possible.
+## Current verification status (2026-10-17)
+- The latest BTC integration Preview deployment is `READY`, and the GitHub signal-engine checks passed for the deployed commit.
+- Preview SSO protection is enabled. The deployment status endpoint responds, but protected BTC candle access and authenticated BTC analysis have not yet been verified end-to-end.
+- The scheduled workflow targets the stable Production URL; the BTC routes are not present in Production until the integration is merged and deployed. Do not treat Preview readiness as Production activation.
+- Telegram delivery for BTC and an independent BTC historical/forward-test review remain outstanding.
+- Production is intentionally unchanged; BTC must remain disabled until every activation gate above passes.
