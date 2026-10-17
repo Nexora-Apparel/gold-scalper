@@ -102,7 +102,7 @@ export default async function handler(req, res) {
 
     let signalCount = await countSignalsToday(sql);
     const existingActiveSignal = await getActiveSignal(sql);
-    const activeNeedsMonitoring = existingActiveSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(existingActiveSignal.state);
+    const activeNeedsMonitoring = existingActiveSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(existingActiveSignal.state) || (existingActiveSignal.state === "CONFIRMATION_EXPIRED" && existingActiveSignal.lifecycleNotification?.sent !== true);
     if (!isWithinSession(saved) && !activeNeedsMonitoring) {
       const outside = { status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "OUTSIDE_SESSION",
         reason: "Outside configured XAUUSD monitoring hours (" + (saved.sessionStart || "08:00") + "–" + (saved.sessionEnd || "20:00") + " Africa/Lagos). No market-data request was made.",
@@ -212,8 +212,65 @@ export default async function handler(req, res) {
         }
       }
 
+      // Never deliver a stale entry-confirmation alert. It is useful only while the
+      // confirmation is recent enough to act on safely.
+      if (active && active.state === "CONFIRMATION_PENDING_DELIVERY") {
+        const confirmedAtMs = Date.parse(active.confirmedAt || "");
+        const confirmationAge = Date.now() - confirmedAtMs;
+        if (!Number.isFinite(confirmedAtMs) || confirmationAge > 15 * 60 * 1000) {
+          active = {
+            ...active,
+            state: "CONFIRMATION_EXPIRED",
+            confirmationExpiredAt: new Date().toISOString(),
+            confirmationExpiryReason: "Confirmation notification was not delivered within 15 minutes."
+          };
+          await saveActiveSignal(sql, active);
+        } else if (active.result?.signal) {
+          // Verify live quote immediately before sending an entry-confirmed message.
+          const liveUrl = new URL("https://api.twelvedata.com/price");
+          liveUrl.searchParams.set("symbol", "XAU/USD");
+          liveUrl.searchParams.set("apikey", key);
+          const liveResponse = await fetch(liveUrl.toString(), {
+            headers: { Accept: "application/json" }, signal: controller.signal
+          });
+          const livePayload = await liveResponse.json().catch(() => null);
+          const livePrice = Number(livePayload?.price);
+          if (!liveResponse.ok || !livePayload || livePayload.status === "error" ||
+              !Number.isFinite(livePrice) || livePrice <= 0) {
+            result.entryMonitoring = {
+              state: "CONFIRMED_AWAITING_LIVE_PRICE",
+              note: "Live XAU/USD quote could not be verified; confirmation notification is deferred and will expire after 15 minutes."
+            };
+            active = {
+              ...active,
+              lastLivePriceCheckAt: new Date().toISOString(),
+              lastLivePriceCheckFailed: true
+            };
+            await saveActiveSignal(sql, active);
+          } else {
+            const signal = active.result.signal;
+            const outsideRiskRange = signal.side === "BUY"
+              ? livePrice <= Number(signal.stopLoss) || livePrice >= Number(signal.takeProfit)
+              : livePrice >= Number(signal.stopLoss) || livePrice <= Number(signal.takeProfit);
+            if (outsideRiskRange) {
+              active = {
+                ...active,
+                state: "CONFIRMATION_EXPIRED",
+                confirmationExpiredAt: new Date().toISOString(),
+                confirmationExpiryReason: "Live price is already at or beyond the stop-loss/target boundary.",
+                confirmationPriceAtExpiry: livePrice
+              };
+              await saveActiveSignal(sql, active);
+            } else {
+              active = { ...active, lastLivePriceCheckAt: new Date().toISOString(), lastLivePrice: livePrice };
+              await saveActiveSignal(sql, active);
+            }
+          }
+        }
+      }
+
       // Persist and retry invalidation/expiry updates so a transient Telegram failure cannot silently strand a pending order.
-      if (active && ["INVALIDATED", "EXPIRED"].includes(active.state) &&
+      if (active && ["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED"].includes(active.state) &&
           active.candidateNotification?.sent === true && active.lifecycleNotification?.sent !== true) {
         const invalidated = active.state === "INVALIDATED";
         const update = await sendTelegramMessage(invalidated
@@ -259,7 +316,7 @@ export default async function handler(req, res) {
 
       const activeCanBeReplaced = !active ||
         active.state === "CONFIRMED_AND_NOTIFIED" ||
-        (["INVALIDATED", "EXPIRED"].includes(active.state) &&
+        (["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED"].includes(active.state) &&
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
 
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
