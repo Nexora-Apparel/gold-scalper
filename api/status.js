@@ -59,7 +59,7 @@ export default async function handler(req, res) {
       FROM gold_scalper_history ORDER BY created_at DESC, id DESC LIMIT 1`;
     const latestAnalysis = latestRows[0] || null;
     const health = marketHealth(latestAnalysis, keyConfigured);
-    const activeSignalNeedsMonitoring = Boolean(activeSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(activeSignal.state) || (activeSignal.state === "CONFIRMATION_EXPIRED" && activeSignal.lifecycleNotification?.sent !== true)));
+    const activeSignalNeedsMonitoring = Boolean(activeSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(activeSignal.state) || (["CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE", "INVALIDATED", "EXPIRED"].includes(activeSignal.state) && activeSignal.candidateNotification?.sent === true && activeSignal.lifecycleNotification?.sent !== true)));
     const sessionActive = withinSession(settings);
     return res.status(200).json({
       application: "ONLINE",
