@@ -71,8 +71,8 @@ jobs:
             console.error("Prerequisite check(s) failed: " + failed.join(", "));
             process.exit(1);
           }
-          const skipForPause = (status.emergencyStop === true || status.engine !== "RUNNING") && status.activeSignalNeedsMonitoring !== true;
-          const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true;
+          const skipForPause = (status.emergencyStop === true || status.engine !== "RUNNING") && status.activeSignalNeedsMonitoring !== true && status.btcActiveSignalNeedsMonitoring !== true;
+          const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true && status.btcActiveSignalNeedsMonitoring !== true;
           if (skipForPause || skipForSession) {
             console.log(skipForSession
               ? "Monitor skipped: outside the configured monitoring session with no pending signal to monitor."
@@ -131,5 +131,56 @@ jobs:
           }
 
           console.error("Monitor did not verify fresh completed market candles and did not declare an intentional skip; treating this run as failed.");
+          process.exit(1);
+          NODE
+
+      - name: Run BTCUSD monitor when enabled
+        if: always() && steps.preflight.outputs.should_run == 'true'
+        env:
+          GOLD_SCALPER_URL: https://gold-scalper-nexora-apparel.vercel.app
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -eu
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          code="$(curl --silent --show-error --max-time 90 \
+            --output "$response_file" --write-out '%{http_code}' \
+            --request POST "${GOLD_SCALPER_URL%/}/api/analyze-btc" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{}')"
+          echo "BTCUSD analysis endpoint HTTP status: $code"
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "BTCUSD monitor failed; response:"
+            cat "$response_file"
+            exit 1
+          fi
+          node --input-type=module - "$response_file" <<'NODE'
+          import fs from "node:fs";
+          let body;
+          try {
+            body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.error("BTCUSD monitor returned invalid JSON.");
+            process.exit(1);
+          }
+          const summary = {
+            symbol: body.symbol ?? "BTCUSD",
+            status: body.status ?? "UNKNOWN",
+            marketDataVerified: body.marketDataVerified === true,
+            monitorSkipped: body.monitorSkipped === true,
+            skipReason: body.skipReason ?? null,
+            entryMonitoring: body.entryMonitoring?.state ?? null,
+            reason: body.reason ?? null,
+            error: body.error ?? null
+          };
+          console.log(JSON.stringify(summary));
+          if (body.marketDataVerified === true || body.monitorSkipped === true) {
+            console.log(body.monitorSkipped
+              ? "BTCUSD monitor intentionally skipped: " + (body.skipReason ?? "unspecified")
+              : "Fresh completed BTCUSD candles verified.");
+            process.exit(0);
+          }
+          console.error("BTCUSD monitor did not verify fresh market data or declare an intentional skip.");
           process.exit(1);
           NODE

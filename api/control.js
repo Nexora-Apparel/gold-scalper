@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: "Saved risk settings", settings });
     }
     if (action === "analyze-all") {
-      return res.status(200).json({ message: "Only XAUUSD is currently supported by the verified strategy. Use ANALYZE GOLD NOW; other pairs were not analyzed.", supportedSymbols: ["XAUUSD"] });
+      return res.status(200).json({ message: "Use the symbol-specific analysis buttons. XAUUSD and BTCUSD are supported in this release; no broker orders are placed.", supportedSymbols: ["XAUUSD", "BTCUSD"] });
     }
     if (action === "emergency-stop") {
       const next = { ...state, engine: "PAUSED", emergencyStop: true, mode: "manual", updatedAt: new Date().toISOString() };
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       if (state.emergencyStop) return res.status(409).json({ error: "Emergency stop is active. Confirm a reset first." });
       const next = { ...state, engine: "RUNNING", mode: "manual", updatedAt: new Date().toISOString() };
       await saveControlState(sql, next);
-      return res.status(200).json({ message: "Scheduled XAUUSD monitoring enabled. GitHub Actions will attempt scans every 15 minutes within your saved monitoring schedule; runs may be delayed. Signal-only; no broker orders are placed.", control: next });
+      return res.status(200).json({ message: "Scheduled XAUUSD and enabled BTCUSD monitoring enabled. GitHub Actions will attempt scans every 15 minutes; runs may be delayed. Signal-only; no broker orders are placed.", control: next });
     }
     if (action === "pause") {
       const next = { ...state, engine: "PAUSED", mode: "manual", updatedAt: new Date().toISOString() };

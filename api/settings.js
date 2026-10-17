@@ -28,6 +28,7 @@ export default async function handler(req, res) {
       timeframe: b.timeframe,
       mode: "manual",
       goldEnabled: b.goldEnabled === true,
+      btcEnabled: b.btcEnabled === true,
       majorsEnabled: b.majorsEnabled === true,
       newsEnabled: b.newsEnabled === true,
       scanMode: b.scanMode,
