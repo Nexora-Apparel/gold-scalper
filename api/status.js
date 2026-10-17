@@ -56,15 +56,28 @@ export default async function handler(req, res) {
       }
     }
     const latestRows = await sql`SELECT status, result, created_at AS "createdAt"
-      FROM gold_scalper_history ORDER BY created_at DESC, id DESC LIMIT 1`;
+      FROM gold_scalper_history WHERE symbol = 'XAUUSD' ORDER BY created_at DESC, id DESC LIMIT 1`;
+    const latestBtcRows = await sql`SELECT status, result, created_at AS "createdAt"
+      FROM gold_scalper_history WHERE symbol = 'BTCUSD' ORDER BY created_at DESC, id DESC LIMIT 1`;
+    const btcActiveSignal = await getActiveSignal(sql, "BTCUSD");
+    const btcActiveSignalNeedsMonitoring = Boolean(btcActiveSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(btcActiveSignal.state) || (["CONFIRMATION_EXPIRED", "INVALIDATED", "EXPIRED"].includes(btcActiveSignal.state) && btcActiveSignal.candidateNotification?.sent === true && btcActiveSignal.lifecycleNotification?.sent !== true)));
     const latestAnalysis = latestRows[0] || null;
     const health = marketHealth(latestAnalysis, keyConfigured);
+    const btcLatestAnalysis = latestBtcRows[0] || null;
+    const btcHealth = marketHealth(btcLatestAnalysis, keyConfigured);
     const activeSignalNeedsMonitoring = Boolean(activeSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(activeSignal.state) || (["CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE", "INVALIDATED", "EXPIRED"].includes(activeSignal.state) && activeSignal.candidateNotification?.sent === true && activeSignal.lifecycleNotification?.sent !== true)));
     const sessionActive = withinSession(settings);
     return res.status(200).json({
       application: "ONLINE",
       database: "CONNECTED",
       ...health,
+      btcEnabled: settings.btcEnabled === true,
+      btcMarketConnected: btcHealth.marketConnected,
+      btcMarketData: btcHealth.marketData,
+      btcLastAnalysisAt: btcHealth.lastAnalysisAt,
+      btcLastAnalysisStatus: btcHealth.lastAnalysisStatus,
+      btcLastAnalysisMarketDataVerified: btcHealth.lastAnalysisMarketDataVerified,
+      btcActiveSignalNeedsMonitoring,
       marketKeyConfigured: keyConfigured,
       telegram: telegramConfigured ? "Configured; owner-authenticated delivery test available" : "Not configured",
       telegramConfigured,
