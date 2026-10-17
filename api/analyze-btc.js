@@ -70,8 +70,33 @@ export default async function handler(req, res) {
     sql = await ensureStorage();
     const control = await getControlState(sql);
     if (control.emergencyStop || control.engine !== "RUNNING") {
+      let pausedSignal = await getActiveSignal(sql, "BTCUSD");
+      if (pausedSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(pausedSignal.state)) {
+        pausedSignal = {
+          ...pausedSignal,
+          state: pausedSignal.state === "CONFIRMATION_PENDING_DELIVERY" ? "CONFIRMATION_EXPIRED" : "CANCELLED_BY_PAUSE",
+          pausedAt: new Date().toISOString(),
+          confirmationExpiryReason: "The engine was paused before a safe confirmation alert could be delivered."
+        };
+        await saveActiveSignal(sql, pausedSignal, "BTCUSD");
+      }
+      if (pausedSignal && ["CANCELLED_BY_PAUSE", "CONFIRMATION_EXPIRED"].includes(pausedSignal.state) &&
+          pausedSignal.candidateNotification?.sent === true && pausedSignal.lifecycleNotification?.sent !== true) {
+        const confirmationExpired = pausedSignal.state === "CONFIRMATION_EXPIRED";
+        const delivery = await sendTelegramMessage(confirmationExpired
+          ? "⚠️ <b>BTCUSD CONFIRMATION EXPIRED</b>\\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
+          : "⏸️ <b>BTCUSD PENDING SETUP CANCELLED</b>\\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually.");
+        pausedSignal = {
+          ...pausedSignal,
+          lifecycleNotification: delivery.sent
+            ? { sent: true, sentAt: new Date().toISOString(), messageId: delivery.messageId ?? null }
+            : { sent: false, lastAttemptAt: new Date().toISOString(), message: delivery.message || "Telegram delivery failed." }
+        };
+        await saveActiveSignal(sql, pausedSignal, "BTCUSD");
+      }
       const blocked = {
-        status: "NO_TRADE", signal: null, marketDataVerified: false,
+        status: "NO_TRADE", signal: null, symbol: "BTCUSD", marketDataVerified: false,
+        monitorSkipped: true, skipReason: control.emergencyStop ? "EMERGENCY_STOP" : "ENGINE_PAUSED",
         reason: control.emergencyStop ? "Emergency stop is active. Reset it explicitly before starting the engine." : "Signal engine is paused. Press START BOT before analysis.",
         checkedAt: new Date().toISOString()
       };
