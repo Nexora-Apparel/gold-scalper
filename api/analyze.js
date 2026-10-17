@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
-import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal } from "../lib/storage.js";
+import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, claimMonitorLock, releaseMonitorLock, getRecordedOutcome } from "../lib/storage.js";
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 
@@ -63,8 +64,41 @@ export default async function handler(req, res) {
     sql = await ensureStorage();
     const control = await getControlState(sql);
     if (control.emergencyStop || control.engine !== "RUNNING") {
+      let pausedSignal = await getActiveSignal(sql);
+      if (pausedSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(pausedSignal.state)) {
+        pausedSignal = {
+          ...pausedSignal,
+          state: pausedSignal.state === "CONFIRMATION_PENDING_DELIVERY" ? "CONFIRMATION_EXPIRED" : "CANCELLED_BY_PAUSE",
+          pausedAt: new Date().toISOString(),
+          confirmationExpiryReason: "The engine was paused before the confirmation alert could be safely delivered."
+        };
+        await saveActiveSignal(sql, pausedSignal);
+      }
+      const needsPauseNotice = pausedSignal &&
+        ["CANCELLED_BY_PAUSE", "CONFIRMATION_EXPIRED", "INVALIDATED", "EXPIRED"].includes(pausedSignal.state) &&
+        pausedSignal.candidateNotification?.sent === true &&
+        pausedSignal.lifecycleNotification?.sent !== true;
+      if (needsPauseNotice) {
+        const confirmationExpired = pausedSignal.state === "CONFIRMATION_EXPIRED";
+        const cancelled = pausedSignal.state === "CANCELLED_BY_PAUSE";
+        const message = confirmationExpired
+          ? "⚠️ <b>XAUUSD CONFIRMATION EXPIRED</b>\\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
+          : cancelled
+            ? "⏸️ <b>XAUUSD PENDING SETUP CANCELLED</b>\\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually."
+            : pausedSignal.state === "INVALIDATED"
+              ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\\nPrice touched the stop-loss or target before entry confirmation. Cancel this pending order if you placed it manually."
+              : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\\nThe entry was not confirmed within eight hours. Do not place this expired pending order.";
+        const delivery = await sendTelegramMessage(message);
+        pausedSignal = {
+          ...pausedSignal,
+          lifecycleNotification: delivery.sent
+            ? { sent: true, sentAt: new Date().toISOString(), messageId: delivery.messageId ?? null }
+            : { sent: false, lastAttemptAt: new Date().toISOString(), message: delivery.message || "Telegram delivery failed." }
+        };
+        await saveActiveSignal(sql, pausedSignal);
+      }
       const blocked = {
-        status: "NO_TRADE", signal: null, marketDataVerified: false,
+        status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "ENGINE_PAUSED",
         reason: control.emergencyStop ? "Emergency stop is active. Reset it explicitly before starting the engine." : "Signal engine is paused. Press START BOT before analysis.",
         checkedAt: new Date().toISOString()
       };
@@ -82,7 +116,7 @@ export default async function handler(req, res) {
     const body = req.body || {};
     const saved = await getStoredSettings(sql);
     if (saved.goldEnabled === false || body.goldEnabled === false) {
-      const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: "XAUUSD is disabled in saved settings. Enable Gold before analysis." };
+      const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "GOLD_DISABLED", reason: "XAUUSD is disabled in saved settings. Enable Gold before analysis." };
       await recordHistory(sql, disabled);
       return res.status(200).json(disabled);
     }
@@ -99,22 +133,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ status: "NO_TRADE", signal: null, error: "Invalid risk settings." });
     }
 
-    const signalCount = await countSignalsToday(sql);
+    let signalCount = await countSignalsToday(sql);
     const existingActiveSignal = await getActiveSignal(sql);
-    const activeNeedsMonitoring = existingActiveSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(existingActiveSignal.state);
+    const activeNeedsMonitoring = Boolean(existingActiveSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(existingActiveSignal.state) || (existingActiveSignal.state === "CONFIRMATION_EXPIRED" && existingActiveSignal.lifecycleNotification?.sent !== true)));
     if (!isWithinSession(saved) && !activeNeedsMonitoring) {
-      const outside = { status: "NO_TRADE", signal: null, marketDataVerified: false,
+      const outside = { status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "OUTSIDE_SESSION",
         reason: "Outside configured XAUUSD monitoring hours (" + (saved.sessionStart || "08:00") + "–" + (saved.sessionEnd || "20:00") + " Africa/Lagos). No market-data request was made.",
         checkedAt: new Date().toISOString(), scanMode: saved.scanMode || "session" };
       await recordHistory(sql, outside);
       return res.status(200).json(outside);
     }
     if (signalCount >= settings.maxSignals && !activeNeedsMonitoring) {
-      const limited = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional signal will be generated today.` };
+      const limited = { status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "DAILY_LIMIT_REACHED", reason: `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional signal will be generated today.` };
       await recordHistory(sql, limited);
       return res.status(200).json(limited);
     }
 
+    let monitorLockToken = null;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
     try {
@@ -177,7 +212,35 @@ export default async function handler(req, res) {
 
       // Send a pending-entry alert as soon as a fresh candidate is validated and its entry is still ahead.
       // Subsequent completed M15 candles monitor confirmation, invalidation, and expiry.
+      // Serialize the state-changing portion of monitoring across serverless instances.
+      monitorLockToken = randomUUID();
+      const lockAcquired = await claimMonitorLock(sql, monitorLockToken);
+      if (!lockAcquired) {
+        monitorLockToken = null;
+        const skipped = { status: "NO_TRADE", signal: null, marketDataVerified: true,
+          monitorSkipped: true, skipReason: "MONITOR_ALREADY_RUNNING",
+          reason: "Another monitor pass currently owns the state lock; this overlapping pass was safely skipped.",
+          checkedAt: new Date().toISOString() };
+        await recordHistory(sql, skipped);
+        res.setHeader("Cache-Control", "no-store");
+        return res.status(200).json(skipped);
+      }
+      signalCount = await countSignalsToday(sql);
       let active = await getActiveSignal(sql);
+      // A confirmed trade remains the active trade until the owner records its
+      // manual outcome. This prevents stacking another signal over an open one.
+      if (active?.state === "CONFIRMED_AND_NOTIFIED" && active.result?.signal?.signalRef) {
+        const recordedOutcome = await getRecordedOutcome(sql, active.result.signal.signalRef);
+        if (recordedOutcome) {
+          active = {
+            ...active,
+            state: "CLOSED_WITH_OUTCOME",
+            closedAt: recordedOutcome.recordedAt || new Date().toISOString(),
+            recordedOutcome: recordedOutcome.outcome
+          };
+          await saveActiveSignal(sql, active);
+        }
+      }
       if (active && active.state === "WAITING_FOR_ENTRY") {
         const lifecycle = evaluateSignalLifecycle(active, fifteen);
         if (lifecycle.changed) {
@@ -197,13 +260,73 @@ export default async function handler(req, res) {
         }
       }
 
+      // Never deliver a stale entry-confirmation alert. It is useful only while the
+      // confirmation is recent enough to act on safely.
+      if (active && active.state === "CONFIRMATION_PENDING_DELIVERY") {
+        const confirmedAtMs = Date.parse(active.confirmedAt || "");
+        const confirmationAge = Date.now() - confirmedAtMs;
+        if (!Number.isFinite(confirmedAtMs) || confirmationAge > 15 * 60 * 1000) {
+          active = {
+            ...active,
+            state: "CONFIRMATION_EXPIRED",
+            confirmationExpiredAt: new Date().toISOString(),
+            confirmationExpiryReason: "Confirmation notification was not delivered within 15 minutes."
+          };
+          await saveActiveSignal(sql, active);
+        } else if (active.result?.signal) {
+          // Verify live quote immediately before sending an entry-confirmed message.
+          const liveUrl = new URL("https://api.twelvedata.com/price");
+          liveUrl.searchParams.set("symbol", "XAU/USD");
+          liveUrl.searchParams.set("apikey", key);
+          const liveResponse = await fetch(liveUrl.toString(), {
+            headers: { Accept: "application/json" }, signal: controller.signal
+          });
+          const livePayload = await liveResponse.json().catch(() => null);
+          const livePrice = Number(livePayload?.price);
+          if (!liveResponse.ok || !livePayload || livePayload.status === "error" ||
+              !Number.isFinite(livePrice) || livePrice <= 0) {
+            result.entryMonitoring = {
+              state: "CONFIRMED_AWAITING_LIVE_PRICE",
+              note: "Live XAU/USD quote could not be verified; confirmation notification is deferred and will expire after 15 minutes."
+            };
+            active = {
+              ...active,
+              lastLivePriceCheckAt: new Date().toISOString(),
+              lastLivePriceCheckFailed: true
+            };
+            await saveActiveSignal(sql, active);
+          } else {
+            const signal = active.result.signal;
+            const outsideRiskRange = signal.side === "BUY"
+              ? livePrice <= Number(signal.stopLoss) || livePrice >= Number(signal.takeProfit)
+              : livePrice >= Number(signal.stopLoss) || livePrice <= Number(signal.takeProfit);
+            if (outsideRiskRange) {
+              active = {
+                ...active,
+                state: "CONFIRMATION_EXPIRED",
+                confirmationExpiredAt: new Date().toISOString(),
+                confirmationExpiryReason: "Live price is already at or beyond the stop-loss/target boundary.",
+                confirmationPriceAtExpiry: livePrice
+              };
+              await saveActiveSignal(sql, active);
+            } else {
+              active = { ...active, lastLivePriceCheckAt: new Date().toISOString(), lastLivePrice: livePrice, lastLivePriceCheckFailed: false };
+              await saveActiveSignal(sql, active);
+            }
+          }
+        }
+      }
+
       // Persist and retry invalidation/expiry updates so a transient Telegram failure cannot silently strand a pending order.
-      if (active && ["INVALIDATED", "EXPIRED"].includes(active.state) &&
+      if (active && ["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE"].includes(active.state) &&
           active.candidateNotification?.sent === true && active.lifecycleNotification?.sent !== true) {
         const invalidated = active.state === "INVALIDATED";
-        const update = await sendTelegramMessage(invalidated
-          ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
-          : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
+        const confirmationExpired = active.state === "CONFIRMATION_EXPIRED";
+        const update = await sendTelegramMessage(confirmationExpired
+          ? "⚠️ <b>XAUUSD ENTRY CONFIRMATION EXPIRED</b>\nThe confirmation alert was delayed or the live price had already reached the stop-loss/target boundary. Do not act on the delayed entry confirmation; check the current market manually."
+          : invalidated
+            ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
+            : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
         const attemptedAt = new Date().toISOString();
         active = {
           ...active,
@@ -222,7 +345,7 @@ export default async function handler(req, res) {
         };
       }
 
-      if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal) {
+      if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal && active.lastLivePriceCheckFailed !== true) {
         const confirmedResult = {
           ...active.result,
           signal: { ...active.result.signal, status: "CONFIRMED" },
@@ -243,8 +366,9 @@ export default async function handler(req, res) {
       }
 
       const activeCanBeReplaced = !active ||
-        active.state === "CONFIRMED_AND_NOTIFIED" ||
-        (["INVALIDATED", "EXPIRED"].includes(active.state) &&
+        active.state === "CLOSED_WITH_OUTCOME" ||
+        (active.state === "CANCELLED_BY_PAUSE" && (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true)) ||
+        (["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED"].includes(active.state) &&
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
 
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
@@ -316,15 +440,33 @@ export default async function handler(req, res) {
       return res.status(200).json(result);
     } catch (error) {
       const timedOut = error?.name === "AbortError";
+      const message = String(error?.message || "provider error");
+      const utc = new Date();
+      const day = utc.getUTCDay();
+      const hour = utc.getUTCHours();
+      const likelyGoldClosure = day === 6 || (day === 0 && hour < 22) || (day === 5 && hour >= 21) || (day >= 1 && day <= 5 && hour === 21);
+      if (/Stale (1h|15min) candles/i.test(message) && likelyGoldClosure) {
+        const skipped = { status: "NO_TRADE", signal: null, marketDataVerified: false,
+          monitorSkipped: true, skipReason: "MARKET_CLOSED", dataFreshness: "market-closed",
+          reason: "XAU/USD is likely in its weekly or daily market-closure window; stale candles were treated as a skip, not a signal or system failure.",
+          checkedAt: new Date().toISOString() };
+        await recordHistory(sql, skipped);
+        res.setHeader("Cache-Control", "no-store");
+        return res.status(200).json(skipped);
+      }
       const unavailable = {
         status: "NO_TRADE", signal: null, marketDataVerified: false, dataFreshness: "unverified",
         error: "Unable to verify fresh, completed XAU/USD candles. No signal generated.",
-        detail: String(error?.message || "provider error").slice(0, 200),
+        detail: message.slice(0, 200),
         checkedAt: new Date().toISOString()
       };
       await recordHistory(sql, unavailable);
       return res.status(timedOut ? 504 : 502).json(unavailable);
     } finally {
+      if (monitorLockToken) {
+        try { await releaseMonitorLock(sql, monitorLockToken); }
+        catch (lockError) { console.error("Monitor lock release failed:", lockError?.message || "unknown error"); }
+      }
       clearTimeout(timer);
     }
   } catch (error) {

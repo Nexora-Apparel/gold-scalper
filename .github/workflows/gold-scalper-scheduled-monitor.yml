@@ -71,7 +71,7 @@ jobs:
             console.error("Prerequisite check(s) failed: " + failed.join(", "));
             process.exit(1);
           }
-          const skipForPause = status.emergencyStop === true || status.engine !== "RUNNING";
+          const skipForPause = (status.emergencyStop === true || status.engine !== "RUNNING") && status.activeSignalNeedsMonitoring !== true;
           const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true;
           if (skipForPause || skipForSession) {
             console.log(skipForSession
@@ -123,8 +123,13 @@ jobs:
           };
           console.log(JSON.stringify(summary));
 
-          if (body.marketDataVerified === true) process.exit(0);
+          if (body.marketDataVerified === true || body.monitorSkipped === true) {
+            console.log(body.monitorSkipped === true
+              ? "Monitor completed with an intentional skip: " + (body.skipReason ?? "unspecified")
+              : "Fresh completed market candles verified.");
+            process.exit(0);
+          }
 
-          console.error("Monitor did not verify fresh completed market candles; treating this run as failed.");
+          console.error("Monitor did not verify fresh completed market candles and did not declare an intentional skip; treating this run as failed.");
           process.exit(1);
           NODE
