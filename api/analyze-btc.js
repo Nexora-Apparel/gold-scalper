@@ -4,6 +4,7 @@ import { hasOwnerSession } from "../lib/auth.js";
 import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, claimMonitorLock, releaseMonitorLock, getRecordedOutcome } from "../lib/storage.js";
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
+import { processRsiRejectionAlert } from "../lib/rsi-rejection-alerts.js";
 
 const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000 };
 
@@ -222,6 +223,7 @@ export default async function handler(req, res) {
         return res.status(200).json(skipped);
       }
 
+      result.rsiRejectionAlert = await processRsiRejectionAlert(sql, "BTCUSD", result);
       // Recount after acquiring the shared lock so concurrent Gold/BTC passes cannot exceed the shared daily cap.
       signalCount = await countSignalsToday(sql);
       // Send a pending-entry alert as soon as a fresh candidate is validated and its entry is still ahead.
