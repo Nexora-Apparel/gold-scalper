@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateCandles } from "../api/analyze.js";
+import { validateCandles, isWithinSession } from "../api/analyze.js";
 
 const HOUR = 60 * 60 * 1000;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
@@ -38,4 +38,18 @@ test("rejects an M15 candle more than 45 minutes past close", () => {
   const now = Date.parse("2026-10-16T17:31:00Z");
   const candles = providerCandles("2026-10-16T16:00:00Z", FIFTEEN_MINUTES);
   assert.throws(() => validateCandles(candles, "15min", 20, now), /Stale 15min candles/);
+});
+
+
+test("Gold candidate session gate supports normal and overnight windows", () => {
+  const normal = { scanMode: "session", sessionStart: "01:00", sessionEnd: "07:00" };
+  assert.equal(isWithinSession(normal, new Date("2026-10-17T00:30:00Z")), true);
+  assert.equal(isWithinSession(normal, new Date("2026-10-17T06:00:00Z")), false);
+  const overnight = { scanMode: "session", sessionStart: "22:00", sessionEnd: "06:00" };
+  assert.equal(isWithinSession(overnight, new Date("2026-10-17T00:00:00Z")), true);
+  assert.equal(isWithinSession(overnight, new Date("2026-10-17T06:00:00Z")), false);
+});
+
+test("Gold 24-hour mode bypasses configured session hours", () => {
+  assert.equal(isWithinSession({ scanMode: "24h", sessionStart: "01:00", sessionEnd: "07:00" }, new Date("2026-10-17T18:00:00Z")), true);
 });
