@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { formatRsiRejectionMessage } from "../lib/telegram.js";
-import { rsiRejectionFingerprint } from "../lib/rsi-rejection-alerts.js";
+import { rsiRejectionFingerprint, rsiRejectionFamilyFingerprint, RSI_REJECTION_COOLDOWN_MS } from "../lib/rsi-rejection-alerts.js";
 
 function rejectedSetup(overrides = {}) {
   return {
@@ -49,4 +49,26 @@ test("deduplication fingerprint changes when market, direction, or zone changes"
   assert.notEqual(rsiRejectionFingerprint("BTCUSD", setup), rsiRejectionFingerprint("XAUUSD", setup));
   assert.notEqual(rsiRejectionFingerprint("BTCUSD", setup), rsiRejectionFingerprint("BTCUSD", { ...setup, side: "SELL" }));
   assert.notEqual(rsiRejectionFingerprint("BTCUSD", setup), rsiRejectionFingerprint("BTCUSD", { ...setup, zone: { ...setup.zone, price: 65100 } }));
+});
+
+test("same RSI rejection family remains stable when calculated zone price shifts", () => {
+  const setup = rejectedSetup().potentialSetup;
+  const shiftedZone = { ...setup, zone: { ...setup.zone, price: 81686.762 } };
+  assert.equal(
+    rsiRejectionFamilyFingerprint("BTCUSD", setup),
+    rsiRejectionFamilyFingerprint("BTCUSD", shiftedZone)
+  );
+  assert.equal(RSI_REJECTION_COOLDOWN_MS, 6 * 60 * 60 * 1000);
+});
+
+test("different side or zone type is treated as a different rejection family", () => {
+  const setup = rejectedSetup().potentialSetup;
+  assert.notEqual(
+    rsiRejectionFamilyFingerprint("BTCUSD", setup),
+    rsiRejectionFamilyFingerprint("BTCUSD", { ...setup, side: "SELL" })
+  );
+  assert.notEqual(
+    rsiRejectionFamilyFingerprint("BTCUSD", setup),
+    rsiRejectionFamilyFingerprint("BTCUSD", { ...setup, zone: { ...setup.zone, type: "resistance" } })
+  );
 });
