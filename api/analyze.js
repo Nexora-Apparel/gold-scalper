@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
-import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal } from "../lib/storage.js";
+import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, claimMonitorLock, releaseMonitorLock } from "../lib/storage.js";
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 
@@ -64,7 +65,7 @@ export default async function handler(req, res) {
     const control = await getControlState(sql);
     if (control.emergencyStop || control.engine !== "RUNNING") {
       const blocked = {
-        status: "NO_TRADE", signal: null, marketDataVerified: false,
+        status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "ENGINE_PAUSED",
         reason: control.emergencyStop ? "Emergency stop is active. Reset it explicitly before starting the engine." : "Signal engine is paused. Press START BOT before analysis.",
         checkedAt: new Date().toISOString()
       };
@@ -82,7 +83,7 @@ export default async function handler(req, res) {
     const body = req.body || {};
     const saved = await getStoredSettings(sql);
     if (saved.goldEnabled === false || body.goldEnabled === false) {
-      const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: "XAUUSD is disabled in saved settings. Enable Gold before analysis." };
+      const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "GOLD_DISABLED", reason: "XAUUSD is disabled in saved settings. Enable Gold before analysis." };
       await recordHistory(sql, disabled);
       return res.status(200).json(disabled);
     }
@@ -99,18 +100,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ status: "NO_TRADE", signal: null, error: "Invalid risk settings." });
     }
 
-    const signalCount = await countSignalsToday(sql);
+    let signalCount = await countSignalsToday(sql);
     const existingActiveSignal = await getActiveSignal(sql);
     const activeNeedsMonitoring = existingActiveSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(existingActiveSignal.state);
     if (!isWithinSession(saved) && !activeNeedsMonitoring) {
-      const outside = { status: "NO_TRADE", signal: null, marketDataVerified: false,
+      const outside = { status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "OUTSIDE_SESSION",
         reason: "Outside configured XAUUSD monitoring hours (" + (saved.sessionStart || "08:00") + "–" + (saved.sessionEnd || "20:00") + " Africa/Lagos). No market-data request was made.",
         checkedAt: new Date().toISOString(), scanMode: saved.scanMode || "session" };
       await recordHistory(sql, outside);
       return res.status(200).json(outside);
     }
     if (signalCount >= settings.maxSignals && !activeNeedsMonitoring) {
-      const limited = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional signal will be generated today.` };
+      const limited = { status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "DAILY_LIMIT_REACHED", reason: `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional signal will be generated today.` };
       await recordHistory(sql, limited);
       return res.status(200).json(limited);
     }
@@ -177,6 +178,20 @@ export default async function handler(req, res) {
 
       // Send a pending-entry alert as soon as a fresh candidate is validated and its entry is still ahead.
       // Subsequent completed M15 candles monitor confirmation, invalidation, and expiry.
+      // Serialize the state-changing portion of monitoring across serverless instances.
+      monitorLockToken = randomUUID();
+      const lockAcquired = await claimMonitorLock(sql, monitorLockToken);
+      if (!lockAcquired) {
+        monitorLockToken = null;
+        const skipped = { status: "NO_TRADE", signal: null, marketDataVerified: true,
+          monitorSkipped: true, skipReason: "MONITOR_ALREADY_RUNNING",
+          reason: "Another monitor pass currently owns the state lock; this overlapping pass was safely skipped.",
+          checkedAt: new Date().toISOString() };
+        await recordHistory(sql, skipped);
+        res.setHeader("Cache-Control", "no-store");
+        return res.status(200).json(skipped);
+      }
+      signalCount = await countSignalsToday(sql);
       let active = await getActiveSignal(sql);
       if (active && active.state === "WAITING_FOR_ENTRY") {
         const lifecycle = evaluateSignalLifecycle(active, fifteen);
@@ -316,15 +331,33 @@ export default async function handler(req, res) {
       return res.status(200).json(result);
     } catch (error) {
       const timedOut = error?.name === "AbortError";
+      const message = String(error?.message || "provider error");
+      const utc = new Date();
+      const day = utc.getUTCDay();
+      const hour = utc.getUTCHours();
+      const likelyGoldClosure = day === 6 || (day === 0 && hour < 22) || (day === 5 && hour >= 21) || (day >= 1 && day <= 5 && hour === 21);
+      if (/Stale (1h|15min) candles/i.test(message) && likelyGoldClosure) {
+        const skipped = { status: "NO_TRADE", signal: null, marketDataVerified: false,
+          monitorSkipped: true, skipReason: "MARKET_CLOSED", dataFreshness: "market-closed",
+          reason: "XAU/USD is likely in its weekly or daily market-closure window; stale candles were treated as a skip, not a signal or system failure.",
+          checkedAt: new Date().toISOString() };
+        await recordHistory(sql, skipped);
+        res.setHeader("Cache-Control", "no-store");
+        return res.status(200).json(skipped);
+      }
       const unavailable = {
         status: "NO_TRADE", signal: null, marketDataVerified: false, dataFreshness: "unverified",
         error: "Unable to verify fresh, completed XAU/USD candles. No signal generated.",
-        detail: String(error?.message || "provider error").slice(0, 200),
+        detail: message.slice(0, 200),
         checkedAt: new Date().toISOString()
       };
       await recordHistory(sql, unavailable);
       return res.status(timedOut ? 504 : 502).json(unavailable);
     } finally {
+      if (monitorLockToken) {
+        try { await releaseMonitorLock(sql, monitorLockToken); }
+        catch (lockError) { console.error("Monitor lock release failed:", lockError?.message || "unknown error"); }
+      }
       clearTimeout(timer);
     }
   } catch (error) {
