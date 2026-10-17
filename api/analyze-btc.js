@@ -85,8 +85,8 @@ export default async function handler(req, res) {
           pausedSignal.candidateNotification?.sent === true && pausedSignal.lifecycleNotification?.sent !== true) {
         const confirmationExpired = pausedSignal.state === "CONFIRMATION_EXPIRED";
         const delivery = await sendTelegramMessage(confirmationExpired
-          ? "⚠️ <b>BTCUSD CONFIRMATION EXPIRED</b>\\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
-          : "⏸️ <b>BTCUSD PENDING SETUP CANCELLED</b>\\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually.");
+          ? "⚠️ <b>BTCUSD CONFIRMATION EXPIRED</b>\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
+          : "⏸️ <b>BTCUSD PENDING SETUP CANCELLED</b>\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually.");
         pausedSignal = {
           ...pausedSignal,
           lifecycleNotification: delivery.sent
@@ -114,7 +114,20 @@ export default async function handler(req, res) {
 
     const body = req.body || {};
     const saved = await getStoredSettings(sql);
-    const existingActiveSignal = await getActiveSignal(sql, "BTCUSD");
+    let existingActiveSignal = await getActiveSignal(sql, "BTCUSD");
+    // Resolve stale confirmed signals before session/disabled short-circuits, without inventing outcomes.
+    if (existingActiveSignal?.state === "CONFIRMED_AND_NOTIFIED") {
+      const signalRef = existingActiveSignal.result?.signal?.signalRef;
+      const recordedOutcome = signalRef ? await getRecordedOutcome(sql, signalRef) : null;
+      const notifiedMs = Date.parse(existingActiveSignal.notifiedAt || existingActiveSignal.confirmedAt || "");
+      if (recordedOutcome) {
+        existingActiveSignal = { ...existingActiveSignal, state: "CLOSED_WITH_OUTCOME", closedAt: recordedOutcome.recordedAt || new Date().toISOString(), recordedOutcome: recordedOutcome.outcome };
+        await saveActiveSignal(sql, existingActiveSignal, "BTCUSD");
+      } else if (Number.isFinite(notifiedMs) && Date.now() - notifiedMs > 24 * 60 * 60 * 1000) {
+        existingActiveSignal = { ...existingActiveSignal, state: "CLOSED_WITHOUT_OUTCOME", closedAt: new Date().toISOString() };
+        await saveActiveSignal(sql, existingActiveSignal, "BTCUSD");
+      }
+    }
     const activeNeedsMonitoring = Boolean(existingActiveSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(existingActiveSignal.state) || (["CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE", "INVALIDATED", "EXPIRED"].includes(existingActiveSignal.state) && existingActiveSignal.candidateNotification?.sent === true && existingActiveSignal.lifecycleNotification?.sent !== true)));
     if ((saved.btcEnabled === false || body.btcEnabled === false) && !activeNeedsMonitoring) {
       const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, symbol: "BTCUSD", monitorSkipped: true, skipReason: "BTC_DISABLED", reason: "BTCUSD is disabled in saved settings. Enable Bitcoin before analysis." };
@@ -233,6 +246,14 @@ export default async function handler(req, res) {
         const recordedOutcome = await getRecordedOutcome(sql, active.result.signal.signalRef);
         if (recordedOutcome) {
           active = { ...active, state: "CLOSED_WITH_OUTCOME", closedAt: recordedOutcome.recordedAt || new Date().toISOString(), recordedOutcome: recordedOutcome.outcome };
+          await saveActiveSignal(sql, active, "BTCUSD");
+        }
+      }
+      // Safety valve: a confirmed signal with no recorded outcome must not block new signals forever.
+      if (active?.state === "CONFIRMED_AND_NOTIFIED") {
+        const notifiedMs = Date.parse(active.notifiedAt || active.confirmedAt || "");
+        if (Number.isFinite(notifiedMs) && Date.now() - notifiedMs > 24 * 60 * 60 * 1000) {
+          active = { ...active, state: "CLOSED_WITHOUT_OUTCOME", closedAt: new Date().toISOString() };
           await saveActiveSignal(sql, active, "BTCUSD");
         }
       }
@@ -367,6 +388,7 @@ export default async function handler(req, res) {
 
       const activeCanBeReplaced = !active ||
         active.state === "CLOSED_WITH_OUTCOME" ||
+        active.state === "CLOSED_WITHOUT_OUTCOME" ||
         (["INVALIDATED", "EXPIRED", "CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE"].includes(active.state) &&
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
 
