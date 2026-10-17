@@ -6,6 +6,7 @@ on:
     paths:
       - "api/market-data-btc.js"
       - "api/analyze-btc.js"
+      - "api/diagnose-btc.js"
       - ".github/workflows/btc-readiness-probe.yml"
   workflow_dispatch:
 
@@ -71,3 +72,56 @@ jobs:
           done
           echo "BTC market-data endpoint did not return verified fresh candles after 12 attempts."
           exit 1
+      - name: Verify read-only BTCUSD H1/M15 analysis and current quote
+        env:
+          GOLD_SCALPER_URL: https://gold-scalper-nexora-apparel.vercel.app
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          code="$(curl --silent --show-error --connect-timeout 8 --max-time 30 \
+            --output "$response_file" --write-out '%{http_code}' \
+            --request POST "${GOLD_SCALPER_URL%/}/api/diagnose-btc" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{"diagnostic":true}' || true)"
+          if [ "$code" != "200" ]; then
+            echo "Read-only BTC diagnostic failed with HTTP ${code:-network-error}."
+            cat "$response_file"
+            exit 1
+          fi
+          node --input-type=module - "$response_file" <<'NODE'
+          import fs from "node:fs";
+          let body;
+          try {
+            body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.error("BTC diagnostic returned invalid JSON.");
+            process.exit(1);
+          }
+          const summary = {
+            ok: body.ok === true,
+            diagnosticOnly: body.diagnosticOnly === true,
+            symbol: body.symbol ?? null,
+            h1CandleCount: body.h1CandleCount ?? 0,
+            m15CandleCount: body.m15CandleCount ?? 0,
+            dataFreshness: body.dataFreshness ?? "unverified",
+            livePriceVerified: body.livePriceVerified === true,
+            analysisStatus: body.analysisStatus ?? null,
+            candidateSuppressed: body.candidateSuppressed === true,
+            telegramSent: body.telegramSent === true,
+            databaseWrites: body.databaseWrites === true,
+            brokerExecution: body.brokerExecution === true
+          };
+          console.log(JSON.stringify(summary));
+          if (body.ok !== true || body.diagnosticOnly !== true || body.symbol !== "BTC/USD" ||
+              Number(body.h1CandleCount) < 60 || Number(body.m15CandleCount) < 80 ||
+              body.dataFreshness !== "verified" || body.livePriceVerified !== true ||
+              body.signal !== null || body.telegramSent !== false ||
+              body.databaseWrites !== false || body.brokerExecution !== false) {
+            console.error("Read-only BTC diagnostic failed validation; no signal was generated.");
+            process.exit(1);
+          }
+          NODE
