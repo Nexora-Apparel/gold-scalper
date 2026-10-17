@@ -102,7 +102,7 @@ export default async function handler(req, res) {
 
     let signalCount = await countSignalsToday(sql);
     const existingActiveSignal = await getActiveSignal(sql);
-    const activeNeedsMonitoring = existingActiveSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(existingActiveSignal.state) || (existingActiveSignal.state === "CONFIRMATION_EXPIRED" && existingActiveSignal.lifecycleNotification?.sent !== true);
+    const activeNeedsMonitoring = Boolean(existingActiveSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(existingActiveSignal.state) || (existingActiveSignal.state === "CONFIRMATION_EXPIRED" && existingActiveSignal.lifecycleNotification?.sent !== true)));
     if (!isWithinSession(saved) && !activeNeedsMonitoring) {
       const outside = { status: "NO_TRADE", signal: null, marketDataVerified: false, monitorSkipped: true, skipReason: "OUTSIDE_SESSION",
         reason: "Outside configured XAUUSD monitoring hours (" + (saved.sessionStart || "08:00") + "–" + (saved.sessionEnd || "20:00") + " Africa/Lagos). No market-data request was made.",
