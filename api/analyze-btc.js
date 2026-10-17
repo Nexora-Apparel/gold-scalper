@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
-import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, claimMonitorLock, releaseMonitorLock } from "../lib/storage.js";
+import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, claimMonitorLock, releaseMonitorLock, getRecordedOutcome } from "../lib/storage.js";
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 
@@ -197,6 +197,13 @@ export default async function handler(req, res) {
       // Send a pending-entry alert as soon as a fresh candidate is validated and its entry is still ahead.
       // Subsequent completed M15 candles monitor confirmation, invalidation, and expiry.
       let active = await getActiveSignal(sql, "BTCUSD");
+      if (active?.state === "CONFIRMED_AND_NOTIFIED" && active.result?.signal?.signalRef) {
+        const recordedOutcome = await getRecordedOutcome(sql, active.result.signal.signalRef);
+        if (recordedOutcome) {
+          active = { ...active, state: "CLOSED_WITH_OUTCOME", closedAt: recordedOutcome.recordedAt || new Date().toISOString(), recordedOutcome: recordedOutcome.outcome };
+          await saveActiveSignal(sql, active, "BTCUSD");
+        }
+      }
       if (active && active.state === "WAITING_FOR_ENTRY") {
         const lifecycle = evaluateSignalLifecycle(active, fifteen);
         if (lifecycle.changed) {
@@ -321,7 +328,7 @@ export default async function handler(req, res) {
       }
 
       const activeCanBeReplaced = !active ||
-        active.state === "CONFIRMED_AND_NOTIFIED" ||
+        active.state === "CLOSED_WITH_OUTCOME" ||
         (["INVALIDATED", "EXPIRED"].includes(active.state) &&
           (active.candidateNotification?.sent !== true || active.lifecycleNotification?.sent === true));
 
