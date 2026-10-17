@@ -1,0 +1,73 @@
+name: BTCUSD read-only readiness probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/market-data-btc.js"
+      - "api/analyze-btc.js"
+      - ".github/workflows/btc-readiness-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-btc-market-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify authenticated fresh BTCUSD candles without generating a signal
+        env:
+          GOLD_SCALPER_URL: https://gold-scalper-nexora-apparel.vercel.app
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "CRON_SECRET repository secret is missing."
+            exit 1
+          fi
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          for attempt in $(seq 1 12); do
+            code="$(curl --silent --show-error --connect-timeout 8 --max-time 20 \
+              --output "$response_file" --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CRON_SECRET" \
+              "${GOLD_SCALPER_URL%/}/api/market-data-btc" || true)"
+            if [ "$code" = "200" ]; then
+              node --input-type=module - "$response_file" <<'NODE'
+          import fs from "node:fs";
+          let body;
+          try {
+            body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.error("BTC market-data route returned invalid JSON.");
+            process.exit(1);
+          }
+          const summary = {
+            ok: body.ok === true,
+            symbol: body.symbol ?? null,
+            interval: body.interval ?? null,
+            candleCount: body.candleCount ?? 0,
+            dataFreshness: body.dataFreshness ?? "unverified",
+            latestCandleTime: body.latestCandleTime ?? null
+          };
+          console.log(JSON.stringify(summary));
+          if (body.ok !== true || body.symbol !== "BTC/USD" ||
+              Number(body.candleCount) < 80 || body.dataFreshness !== "verified") {
+            console.error("BTC market-data verification failed. No signal was generated.");
+            process.exit(1);
+          }
+          NODE
+              exit $?
+            fi
+            if [ "$code" = "401" ] || [ "$code" = "403" ]; then
+              echo "BTC market-data route authorization failed (HTTP $code)."
+              exit 1
+            fi
+            echo "BTC route not ready or provider unavailable (HTTP ${code:-network-error}); retry $attempt/12."
+            sleep 15
+          done
+          echo "BTC market-data endpoint did not return verified fresh candles after 12 attempts."
+          exit 1
