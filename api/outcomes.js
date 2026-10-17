@@ -16,13 +16,19 @@ export default async function handler(req, res) {
     const sql = await ensureStorage();
     if (req.method === "GET") {
       const rows = await sql`
+        WITH latest AS (
+          SELECT DISTINCT ON (result->'signal'->>'signalRef')
+            id, created_at, result
+          FROM gold_scalper_history
+          WHERE status = 'SIGNAL_CANDIDATE'
+            AND result->'signal'->>'signalRef' IS NOT NULL
+          ORDER BY result->'signal'->>'signalRef', created_at DESC, id DESC
+        )
         SELECT h.id, h.created_at AS "createdAt", h.result->'signal' AS signal,
           o.outcome, o.realized_r AS "realizedR", o.notes, o.recorded_at AS "recordedAt"
-        FROM gold_scalper_history h
+        FROM latest h
         LEFT JOIN gold_scalper_outcomes o
           ON o.signal_ref = h.result->'signal'->>'signalRef'
-        WHERE h.status = 'SIGNAL_CANDIDATE'
-          AND h.result->'signal'->>'signalRef' IS NOT NULL
         ORDER BY h.created_at DESC, h.id DESC
         LIMIT 50
       `;
