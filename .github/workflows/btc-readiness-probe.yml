@@ -7,6 +7,7 @@ on:
       - "api/market-data-btc.js"
       - "api/analyze-btc.js"
       - "api/diagnose-btc.js"
+      - "api/telegram-diagnostic-btc.js"
       - ".github/workflows/btc-readiness-probe.yml"
   workflow_dispatch:
 
@@ -134,3 +135,44 @@ jobs:
           echo "Read-only BTC diagnostic did not verify fresh H1/M15 data and current quote after 12 attempts."
           cat "$response_file"
           exit 1
+      - name: Verify Telegram delivery with a one-time non-trade message
+        env:
+          GOLD_SCALPER_URL: https://gold-scalper-nexora-apparel.vercel.app
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          code="$(curl --silent --show-error --connect-timeout 8 --max-time 30 \
+            --output "$response_file" --write-out '%{http_code}' \
+            --request POST "${GOLD_SCALPER_URL%/}/api/telegram-diagnostic-btc" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{"diagnostic":true}' || true)"
+          if [ "$code" != "200" ]; then
+            echo "BTC Telegram diagnostic failed with HTTP ${code:-network-error}."
+            cat "$response_file"
+            exit 1
+          fi
+          node --input-type=module - "$response_file" <<'NODE'
+          import fs from "node:fs";
+          let body;
+          try {
+            body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.error("BTC Telegram diagnostic returned invalid JSON.");
+            process.exit(1);
+          }
+          const summary = {
+            ok: body.ok === true,
+            messageSent: body.messageSent === true,
+            alreadySent: body.alreadySent === true,
+            note: body.note ?? null
+          };
+          console.log(JSON.stringify(summary));
+          if (body.ok !== true || !(body.messageSent === true || body.alreadySent === true)) {
+            console.error("BTC Telegram delivery was not verified.");
+            process.exit(1);
+          }
+          NODE
