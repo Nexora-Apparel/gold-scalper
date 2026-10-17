@@ -114,7 +114,20 @@ export default async function handler(req, res) {
 
     const body = req.body || {};
     const saved = await getStoredSettings(sql);
-    const existingActiveSignal = await getActiveSignal(sql, "BTCUSD");
+    let existingActiveSignal = await getActiveSignal(sql, "BTCUSD");
+    // Resolve stale confirmed signals before session/disabled short-circuits, without inventing outcomes.
+    if (existingActiveSignal?.state === "CONFIRMED_AND_NOTIFIED") {
+      const signalRef = existingActiveSignal.result?.signal?.signalRef;
+      const recordedOutcome = signalRef ? await getRecordedOutcome(sql, signalRef) : null;
+      const notifiedMs = Date.parse(existingActiveSignal.notifiedAt || existingActiveSignal.confirmedAt || "");
+      if (recordedOutcome) {
+        existingActiveSignal = { ...existingActiveSignal, state: "CLOSED_WITH_OUTCOME", closedAt: recordedOutcome.recordedAt || new Date().toISOString(), recordedOutcome: recordedOutcome.outcome };
+        await saveActiveSignal(sql, existingActiveSignal, "BTCUSD");
+      } else if (Number.isFinite(notifiedMs) && Date.now() - notifiedMs > 24 * 60 * 60 * 1000) {
+        existingActiveSignal = { ...existingActiveSignal, state: "CLOSED_WITHOUT_OUTCOME", closedAt: new Date().toISOString() };
+        await saveActiveSignal(sql, existingActiveSignal, "BTCUSD");
+      }
+    }
     const activeNeedsMonitoring = Boolean(existingActiveSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(existingActiveSignal.state) || (["CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE", "INVALIDATED", "EXPIRED"].includes(existingActiveSignal.state) && existingActiveSignal.candidateNotification?.sent === true && existingActiveSignal.lifecycleNotification?.sent !== true)));
     if ((saved.btcEnabled === false || body.btcEnabled === false) && !activeNeedsMonitoring) {
       const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, symbol: "BTCUSD", monitorSkipped: true, skipReason: "BTC_DISABLED", reason: "BTCUSD is disabled in saved settings. Enable Bitcoin before analysis." };
