@@ -283,8 +283,7 @@ export default async function handler(req, res) {
         const confirmationExpired = active.state === "CONFIRMATION_EXPIRED";
         const cancelled = active.state === "CANCELLED_BY_PAUSE";
         const update = await sendTelegramMessage(confirmationExpired
-          ? "<b>EXPIRED — DO NOT ENTER (BTCUSD)</b>
-The confirmation alert is too old to act on safely."
+          ? "⚠️ <b>EXPIRED — DO NOT ENTER (BTCUSD)</b>\nThe confirmation alert is too old to act on safely."
           : cancelled
             ? "BTCUSD pending setup cancelled because the engine was paused."
             : invalidated
