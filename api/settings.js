@@ -25,6 +25,7 @@ export default async function handler(req, res) {
       minQuality: Number(b.minQuality),
       maxSignals: Number(b.maxSignals),
       timeframe: b.timeframe,
+      strategyMode: b.strategyMode,
       mode: "manual",
       goldEnabled: b.goldEnabled === true,
       btcEnabled: b.btcEnabled === true,
@@ -40,6 +41,7 @@ export default async function handler(req, res) {
         ![65, 70, 75, 80].includes(s.minQuality) ||
         ![1, 2, 3].includes(s.maxSignals) ||
         s.timeframe !== "M15" ||
+        !["MSNR", "SMC", "MSNR_SMC"].includes(s.strategyMode) ||
         !["session", "24h"].includes(s.scanMode) ||
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.sessionStart) ||
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.sessionEnd) ||
