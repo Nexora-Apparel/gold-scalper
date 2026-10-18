@@ -101,13 +101,13 @@ test("fails closed when timestamped candles are not newest-first", () => {
 });
 
 
-test("SMC-only mode does not mislabel a no-trade result as an MSNR rejection", () => {
+test("dashboard strategy choice cannot disable mandatory MSNR + SMC mode", () => {
   const hourly = makeCandles(100, 60 * 60 * 1000, "flat");
   const fifteen = makeCandles(120, 15 * 60 * 1000, "flat");
   const result = analyzeGold(hourly, fifteen, { strategyMode: "SMC" });
   assert.equal(result.status, "NO_TRADE");
   assert.equal(result.signal, null);
-  assert.match(result.reason, /SMC/i);
+  assert.match(result.reason, /mandatory.*MSNR.*SMC|MSNR.*SMC/i);
 });
 
 test("combined MSNR + SMC mode requires both strategy confirmations", () => {
@@ -117,4 +117,13 @@ test("combined MSNR + SMC mode requires both strategy confirmations", () => {
   assert.equal(result.status, "NO_TRADE");
   assert.equal(result.signal, null);
   assert.match(result.reason, /MSNR.*SMC|SMC.*MSNR/i);
+});
+
+test("MSNR-only input cannot switch the engine away from mandatory combined mode", () => {
+  const hourly = makeCandles(100, 60 * 60 * 1000, "flat");
+  const fifteen = makeCandles(120, 15 * 60 * 1000, "flat");
+  const result = analyzeGold(hourly, fifteen, { strategyMode: "MSNR" });
+  assert.equal(result.status, "NO_TRADE");
+  assert.equal(result.signal, null);
+  assert.match(result.reason, /mandatory.*MSNR.*SMC|MSNR.*SMC/i);
 });

@@ -136,6 +136,7 @@ export default async function handler(req, res) {
       return res.status(200).json(disabled);
     }
     const settings = {
+      strategyMode: "MSNR_SMC",
       balance: Number(body.balance ?? saved.balance ?? 1000),
       currency: ["USD", "NGN", "EUR", "GBP"].includes(body.currency ?? saved.currency) ? (body.currency ?? saved.currency) : "USD",
       riskPercent: Number(body.riskPercent ?? saved.riskPercent ?? 0.5),
