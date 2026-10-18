@@ -73,10 +73,13 @@ jobs:
           }
           const skipForPause = status.emergencyStop === true || status.engine !== "RUNNING";
           const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true;
-          if (skipForPause || skipForSession) {
-            console.log(skipForSession
-              ? "Monitor skipped: outside the configured monitoring session with no pending signal to monitor."
-              : "Monitor skipped because the engine is intentionally paused or emergency-stopped.");
+          const skipForMarketClosed = status.marketOpen === false;
+          if (skipForPause || skipForSession || skipForMarketClosed) {
+            console.log(skipForMarketClosed
+              ? "Monitor skipped: XAU/USD spot market is closed; weekend pseudo-candles will not be analyzed."
+              : skipForSession
+                ? "Monitor skipped: outside the configured monitoring session with no pending signal to monitor."
+                : "Monitor skipped because the engine is intentionally paused or emergency-stopped.");
             fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_run=false\n");
             process.exit(0);
           }
