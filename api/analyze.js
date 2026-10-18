@@ -4,6 +4,7 @@ import { ensureStorage, getControlState, getStoredSettings, recordHistory, count
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 import { getNewsStatus } from "../lib/news-filter.js";
+import { getGoldMarketStatus } from "../lib/market-hours.js";
 
 const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000 };
 
@@ -82,6 +83,18 @@ export default async function handler(req, res) {
 
     const body = req.body || {};
     const saved = await getStoredSettings(sql);
+    const marketStatus = getGoldMarketStatus();
+    if (!marketStatus.open) {
+      const closed = {
+        status: "NO_TRADE", signal: null, marketDataVerified: false,
+        marketOpen: false, marketStatus: marketStatus.status,
+        reason: marketStatus.reason,
+        checkedAt: new Date().toISOString()
+      };
+      await recordHistory(sql, closed);
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(200).json(closed);
+    }
     if (saved.goldEnabled === false || body.goldEnabled === false) {
       const disabled = { status: "NO_TRADE", signal: null, marketDataVerified: false, reason: "XAUUSD is disabled in saved settings. Enable Gold before analysis." };
       await recordHistory(sql, disabled);
