@@ -1,4 +1,5 @@
 import { ensureStorage, getControlState, getStoredSettings, getActiveSignal } from "../lib/storage.js";
+import { getGoldMarketStatus } from "../lib/market-hours.js";
 
 function withinSession(settings, now = new Date()) {
   if (settings.scanMode === "24h") return true;
@@ -22,11 +23,15 @@ export default async function handler(req, res) {
     const activeSignal = await getActiveSignal(sql);
     const activeSignalNeedsMonitoring = Boolean(activeSignal && ["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY"].includes(activeSignal.state));
     const sessionActive = withinSession(settings);
+    const marketStatus = getGoldMarketStatus();
     return res.status(200).json({
       application: "ONLINE",
       database: "CONNECTED",
       marketData: keyConfigured ? "Key configured; live feed unverified" : "API key required",
       marketConnected: false,
+      marketOpen: marketStatus.open,
+      marketStatus: marketStatus.status,
+      marketStatusReason: marketStatus.reason,
       marketKeyConfigured: keyConfigured,
       telegram: telegramConfigured ? "Configured; run a test to verify current deployment delivery" : "Not configured",
       telegramConfigured,
