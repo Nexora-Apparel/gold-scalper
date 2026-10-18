@@ -1,0 +1,28 @@
+{
+  "id": "/",
+  "name": "Gold Scalper — Signal Desk",
+  "short_name": "Gold Scalper",
+  "description": "Personal XAUUSD and BTCUSD signal monitoring dashboard.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "categories": [
+    "finance",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
