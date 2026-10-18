@@ -23,12 +23,19 @@ h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repea
 .status .value{max-width:64%;text-align:right;overflow-wrap:anywhere}.log{overflow-wrap:anywhere}
 @media(max-width:420px){.brand{font-size:16px}.sub{font-size:11px}.top-actions{gap:5px}.install-btn{padding:8px 9px;font-size:10px}.pill{padding:7px 8px;font-size:10px}.card{padding:13px}.btn{padding:13px 7px;font-size:12px}.settings{grid-template-columns:1fr}}
 
-.nav-tabs{display:flex;gap:7px;overflow-x:auto;overscroll-behavior-x:contain;padding:5px 0 13px;margin:-4px 0 7px;scrollbar-width:none;position:sticky;top:64px;z-index:15;background:rgba(0,0,0,.96);backdrop-filter:blur(14px)}
-.nav-tabs::-webkit-scrollbar{display:none}.nav-tab{flex:0 0 auto;border:1px solid #29292f;background:#0b0b0e;color:#a1a1aa;border-radius:11px;padding:11px 13px;font-size:12px;font-weight:750;white-space:nowrap;cursor:pointer}
-.nav-tab.active{color:#080808;background:var(--gold);border-color:var(--gold);box-shadow:0 4px 18px #e7bd5522}
+.nav-tabs{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:9px 7px calc(9px + env(safe-area-inset-bottom));margin:0;background:rgba(5,5,6,.97);border-top:1px solid #29292f;backdrop-filter:blur(18px);box-shadow:0 -8px 28px #0009}
+.nav-tab{min-width:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;border:1px solid transparent;background:transparent;color:#a1a1aa;border-radius:10px;padding:8px 2px;font-size:10px;font-weight:750;line-height:1.1;white-space:nowrap;cursor:pointer}
+.nav-tab::before{font-size:17px;line-height:1}
+.nav-tab[data-tab="dashboard"]::before{content:"⌂"}
+.nav-tab[data-tab="strategy"]::before{content:"⚙"}
+.nav-tab[data-tab="outcomes"]::before{content:"▤"}
+.nav-tab[data-tab="activity"]::before{content:"◷"}
+.nav-tab[data-tab="control"]::before{content:"▶"}
+.nav-tab.active{color:var(--gold);background:#e7bd5514;border-color:#e7bd5544}
 .view-hidden{display:none!important}
 .card{border-radius:15px}
-@media(max-width:420px){.nav-tabs{top:57px;gap:6px}.nav-tab{padding:10px 11px;font-size:11px}}
+body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+@media(max-width:360px){.nav-tabs{gap:1px;padding-left:4px;padding-right:4px}.nav-tab{font-size:9px;padding-left:0;padding-right:0}}
 </style></head>
 <body><main>
 <header class="top"><div><div class="brand"><span class="gold">◆</span> GOLD &amp; BTC SIGNAL CONTROL</div><div class="sub">Personal signal desk · mobile-first</div></div><div class="top-actions"><button class="install-btn" id="installApp" type="button" aria-label="Install Gold Scalper app">＋ INSTALL</button><div class="pill" id="modePill">SAFE MODE</div></div></header>
