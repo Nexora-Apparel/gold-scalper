@@ -13,7 +13,7 @@ function parseProviderTime(value) {
 
 export function bearerMatches(header, expected) {
   if (typeof header !== "string" || !expected) return false;
-  const match = /^Bearer\\s+(.+)$/i.exec(header);
+  const match = /^Bearer\s+(.+)$/i.exec(header);
   if (!match) return false;
   const supplied = Buffer.from(match[1], "utf8");
   const configured = Buffer.from(expected, "utf8");
@@ -61,7 +61,7 @@ async function runTelegramDiagnostic(res) {
       if (rows[0]?.state_value?.sent === true) return res.status(200).json({ ok: true, alreadySent: true, messageSent: false, note: "The one-time BTCUSD Telegram connectivity test was already delivered. No duplicate message was sent." });
       return res.status(409).json({ ok: false, error: "A BTCUSD Telegram diagnostic is already in progress." });
     }
-    const delivery = await sendTelegramMessage("BTCUSD READINESS CHECK — Telegram delivery confirmed.\\nThis is a system connectivity test only, NOT a trading signal. No order was generated or placed. BTCUSD remains disabled until all launch checks pass.");
+    const delivery = await sendTelegramMessage("BTCUSD READINESS CHECK — Telegram delivery confirmed.\nThis is a system connectivity test only, NOT a trading signal. No order was generated or placed. BTCUSD remains disabled until all launch checks pass.");
     const recordedAt = new Date().toISOString();
     await sql`INSERT INTO gold_scalper_state (state_key, state_value, updated_at)
       VALUES ('btc_telegram_diagnostic', ${JSON.stringify({ sending: false, sent: delivery.sent === true, sentAt: delivery.sent ? recordedAt : null, lastAttemptAt: recordedAt, messageId: delivery.messageId ?? null, error: delivery.sent ? null : String(delivery.message || "Telegram delivery failed.").slice(0, 180) })}::jsonb, NOW())
