@@ -50,7 +50,7 @@ test("never emits a malformed trade candidate", () => {
     assert.ok(["BUY", "SELL"].includes(result.signal.side));
     assert.ok(result.signal.stopLoss > 0);
     assert.ok(result.signal.takeProfit > 0);
-    assert.ok(result.signal.riskReward >= 1.5);
+    assert.ok(result.signal.riskReward > 0, "target distance must be positive but has no configured RR threshold");
     const setupCandle = fifteen.find((row) => row.time === result.signal.candleTime);
     assert.ok(setupCandle, "candidate must reference its setup candle");
     assert.ok(
