@@ -127,9 +127,9 @@ test("builds a premium black-and-blue BUY image card with live signal levels", (
   assert.match(svg, /<svg/);
   assert.match(svg, /#35A7FF/);
   assert.match(svg, /BUY/);
-  assert.match(svg, /4171\.00/);
-  assert.match(svg, /4211\.00/);
-  assert.match(svg, /4151\.00/);
+  assert.match(svg, /4,171\.00/);
+  assert.match(svg, /4,211\.00/);
+  assert.match(svg, /4,151\.00/);
   assert.match(svg, /MANUAL REVIEW ONLY/);
 });
 
@@ -142,7 +142,7 @@ test("builds a black-and-red SELL image card and uses BTCUSD when supplied", () 
   assert.match(svg, /#FF4D61/);
   assert.match(svg, /SELL/);
   assert.match(svg, /BTCUSD/);
-  assert.match(svg, /65000\.00/);
+  assert.match(svg, /65,000\.00/);
 });
 
 test("refuses to render a card with invalid trade levels", () => {
