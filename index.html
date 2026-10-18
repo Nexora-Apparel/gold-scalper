@@ -63,7 +63,20 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 .nav-tab.active{animation:gs-nav-in .2s ease-out}
 .btn:focus-visible,.install-btn:focus-visible,.nav-tab:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 @media (hover:hover) and (pointer:fine){.card:hover{border-color:#45454e;transform:translateY(-1px)}.btn:hover:not(:disabled){filter:brightness(1.08);border-color:#55555f}.nav-tab:hover{background:#ffffff0a}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+/* More visible dashboard motion: staggered panel entrances and clear tap/nav feedback. */
+@keyframes gs-panel-reveal{0%{opacity:0;transform:translateY(22px) scale(.985);filter:blur(2px)}65%{opacity:1;filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes gs-gold-sweep{0%{background-position:180% 0}100%{background-position:-180% 0}}
+@keyframes gs-gold-breathe{0%,100%{box-shadow:0 5px 18px #f4c75e18,0 0 0 0 #e7bd5520}50%{box-shadow:0 7px 24px #f4c75e30,0 0 0 4px #e7bd550d}}
+@keyframes gs-nav-pop{0%{transform:translateY(5px) scale(.94)}70%{transform:translateY(-1px) scale(1.03)}100%{transform:translateY(0) scale(1)}}
+.card.motion-in{animation:gs-panel-reveal .56s cubic-bezier(.18,.76,.24,1) both}
+.card h2:before{animation:gs-gold-breathe 2.8s ease-in-out infinite}
+.brand .gold{display:inline-block;animation:gs-nav-pop .65s cubic-bezier(.2,.8,.2,1) both}
+.install-btn{background:linear-gradient(110deg,#f8d878 0%,#e7bd55 35%,#fff0ae 50%,#d8a83d 68%,#f8d878 100%);background-size:220% 100%;animation:gs-gold-sweep 5s ease-in-out infinite}
+.nav-tab.active{box-shadow:inset 0 0 0 1px #e7bd5510,0 0 18px #e7bd550c}
+.nav-tab.active::before{animation:gs-nav-pop .28s ease-out both}
+.btn.primary{animation:gs-gold-breathe 3.4s ease-in-out infinite}
+.btn.motion-tap,.install-btn.motion-tap,.nav-tab.motion-tap{animation:gs-tap .3s cubic-bezier(.2,.8,.2,1)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important;filter:none!important}}
 
 </style></head>
 <body><main>
@@ -163,10 +176,11 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 const $=id=>document.getElementById(id);
 
 function showView(view){
+  let panelIndex=0;
   document.querySelectorAll('[data-view]').forEach(section=>{
     const visible=section.dataset.view===view;
     section.classList.toggle('view-hidden',!visible);
-    if(visible){section.classList.remove('motion-in');void section.offsetWidth;section.classList.add('motion-in');}
+    if(visible){section.style.animationDelay=(panelIndex++*110)+'ms';section.classList.remove('motion-in');void section.offsetWidth;section.classList.add('motion-in');}
   });
   document.querySelectorAll('[data-tab]').forEach(tab=>{const active=tab.dataset.tab===view;tab.classList.toggle('active',active);tab.setAttribute('aria-current',active?'page':'false')});
   window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
