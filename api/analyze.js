@@ -5,6 +5,8 @@ import { ensureStorage, getControlState, getStoredSettings, recordHistory, count
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 import { processRsiRejectionAlert } from "../lib/rsi-rejection-alerts.js";
+import { getNewsStatus } from "../lib/news-filter.js";
+import { getGoldMarketStatus } from "../lib/market-hours.js";
 
 const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000 };
 
@@ -133,8 +135,16 @@ export default async function handler(req, res) {
       sessionEnd: saved.sessionEnd || "20:00"
     };
     if (!(settings.balance > 0) || !(settings.riskPercent >= 0.1 && settings.riskPercent <= 1) ||
-        ![2, 2.5, 3].includes(settings.minRR) || ![65, 70, 75, 80].includes(settings.minQuality) || ![1, 2, 3].includes(settings.maxSignals)) {
+        ![1.5, 2, 2.5, 3].includes(settings.minRR) || ![65, 70, 75, 80].includes(settings.minQuality) || ![1, 2, 3].includes(settings.maxSignals)) {
       return res.status(400).json({ status: "NO_TRADE", signal: null, error: "Invalid risk settings." });
+    }
+
+    const goldMarketStatus = getGoldMarketStatus();
+    if (!goldMarketStatus.open) {
+      const closed = { status: "NO_TRADE", signal: null, marketDataVerified: false, marketOpen: false,
+        reason: goldMarketStatus.reason, checkedAt: new Date().toISOString() };
+      await recordHistory(sql, closed);
+      return res.status(200).json(closed);
     }
 
     let signalCount = await countSignalsToday(sql);
@@ -192,6 +202,15 @@ export default async function handler(req, res) {
         latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time },
         dataFreshness: "verified"
       };
+      if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
+        const newsStatus = await getNewsStatus({ now: new Date() });
+        result.newsStatus = newsStatus;
+        if (!newsStatus.ok || newsStatus.blocked) {
+          result = { ...result, status: "NO_TRADE", signal: null,
+            reason: newsStatus.reason || "Economic calendar could not be verified; new signals are blocked." };
+        }
+      }
+
       // A candle-based trigger can be crossed before the next scheduled scan.
       // Verify the provider's current quote before persisting any new pending entry.
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
