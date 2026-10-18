@@ -1,9 +1,7 @@
 name: Gold Scalper scheduled monitor
 
 on:
-  push:
-    branches:
-      - feature/personal-telegram-signal-bot
+  # Manual and scheduled runs only. Code pushes must never trigger a live market scan.
   schedule:
     # GitHub scheduled workflows can be delayed; this is not tick-level monitoring.
     - cron: "*/15 * * * *"
