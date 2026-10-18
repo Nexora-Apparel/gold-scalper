@@ -22,7 +22,6 @@ export default async function handler(req, res) {
       balance: Number(b.balance),
       currency: b.currency,
       riskPercent: Number(b.riskPercent),
-      minRR: Number(b.minRR),
       minQuality: Number(b.minQuality),
       maxSignals: Number(b.maxSignals),
       timeframe: b.timeframe,
@@ -38,7 +37,6 @@ export default async function handler(req, res) {
     };
     if (!(s.balance > 0) || !["USD", "NGN", "EUR", "GBP"].includes(s.currency) ||
         !(s.riskPercent >= 0.1 && s.riskPercent <= 1) ||
-        ![2, 2.5, 3].includes(s.minRR) ||
         ![65, 70, 75, 80].includes(s.minQuality) ||
         ![1, 2, 3].includes(s.maxSignals) ||
         s.timeframe !== "M15" ||
