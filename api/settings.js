@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       minQuality: Number(b.minQuality),
       maxSignals: Number(b.maxSignals),
       timeframe: b.timeframe,
-      strategyMode: b.strategyMode,
+      strategyMode: "MSNR_SMC",
       mode: "manual",
       goldEnabled: b.goldEnabled === true,
       btcEnabled: b.btcEnabled === true,
@@ -41,7 +41,6 @@ export default async function handler(req, res) {
         ![65, 70, 75, 80].includes(s.minQuality) ||
         ![1, 2, 3].includes(s.maxSignals) ||
         s.timeframe !== "M15" ||
-        !["MSNR", "SMC", "MSNR_SMC"].includes(s.strategyMode) ||
         !["session", "24h"].includes(s.scanMode) ||
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.sessionStart) ||
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.sessionEnd) ||
@@ -50,7 +49,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid settings." });
     }
     await saveStoredSettings(sql, s);
-    return res.status(200).json({ persisted: true, settings: s, message: "Settings saved to the database." });
+    return res.status(200).json({ persisted: true, settings: s, strategyMode: "MSNR_SMC", message: "Settings saved. The mandatory MSNR + SMC strategy is fixed and cannot be switched in the dashboard." });
   } catch (error) {
     console.error("Settings storage failure:", error?.message || "unknown error");
     return res.status(503).json({ persisted: false, error: "Database unavailable. Settings were not changed." });
