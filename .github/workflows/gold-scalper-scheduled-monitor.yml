@@ -23,8 +23,10 @@ jobs:
         env:
           GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           set -eu
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET" || { echo "Missing repository secret VERCEL_AUTOMATION_BYPASS_SECRET; Vercel preview protection must remain enabled."; exit 1; }
           test -n "$GOLD_SCALPER_URL" || { echo "Missing GOLD_SCALPER_URL configuration"; exit 1; }
           test -n "$CRON_SECRET" || { echo "Missing repository secret CRON_SECRET"; exit 1; }
           case "$GOLD_SCALPER_URL" in
@@ -39,8 +41,10 @@ jobs:
         id: preflight
         env:
           GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           set -eu
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET" || { echo "Missing repository secret VERCEL_AUTOMATION_BYPASS_SECRET"; exit 1; }
           # Independent guard: the currently deployed preview may not yet expose
           # marketOpen, so never rely on its status response to avoid weekend scans.
           weekday="$(date -u +%u)"
@@ -56,6 +60,7 @@ jobs:
           trap 'rm -f "$response_file"' EXIT
           code="$(curl --silent --show-error --connect-timeout 8 --max-time 20 --retry 2 --retry-delay 2 --retry-connrefused \
             --output "$response_file" --write-out '%{http_code}' \
+            --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" \
             "${GOLD_SCALPER_URL%/}/api/status")"
           test "$code" -ge 200 && test "$code" -lt 300 || {
             echo "Status endpoint failed with HTTP $code"
@@ -102,14 +107,17 @@ jobs:
         env:
           GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           set -eu
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET" || { echo "Missing repository secret VERCEL_AUTOMATION_BYPASS_SECRET"; exit 1; }
           response_file="$(mktemp)"
           trap 'rm -f "$response_file"' EXIT
           code="$(curl --silent --show-error --max-time 90 \
             --output "$response_file" --write-out '%{http_code}' \
             --request POST "${GOLD_SCALPER_URL%/}/api/analyze" \
             --header "Authorization: Bearer $CRON_SECRET" \
+            --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" \
             --header "Content-Type: application/json" \
             --data '{}')"
           echo "Analysis endpoint HTTP status: $code"
