@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       mode: "manual",
       goldEnabled: b.goldEnabled === true,
       majorsEnabled: b.majorsEnabled === true,
-      newsEnabled: b.newsEnabled === true,
+      newsEnabled: true,
       scanMode: b.scanMode,
       sessionStart: b.sessionStart,
       sessionEnd: b.sessionEnd,
