@@ -10,9 +10,9 @@ function candidate(overrides = {}) {
       symbol: "XAUUSD",
       side: "BUY",
       entry: 4171,
-      takeProfit: 4191,
+      takeProfit: 4211,
       stopLoss: 4151,
-      riskReward: 1,
+      riskReward: 2,
       riskPercent: 0.5,
       riskAmount: 5,
       accountCurrency: "USD",
@@ -33,9 +33,9 @@ test("formats a BUY candidate with entry, target, stop, risk, and disclaimer", (
   const message = formatSignalMessage(candidate());
   assert.match(message, /BUY XAUUSD — SIGNAL CANDIDATE/);
   assert.match(message, /Entry:<\/b> 4171\.00/);
-  assert.match(message, /TP1:<\/b> 4191\.00/);
+  assert.match(message, /TP1:<\/b> 4211\.00/);
   assert.match(message, /SL:<\/b> 4151\.00/);
-  assert.match(message, /Risk\/Reward:<\/b> 1:1\.00/);
+  assert.match(message, /Risk\/Reward:<\/b> 1:2\.00/);
   assert.match(message, /Signal quality:<\/b> 80\/100/);
   assert.match(message, /Risk budget:<\/b> 5\.00 USD \(0\.5%\)/);
   assert.match(message, /H1 trend confirmation/);
@@ -44,10 +44,10 @@ test("formats a BUY candidate with entry, target, stop, risk, and disclaimer", (
 
 test("formats a SELL candidate and uses the red direction marker", () => {
   const message = formatSignalMessage(candidate({
-    side: "SELL", entry: 4171, takeProfit: 4151, stopLoss: 4191
+    side: "SELL", entry: 4171, takeProfit: 4131, stopLoss: 4191
   }));
   assert.match(message, /🟥 SELL XAUUSD — SIGNAL CANDIDATE/);
-  assert.match(message, /TP1:<\/b> 4151\.00/);
+  assert.match(message, /TP1:<\/b> 4131\.00/);
   assert.match(message, /SL:<\/b> 4191\.00/);
 });
 
@@ -115,7 +115,7 @@ test("formats BTCUSD as BTCUSD and never labels it XAUUSD", () => {
   const message = formatSignalMessage({
     ...base,
     symbol: "BTCUSD",
-    signal: { ...base.signal, symbol: "BTCUSD", entry: 65000, takeProfit: 66000, stopLoss: 64000, riskReward: 1 }
+    signal: { ...base.signal, symbol: "BTCUSD", entry: 65000, takeProfit: 67000, stopLoss: 64000, riskReward: 2 }
   });
   assert.match(message, /BUY BTCUSD — SIGNAL CANDIDATE/);
   assert.doesNotMatch(message, /XAUUSD/);
