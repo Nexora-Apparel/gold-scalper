@@ -3,6 +3,7 @@ import { hasOwnerSession } from "../lib/auth.js";
 import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal } from "../lib/storage.js";
 import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
+import { getNewsStatus } from "../lib/news-filter.js";
 
 const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000 };
 
@@ -132,14 +133,33 @@ export default async function handler(req, res) {
         return validateCandles(j.values, interval, interval === "1h" ? 60 : 80);
       }
       const [hourly, fifteen] = await Promise.all([candles("1h", 120), candles("15min", 250)]);
+      const newsStatus = await getNewsStatus();
       let result = {
         ...analyzeGold(hourly, fifteen, settings),
         source: "Twelve Data",
         checkedAt: new Date().toISOString(),
         marketDataVerified: true,
         latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time },
-        dataFreshness: "verified"
+        dataFreshness: "verified",
+        newsStatus: {
+          status: newsStatus.status,
+          blocked: newsStatus.blocked,
+          reason: newsStatus.reason,
+          ...(newsStatus.event ? { event: newsStatus.event } : {})
+        }
       };
+      // News protection applies to new candidates. Existing pending signals still
+      // advance through lifecycle monitoring, but no new candidate can be queued
+      // if the calendar is unavailable or a high-impact USD event is nearby.
+      if (result.status === "SIGNAL_CANDIDATE" && result.signal && newsStatus.blocked) {
+        result = {
+          ...result,
+          status: "NO_TRADE",
+          signal: null,
+          newsBlocked: true,
+          reason: newsStatus.reason
+        };
+      }
       // A candle-based trigger can be crossed before the next scheduled scan.
       // Verify the provider's current quote before persisting any new pending entry.
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
