@@ -78,6 +78,7 @@ jobs:
           const checks = {
             database: status.database === "CONNECTED",
             marketDataKey: status.marketKeyConfigured === true,
+            marketFeedVerified: status.marketConnected === true,
             telegram: status.telegramConfigured === true,
             cronSecret: status.cronSecretConfigured === true,
           };
