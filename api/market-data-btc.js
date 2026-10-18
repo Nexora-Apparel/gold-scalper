@@ -241,7 +241,7 @@ async function handleMarketData(req, res) {
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
-  // Both URLs are routed to this single function. POST is the protected diagnostic;
+  // Consolidated route keeps BTC diagnostics within Vercel Hobby's function cap. POST is the protected diagnostic;
   // GET is the authenticated market-data endpoint.
   if (req.method === "POST") return handleDiagnostic(req, res);
   return handleMarketData(req, res);
