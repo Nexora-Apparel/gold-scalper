@@ -50,6 +50,21 @@ h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repea
 .card{border-radius:15px}
 body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 @media(max-width:360px){.nav-tabs{gap:1px;padding-left:4px;padding-right:4px}.nav-tab{font-size:9px;padding-left:0;padding-right:0}}
+
+/* Lightweight motion polish: no dependencies, no extra market requests. */
+@keyframes gs-enter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gs-tap{0%{transform:scale(1)}45%{transform:scale(.975)}100%{transform:scale(1)}}
+@keyframes gs-nav-in{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.card{transform-origin:50% 0;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+.card.motion-in{animation:gs-enter .34s cubic-bezier(.2,.75,.25,1) both}
+.btn,.install-btn,.nav-tab{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.btn.motion-tap,.install-btn.motion-tap,.nav-tab.motion-tap{animation:gs-tap .22s ease-out}
+.nav-tab{transition:color .18s ease,background .18s ease,border-color .18s ease,transform .18s ease}
+.nav-tab.active{animation:gs-nav-in .2s ease-out}
+.btn:focus-visible,.install-btn:focus-visible,.nav-tab:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+@media (hover:hover) and (pointer:fine){.card:hover{border-color:#45454e;transform:translateY(-1px)}.btn:hover:not(:disabled){filter:brightness(1.08);border-color:#55555f}.nav-tab:hover{background:#ffffff0a}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
 </style></head>
 <body><main>
 <header class="top"><div><div class="brand"><span class="gold">◆</span> GOLD &amp; BTC SIGNAL CONTROL</div><div class="sub">Personal signal desk · mobile-first</div></div><div class="top-actions"><button class="install-btn" id="installApp" type="button" aria-label="Install Gold Scalper app">＋ INSTALL</button><div class="pill" id="modePill">SAFE MODE</div></div></header>
@@ -148,15 +163,30 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 const $=id=>document.getElementById(id);
 
 function showView(view){
-  document.querySelectorAll('[data-view]').forEach(section=>section.classList.toggle('view-hidden',section.dataset.view!==view));
+  document.querySelectorAll('[data-view]').forEach(section=>{
+    const visible=section.dataset.view===view;
+    section.classList.toggle('view-hidden',!visible);
+    if(visible){section.classList.remove('motion-in');void section.offsetWidth;section.classList.add('motion-in');}
+  });
   document.querySelectorAll('[data-tab]').forEach(tab=>{const active=tab.dataset.tab===view;tab.classList.toggle('active',active);tab.setAttribute('aria-current',active?'page':'false')});
-  window.scrollTo({top:0,behavior:'smooth'});
+  window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
   if(view==='chart')setTimeout(()=>window.dispatchEvent(new Event('resize')),120);
 }
 document.querySelectorAll('[data-tab]').forEach(tab=>tab.addEventListener('click',()=>showView(tab.dataset.tab)));
 $('openFullChart').addEventListener('click',()=>showView('chart'));
 $('backToDashboard').addEventListener('click',()=>showView('dashboard'));
 showView('dashboard');
+
+/* Short tap feedback for touch and mouse; never intercepts the button action. */
+document.addEventListener('pointerdown',event=>{
+  const target=event.target.closest('button');
+  if(!target||target.disabled)return;
+  target.classList.remove('motion-tap');void target.offsetWidth;target.classList.add('motion-tap');
+},{passive:true});
+document.addEventListener('animationend',event=>{
+  if(event.animationName==='gs-tap')event.target.classList.remove('motion-tap');
+});
+
 
 async function api(path,body,afterLogin=false){let r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});let j={};try{j=await r.json()}catch{}if(r.status===401&&!afterLogin&&path!=='/api/login'){const password=window.prompt('Owner login required. Enter your dashboard password:');if(password===null||!password)throw new Error('Login cancelled. No action was executed.');const lr=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});let lj={};try{lj=await lr.json()}catch{}if(!lr.ok)throw new Error(lj.error||'Owner login failed.');return api(path,body,true)}if(!r.ok)throw new Error(j.error||('Request failed ('+r.status+')'));return j}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
