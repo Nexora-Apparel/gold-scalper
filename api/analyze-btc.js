@@ -85,7 +85,7 @@ export default async function handler(req, res) {
           pausedSignal.candidateNotification?.sent === true && pausedSignal.lifecycleNotification?.sent !== true) {
         const confirmationExpired = pausedSignal.state === "CONFIRMATION_EXPIRED";
         const delivery = await sendTelegramMessage(confirmationExpired
-          ? "⚠️ <b>BTCUSD CONFIRMATION EXPIRED</b>\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
+          ? "⚠️ <b>EXPIRED — DO NOT ENTER (BTCUSD)</b>\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
           : "⏸️ <b>BTCUSD PENDING SETUP CANCELLED</b>\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually.");
         pausedSignal = {
           ...pausedSignal,
@@ -283,12 +283,13 @@ export default async function handler(req, res) {
         const confirmationExpired = active.state === "CONFIRMATION_EXPIRED";
         const cancelled = active.state === "CANCELLED_BY_PAUSE";
         const update = await sendTelegramMessage(confirmationExpired
-          ? "BTCUSD confirmation expired; do not act on a delayed confirmation."
+          ? "<b>EXPIRED — DO NOT ENTER (BTCUSD)</b>
+The confirmation alert is too old to act on safely."
           : cancelled
             ? "BTCUSD pending setup cancelled because the engine was paused."
             : invalidated
-          ? "⚠️ <b>BTCUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
-          : "⌛ <b>BTCUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
+          ? "⚠️ <b>INVALIDATED — DO NOT ENTER (BTCUSD)</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
+          : "⌛ <b>EXPIRED — DO NOT ENTER (BTCUSD)</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
         const attemptedAt = new Date().toISOString();
         active = {
           ...active,
