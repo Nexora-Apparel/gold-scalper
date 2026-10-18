@@ -148,3 +148,11 @@ test("builds a black-and-red SELL image card and uses BTCUSD when supplied", () 
 test("refuses to render a card with invalid trade levels", () => {
   assert.throws(() => buildSignalCardSvg(candidate({ side: "BUY", stopLoss: 4180 })), /do not match the trade direction/i);
 });
+
+
+test("marks image card test renders as a non-live design preview", () => {
+  const svg = buildSignalCardSvg({ ...candidate(), preview: true });
+  assert.match(svg, /DESIGN PREVIEW — SAMPLE DATA/);
+  assert.match(svg, /PREVIEW MODE • NOT A LIVE SIGNAL/);
+  assert.match(svg, /SAMPLE VALUES • NOT A LIVE SIGNAL/);
+});
