@@ -83,12 +83,12 @@ export default async function handler(req, res) {
         const confirmationExpired = pausedSignal.state === "CONFIRMATION_EXPIRED";
         const cancelled = pausedSignal.state === "CANCELLED_BY_PAUSE";
         const message = confirmationExpired
-          ? "⚠️ <b>XAUUSD CONFIRMATION EXPIRED</b>\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
+          ? "⚠️ <b>EXPIRED — DO NOT ENTER (XAUUSD)</b>\nThe engine was paused before a safe confirmation alert could be delivered. Do not act on a delayed confirmation."
           : cancelled
             ? "⏸️ <b>XAUUSD PENDING SETUP CANCELLED</b>\nThe signal engine was paused. Do not place this pending order; cancel it if you already placed it manually."
             : pausedSignal.state === "INVALIDATED"
-              ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Cancel this pending order if you placed it manually."
-              : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.";
+              ? "⚠️ <b>INVALIDATED — DO NOT ENTER (XAUUSD)</b>\nPrice touched the stop-loss or target before entry confirmation. Cancel this pending order if you placed it manually."
+              : "⌛ <b>EXPIRED — DO NOT ENTER (XAUUSD)</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.";
         const delivery = await sendTelegramMessage(message);
         pausedSignal = {
           ...pausedSignal,
@@ -349,10 +349,10 @@ export default async function handler(req, res) {
         const invalidated = active.state === "INVALIDATED";
         const confirmationExpired = active.state === "CONFIRMATION_EXPIRED";
         const update = await sendTelegramMessage(confirmationExpired
-          ? "⚠️ <b>XAUUSD ENTRY CONFIRMATION EXPIRED</b>\nThe confirmation alert was delayed or the live price had already reached the stop-loss/target boundary. Do not act on the delayed entry confirmation; check the current market manually."
+          ? "⚠️ <b>EXPIRED — DO NOT ENTER (XAUUSD)</b>\nThe confirmation alert was delayed or the live price had already reached the stop-loss/target boundary. Do not act on the delayed entry confirmation; check the current market manually."
           : invalidated
-            ? "⚠️ <b>XAUUSD PENDING SETUP INVALIDATED</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
-            : "⌛ <b>XAUUSD PENDING SETUP EXPIRED</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
+            ? "⚠️ <b>INVALIDATED — DO NOT ENTER (XAUUSD)</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
+            : "⌛ <b>EXPIRED — DO NOT ENTER (XAUUSD)</b>\nThe entry was not confirmed within eight hours. Do not place this expired pending order.");
         const attemptedAt = new Date().toISOString();
         active = {
           ...active,

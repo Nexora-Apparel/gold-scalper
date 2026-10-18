@@ -20,4 +20,7 @@ test("dashboard exposes BTC controls and keeps broker execution disconnected", (
   assert.match(html, /id="btcEnabled"/);
   assert.match(html, /\/api\/analyze-btc/);
   assert.match(html, /No broker order execution or automatic trading is connected/);
+  assert.match(html, /PENDING ENTRY — Setup identified; wait for the planned entry/);
+  assert.match(html, /ENTRY CONFIRMED — Entry conditions were satisfied/);
+  assert.match(html, /INVALIDATED \/ EXPIRED — The setup is no longer valid; do not enter/);
 });
