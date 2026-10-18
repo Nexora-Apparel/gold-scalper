@@ -168,7 +168,7 @@ async function refreshNews(){
   const r=await api('/api/news');
   headline.dataset.state=r.status==='CLEAR'?'clear':r.status==='BLOCKED'?'blocked':'unavailable';
   headline.textContent=r.status==='CLEAR'?'NEWS FILTER: CLEAR — No high-impact USD release is inside the ±30-minute restricted window.':r.status==='BLOCKED'?'NEWS FILTER: BLOCKED — '+(r.reason||'A high-impact USD release is near its scheduled time.'):'NEWS FILTER: UNAVAILABLE — '+(r.reason||'Calendar could not be verified. Treat news risk as unknown.');
-  $('newsSource').textContent=r.source||'Economic calendar';
+  const sourceLabel=r.source||'Economic calendar';$('newsSource').innerHTML=sourceLabel.includes('FinanceCalendar')?escapeHtml(sourceLabel)+' · <a href="https://www.financecalendar.com/" target="_blank" rel="noopener noreferrer" style="color:#e7bd55">source</a>':escapeHtml(sourceLabel);
   checked.textContent=r.checkedAt?formatNewsTime(r.checkedAt):'Not verified';
   const events=Array.isArray(r.events)?r.events:[];
   if(!events.length){list.innerHTML='<div class="news-empty">'+(r.ok?'No medium/high-impact USD events in the recent 12-hour or upcoming 7-day window.':'No verified events available. Do not assume the calendar is clear.')+'</div>';return}
