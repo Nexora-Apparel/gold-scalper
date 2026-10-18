@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,21 +11,42 @@
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <title>Gold Scalper · Signal Desk</title>
 <style>
-:root{color-scheme:dark;--bg:#0b1020;--card:#141c30;--line:#293550;--muted:#9aabc7;--text:#f4f7ff;--gold:#f4c75e;--green:#4ade80;--red:#fb7185}
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#101a31,var(--bg) 45%);font:15px system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);min-height:100vh}
+:root{color-scheme:dark;--bg:#000000;--card:#0b0b0e;--line:#27272d;--muted:#a1a1aa;--text:#f5f5f7;--gold:#e7bd55;--green:#35d49a;--red:#ff647c}
+*{box-sizing:border-box}body{margin:0;background:#000;font:15px system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);min-height:100vh}
 main{max-width:760px;margin:auto;padding:18px 14px 40px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 20px}.brand{font-weight:800;font-size:21px;letter-spacing:.2px}.sub{font-size:12px;color:var(--muted);margin-top:3px}.pill{border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
-h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{background:rgba(20,28,48,.95);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 8px 24px #0002}.status{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #29355088}.status:last-child{border:0}.label{color:var(--muted);font-size:13px}.value{font-weight:700;font-size:13px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#64748b;margin-right:7px;vertical-align:middle}.dot.pulse{animation:statusPulse 1.1s ease-in-out infinite}@keyframes statusPulse{0%,100%{opacity:1;box-shadow:0 0 0 0 #4ade8055}50%{opacity:.35;box-shadow:0 0 0 5px #4ade8018}}.activity-badge{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:750}.activity-badge[data-state="working"]{color:#86efac;border-color:#246b48}.activity-badge[data-state="paused"]{color:#cbd5e1}.activity-badge[data-state="stopped"]{color:#fda4af;border-color:#7f3044}.activity-badge[data-state="done"]{color:#fde68a;border-color:#806a2f}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:1px solid var(--line);background:#202b43;color:var(--text);border-radius:12px;padding:14px 10px;min-height:48px;font-weight:750;font-size:13px;cursor:pointer}.btn.primary{background:var(--gold);color:#17130a;border-color:var(--gold)}.btn.danger{border-color:#7f3044;background:#381b2a;color:#ffd9e0}.btn:disabled{opacity:.55;cursor:wait}.wide{grid-column:1/-1}.settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#0d1425;border:1px solid var(--line);color:var(--text);padding:12px;border-radius:10px;font:inherit}.check{display:flex;gap:9px;align-items:center;padding:8px 0;font-size:13px}.check input{accent-color:var(--gold);width:18px;height:18px}.notice{color:var(--muted);font-size:12px;line-height:1.5}.log{font-size:13px;line-height:1.5;white-space:pre-wrap;color:#dce6f8;min-height:20px}.gold{color:var(--gold)}
-.top{position:sticky;top:0;z-index:20;padding:12px 0;background:linear-gradient(180deg,#0b1020f5,#0b1020d9);backdrop-filter:blur(16px);margin-top:0}
+h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{background:rgba(20,28,48,.95);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 8px 24px #0002}.status{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #29355088}.status:last-child{border:0}.label{color:var(--muted);font-size:13px}.value{font-weight:700;font-size:13px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#64748b;margin-right:7px;vertical-align:middle}.dot.pulse{animation:statusPulse 1.1s ease-in-out infinite}@keyframes statusPulse{0%,100%{opacity:1;box-shadow:0 0 0 0 #4ade8055}50%{opacity:.35;box-shadow:0 0 0 5px #4ade8018}}.activity-badge{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:750}.activity-badge[data-state="working"]{color:#86efac;border-color:#246b48}.activity-badge[data-state="paused"]{color:#cbd5e1}.activity-badge[data-state="stopped"]{color:#fda4af;border-color:#7f3044}.activity-badge[data-state="done"]{color:#fde68a;border-color:#806a2f}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:1px solid var(--line);background:#17171b;color:var(--text);border-radius:12px;padding:14px 10px;min-height:48px;font-weight:750;font-size:13px;cursor:pointer}.btn.primary{background:var(--gold);color:#17130a;border-color:var(--gold)}.btn.danger{border-color:#7f3044;background:#381b2a;color:#ffd9e0}.btn:disabled{opacity:.55;cursor:wait}.wide{grid-column:1/-1}.settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#050506;border:1px solid var(--line);color:var(--text);padding:12px;border-radius:10px;font:inherit}.check{display:flex;gap:9px;align-items:center;padding:8px 0;font-size:13px}.check input{accent-color:var(--gold);width:18px;height:18px}.notice{color:var(--muted);font-size:12px;line-height:1.5}.log{font-size:13px;line-height:1.5;white-space:pre-wrap;color:#dce6f8;min-height:20px}.gold{color:var(--gold)}
+.top{position:sticky;top:0;z-index:20;padding:12px 0;background:rgba(0,0,0,.94);backdrop-filter:blur(16px);margin-top:0}
 .top-actions{display:flex;align-items:center;gap:7px}
 .install-btn{border:1px solid #826b35;background:linear-gradient(135deg,#f8d878,#d8a83d);color:#17130a;border-radius:999px;padding:9px 11px;font-size:11px;font-weight:850;white-space:nowrap;cursor:pointer;box-shadow:0 5px 18px #f4c75e20}
-.brand{letter-spacing:.5px}.card{background:linear-gradient(145deg,#17223aee,#111a2dee);border-color:#30405f;box-shadow:0 12px 32px #0003;transition:border-color .2s,transform .2s}.card h2{display:flex;align-items:center;gap:8px}.card h2:before{content:"";display:block;width:3px;height:17px;border-radius:5px;background:var(--gold);box-shadow:0 0 12px #f4c75e55}
+.brand{letter-spacing:.5px}.card{background:linear-gradient(145deg,#101014,#08080a);border-color:#29292f;box-shadow:0 12px 32px #0003;transition:border-color .2s,transform .2s}.card h2{display:flex;align-items:center;gap:8px}.card h2:before{content:"";display:block;width:3px;height:17px;border-radius:5px;background:var(--gold);box-shadow:0 0 12px #f4c75e55}
 .btn{transition:transform .15s,border-color .15s,filter .15s}.btn:active,.install-btn:active{transform:scale(.98)}.btn.primary{box-shadow:0 5px 18px #f4c75e16}
 .status .value{max-width:64%;text-align:right;overflow-wrap:anywhere}.log{overflow-wrap:anywhere}
 @media(max-width:420px){.brand{font-size:16px}.sub{font-size:11px}.top-actions{gap:5px}.install-btn{padding:8px 9px;font-size:10px}.pill{padding:7px 8px;font-size:10px}.card{padding:13px}.btn{padding:13px 7px;font-size:12px}.settings{grid-template-columns:1fr}}
+
+.nav-tabs{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:9px 7px calc(9px + env(safe-area-inset-bottom));margin:0;background:rgba(5,5,6,.97);border-top:1px solid #29292f;backdrop-filter:blur(18px);box-shadow:0 -8px 28px #0009}
+.nav-tab{min-width:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;border:1px solid transparent;background:transparent;color:#a1a1aa;border-radius:10px;padding:8px 2px;font-size:10px;font-weight:750;line-height:1.1;white-space:nowrap;cursor:pointer}
+.nav-tab::before{font-size:17px;line-height:1}
+.nav-tab[data-tab="dashboard"]::before{content:"⌂"}
+.nav-tab[data-tab="strategy"]::before{content:"⚙"}
+.nav-tab[data-tab="outcomes"]::before{content:"▤"}
+.nav-tab[data-tab="activity"]::before{content:"◷"}
+.nav-tab[data-tab="control"]::before{content:"▶"}
+.nav-tab.active{color:var(--gold);background:#e7bd5514;border-color:#e7bd5544}
+.view-hidden{display:none!important}
+.card{border-radius:15px}
+body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+@media(max-width:360px){.nav-tabs{gap:1px;padding-left:4px;padding-right:4px}.nav-tab{font-size:9px;padding-left:0;padding-right:0}}
 </style></head>
 <body><main>
 <header class="top"><div><div class="brand"><span class="gold">◆</span> GOLD &amp; BTC SIGNAL CONTROL</div><div class="sub">Personal signal desk · mobile-first</div></div><div class="top-actions"><button class="install-btn" id="installApp" type="button" aria-label="Install Gold Scalper app">＋ INSTALL</button><div class="pill" id="modePill">SAFE MODE</div></div></header>
-<section class="card"><h2>System status</h2>
+<nav class="nav-tabs" aria-label="Main navigation">
+<button class="nav-tab active" type="button" data-tab="dashboard">Dashboard</button>
+<button class="nav-tab" type="button" data-tab="strategy">Strategy</button>
+<button class="nav-tab" type="button" data-tab="outcomes">Outcome log</button>
+<button class="nav-tab" type="button" data-tab="activity">Activity / results</button>
+<button class="nav-tab" type="button" data-tab="control">System control</button>
+</nav>
+<section class="card" id="dashboardStatus" data-view="dashboard"><h2>Dashboard overview</h2>
 <div class="status"><span class="label">Application</span><span class="value" id="appStatus"><i class="dot"></i>Checking</span></div>
 <div class="status"><span class="label">Gold market data</span><span class="value" id="marketStatus"><i class="dot"></i>Not verified</span></div>
 <div class="status"><span class="label">BTCUSD market data</span><span class="value" id="btcMarketStatus"><i class="dot"></i>Not verified</span></div>
@@ -35,7 +56,7 @@ h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repea
 <div class="status"><span class="label">Current activity</span><span class="value" id="activityStatus"><span class="activity-badge" data-state="paused"><i class="dot"></i>CHECKING</span></span></div>
 <div class="status"><span class="label">Last recorded scan</span><span class="value" id="lastScanStatus">Not recorded</span></div>
 </section>
-<section class="card"><h2>XAUUSD market chart</h2>
+<section class="card" id="marketChart" data-view="dashboard"><h2>Market chart</h2>
 <div style="width:100%;height:440px;border-radius:12px;overflow:hidden;background:#0d1425">
   <div class="tradingview-widget-container" style="height:100%;width:100%">
     <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
@@ -50,45 +71,24 @@ h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repea
       "style": "1",
       "locale": "en",
       "allow_symbol_change": true,
+      "studies": ["STD;EMA", "STD;RSI", "STD;ATR"],
       "calendar": false,
       "support_host": "https://www.tradingview.com"
     }
     </script>
   </div>
 </div>
-<p class="notice">Chart display is separate from the signal engine. The bot will not read indicator values from this embedded widget; analysis requires its own verified market-data feed.</p>
+<p class="notice">Use the symbol selector to switch between XAUUSD and BTCUSD. EMA, RSI and ATR are visual chart indicators; the bot independently validates its own strategy inputs and market feed.</p>
 </section>
-<section class="card"><h2>BTCUSD market chart</h2>
-<div style="width:100%;height:440px;border-radius:12px;overflow:hidden;background:#0d1425">
-  <div class="tradingview-widget-container" style="height:100%;width:100%">
-    <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-    <div class="tradingview-widget-copyright" style="font-size:10px;padding:4px 8px;color:#9aabc7"><a href="https://www.tradingview.com/symbols/BTCUSD/" rel="noopener nofollow" target="_blank" style="color:#9aabc7">BTCUSD chart by TradingView</a></div>
-    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-    {
-      "autosize": true,
-      "symbol": "COINBASE:BTCUSD",
-      "interval": "15",
-      "timezone": "Etc/UTC",
-      "theme": "dark",
-      "style": "1",
-      "locale": "en",
-      "allow_symbol_change": true,
-      "calendar": false,
-      "support_host": "https://www.tradingview.com"
-    }
-    </script>
-  </div>
-</div>
-<p class="notice">Chart display is separate from the signal engine. BTC analysis uses its own Twelve Data BTC/USD feed and validates completed H1/M15 candles before any candidate is queued.</p>
-</section>
-<section class="card"><h2>Main controls</h2><div class="actions">
+
+<section class="card" id="systemControl" data-view="control"><h2>System control</h2><div class="actions">
 <button class="btn primary" data-action="start">▶ START BOT</button><button class="btn" data-action="pause">Ⅱ PAUSE BOT</button>
 <button class="btn" data-action="analyze" data-symbol="XAUUSD">⌕ ANALYZE GOLD NOW</button><button class="btn" data-action="analyze-btc" data-symbol="BTCUSD">₿ ANALYZE BTCUSD NOW</button><button class="btn" data-action="analyze-all">SUPPORTED PAIRS</button>
 <button class="btn" data-action="history">SIGNAL HISTORY</button><button class="btn" data-action="risk">RISK SETTINGS</button>
 <button class="btn danger" data-action="emergency-stop">EMERGENCY STOP</button><button class="btn" data-action="reset-emergency-stop">RESET STOP</button>
 <button class="btn wide" id="telegramTest">TEST TELEGRAM DELIVERY</button>
 </div><p class="notice">Telegram sends validated signal candidates when configured. No broker order execution or automatic trading is connected.</p></section>
-<section class="card"><h2>Strategy settings</h2><div class="settings">
+<section class="card" id="strategySettings" data-view="strategy"><h2>Strategy settings</h2><div class="settings">
 <div class="field"><label for="balance">Account balance</label><input id="balance" type="number" min="0" step="0.01" value="1000"></div>
 <div class="field"><label for="currency">Account currency</label><select id="currency"><option>USD</option><option>NGN</option><option>EUR</option><option>GBP</option></select></div>
 <div class="field"><label for="riskPct">Risk per trade (%)</label><input id="riskPct" type="number" min="0.1" max="1" step="0.1" value="0.5"></div>
@@ -102,12 +102,12 @@ h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repea
 <div class="field"><label for="sessionEnd">Session ends (Lagos time)</label><input id="sessionEnd" type="time" value="20:00"></div>
 </div>
 <div class="check"><input id="goldEnabled" type="checkbox" checked><label for="goldEnabled">Enable XAUUSD (Gold)</label></div>
-<div class="check"><input id="btcEnabled" type="checkbox"><label for="btcEnabled">Enable BTCUSD (Bitcoin) — 24/7 market</label></div>
-<div class="check"><input id="majorsEnabled" type="checkbox" disabled><label for="majorsEnabled">Other currency pairs are not implemented yet (XAUUSD only)</label></div>
+<div class="check"><input id="btcEnabled" type="checkbox"><label for="btcEnabled">Enable BTCUSD (Bitcoin) — weekend and 24/7 monitoring</label></div>
+<div class="check"><input id="majorsEnabled" type="checkbox" disabled><label for="majorsEnabled">Pairs beyond XAUUSD and BTCUSD are not implemented yet</label></div>
 <div class="check"><input id="newsEnabled" type="checkbox" disabled><label for="newsEnabled">News filter unavailable — no verified economic-calendar feed connected</label></div>
 <button class="btn primary wide" id="saveSettings">SAVE SETTINGS</button><p class="notice">24-hour monitoring is the default while START BOT is active. To limit scans, choose Selected hours and set the Lagos-time window (for example, 01:00–07:00); the initial selected-hours values are 08:00–20:00. Existing pending signals continue to be checked outside the window until confirmed, invalidated, or expired. Scheduled runs can be delayed. Maximum signals per day defaults to 3. No broker orders are placed.</p>
 </section>
-<section class="card"><h2>Manual trade outcome log</h2>
+<section class="card" id="tradeOutcomes" data-view="outcomes"><h2>Trade outcome log</h2>
 <p class="notice">After you decide what happened to a signal you manually traded (or chose not to take), record it here. This is for forward-testing statistics only; it does not place, modify, or close orders.</p>
 <div class="settings">
 <div class="field wide"><label for="outcomeSignal">Signal reference</label><select id="outcomeSignal"><option value="">Load signal history first</option></select></div>
@@ -118,10 +118,19 @@ h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repea
 <div class="actions"><button class="btn" id="loadOutcomes">LOAD SIGNAL HISTORY</button><button class="btn primary" id="saveOutcome">SAVE OUTCOME</button></div>
 <div class="log" id="outcomeStats">No forward-test outcome statistics loaded.</div>
 </section>
-<section class="card"><h2>Activity / result</h2><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
+<section class="card" id="activityResults" data-view="activity"><h2>Activity / results</h2><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
+
+function showView(view){
+  document.querySelectorAll('[data-view]').forEach(section=>section.classList.toggle('view-hidden',section.dataset.view!==view));
+  document.querySelectorAll('[data-tab]').forEach(tab=>{const active=tab.dataset.tab===view;tab.classList.toggle('active',active);tab.setAttribute('aria-current',active?'page':'false')});
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('[data-tab]').forEach(tab=>tab.addEventListener('click',()=>showView(tab.dataset.tab)));
+showView('dashboard');
+
 async function api(path,body,afterLogin=false){let r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});let j={};try{j=await r.json()}catch{}if(r.status===401&&!afterLogin&&path!=='/api/login'){const password=window.prompt('Owner login required. Enter your dashboard password:');if(password===null||!password)throw new Error('Login cancelled. No action was executed.');const lr=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});let lj={};try{lj=await lr.json()}catch{}if(!lr.ok)throw new Error(lj.error||'Owner login failed.');return api(path,body,true)}if(!r.ok)throw new Error(j.error||('Request failed ('+r.status+')'));return j}
 function setStatus(id,text,ok=false){$(id).innerHTML='<i class="dot" style="background:'+(ok?'#4ade80':'#64748b')+'"></i>'+text}
 function settings(){return {balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minRR:Number($('minRR').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),timeframe:$('timeframe').value,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:$('newsEnabled').checked}}
@@ -130,8 +139,8 @@ let currentTask=null;
 function setActivityState(label,state){const el=$("activityStatus");if(!el)return;el.innerHTML='<span class="activity-badge" data-state="'+state+'"><i class="dot '+(state==="working"?"pulse":"")+'"></i>'+label+"</span>"}
 function showEngineActivity(engine,emergencyStop){if(currentTask)return;if(emergencyStop){setActivityState("EMERGENCY STOP","stopped");return}if(engine==="RUNNING"){setActivityState("MONITORING ENABLED · WAITING FOR SCAN","working")}else{setActivityState("PAUSED · NO NEW SCANS","paused")}}
 async function refresh(){try{const s=await api('/api/status');if($('activity').textContent.startsWith('Status check failed:'))$('activity').textContent='Connection restored. Backend status check successful. No trading action was executed.';setStatus('appStatus',s.application||'ONLINE',s.application==='ONLINE'&&s.database==='CONNECTED');setStatus('marketStatus',lastAnalysisVerification===true?'Verified on last analysis':lastAnalysisVerification===false?'Last analysis unverified':(s.marketData||'Not verified'),lastAnalysisVerification===true);setStatus('btcMarketStatus',s.btcLastAnalysisMarketDataVerified===true?(s.btcMarketConnected?'Fresh candles verified':'Last verification expired'):(s.btcMarketData||'Not verified'),s.btcMarketConnected===true);setStatus('telegramStatus',s.telegram||'Not configured',s.telegramConfigured===true);setStatus('chartStatus','TradingView embedded',true);setStatus('engineStatus',s.engine||'PAUSED',s.engine==='RUNNING');showEngineActivity(s.engine||'PAUSED',s.emergencyStop===true);const goldAt=s.lastAnalysisAt?Date.parse(s.lastAnalysisAt):0;const btcAt=s.btcLastAnalysisAt?Date.parse(s.btcLastAnalysisAt):0;const latestAt=Math.max(goldAt,btcAt);$('lastScanStatus').textContent=latestAt?new Date(latestAt).toLocaleString()+' · '+(btcAt>goldAt?'BTC':'Gold'):'No recorded scan yet';$('modePill').textContent=s.emergencyStop?'EMERGENCY STOP':(s.engine==='RUNNING'?'BOT RUNNING':'BOT PAUSED');$('footnote').textContent=s.database==='CONNECTED'?(lastAnalysisVerification===true?'Database connected. Fresh completed H1/M15 candles passed validation during the last analysis. Manual review only.':lastAnalysisVerification===false?'Database connected. Last analysis could not verify fresh completed candles; no signal generated. Manual review only.':'Database connected. Market feed is verified only after a successful analysis. Manual review only.'):(s.note||'Fail-closed mode.')}catch(e){setStatus('appStatus','Backend unavailable');$('activity').textContent='Status check failed: '+e.message}}
-document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',async()=>{const action=b.dataset.action;if(action==='reset-emergency-stop'&&!window.confirm('Reset the emergency stop? The engine will remain paused until you press START BOT.'))return;b.disabled=true;currentTask=action;const taskLabel=action==='analyze-btc'?'ANALYZING BTCUSD':action==='analyze'?'ANALYZING GOLD':action==='start'?'STARTING BOT':action==='pause'?'PAUSING BOT':action==='emergency-stop'?'STOPPING BOT':'PROCESSING '+action.toUpperCase();setActivityState(taskLabel,'working');$('activity').textContent=(action==='analyze'||action==='analyze-btc'?'⏳ '+taskLabel+'…\nFetching and validating market data. Please wait.':'Processing '+action+'…');try{if(action==='analyze'||action==='analyze-btc'){const symbol=action==='analyze-btc'?'BTCUSD':'XAUUSD';const endpoint=action==='analyze-btc'?'/api/analyze-btc':'/api/analyze';const r=await api(endpoint,settings());lastAnalysisVerification=r.marketDataVerified===true?true:r.marketDataVerified===false?false:null;if(r.status==='SIGNAL_CANDIDATE'&&r.signal){const s=r.signal;$('activity').textContent='SIGNAL CANDIDATE — '+s.side+' '+symbol+'\nQuality: '+r.quality+'/100\nEntry: '+s.entry+'\nStop loss: '+s.stopLoss+'\nTake profit: '+s.takeProfit+'\nR:R 1:'+s.riskReward+'\nRisk: '+s.riskAmount+' '+s.accountCurrency+' ('+s.riskPercent+'%)\nSetup: '+s.timeframe+'\nReasons: '+s.explanation.join('; ')+'\n\nRules-based candidate only; verify quote, spread and news before considering it.\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'')}else{$('activity').textContent='NO TRADE\n'+(r.reason||r.error||'No valid setup.')+'\nNo signal generated.\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'')}}else{const r=await api('/api/control',{action});$('activity').textContent=(action==='history'||action==='risk')?JSON.stringify(r,null,2):(r.message||JSON.stringify(r,null,2))}if(action==='analyze'||action==='analyze-btc'){setActivityState('ANALYSIS COMPLETE · '+(action==='analyze-btc'?'BTCUSD':'GOLD'),'done')}await refresh()}catch(e){$('activity').textContent='Action not completed: '+e.message+'\nNo success is assumed.'}finally{currentTask=null;b.disabled=false;await refresh()}}));
-$('saveSettings').addEventListener('click',async()=>{const s=settings();if(!(s.balance>0)||s.riskPercent<0.1||s.riskPercent>1){$('activity').textContent='Invalid settings. Balance must be positive and risk must be between 0.1% and 1%.';return}try{const r=await api('/api/settings',s);$('activity').textContent=r.message||'Settings saved.'}catch(e){$('activity').textContent='Settings not saved: '+e.message}});
+document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',async()=>{const action=b.dataset.action;if(action==='reset-emergency-stop'&&!window.confirm('Reset the emergency stop? The engine will remain paused until you press START BOT.'))return;b.disabled=true;currentTask=action;const taskLabel=action==='analyze-btc'?'ANALYZING BTCUSD':action==='analyze'?'ANALYZING GOLD':action==='start'?'STARTING BOT':action==='pause'?'PAUSING BOT':action==='emergency-stop'?'STOPPING BOT':'PROCESSING '+action.toUpperCase();setActivityState(taskLabel,'working');$('activity').textContent=(action==='analyze'||action==='analyze-btc'?'⏳ '+taskLabel+'…\nFetching and validating market data. Please wait.':'Processing '+action+'…');try{if(action==='analyze'||action==='analyze-btc'){const symbol=action==='analyze-btc'?'BTCUSD':'XAUUSD';const endpoint=action==='analyze-btc'?'/api/analyze-btc':'/api/analyze';const r=await api(endpoint,settings());lastAnalysisVerification=r.marketDataVerified===true?true:r.marketDataVerified===false?false:null;if(r.status==='SIGNAL_CANDIDATE'&&r.signal){const s=r.signal;$('activity').textContent='SIGNAL CANDIDATE — '+s.side+' '+symbol+'\nQuality: '+r.quality+'/100\nEntry: '+s.entry+'\nStop loss: '+s.stopLoss+'\nTake profit: '+s.takeProfit+'\nR:R 1:'+s.riskReward+'\nRisk: '+s.riskAmount+' '+s.accountCurrency+' ('+s.riskPercent+'%)\nSetup: '+s.timeframe+'\nReasons: '+s.explanation.join('; ')+'\n\nRules-based candidate only; verify quote, spread and news before considering it.\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'')}else{$('activity').textContent='NO TRADE\n'+(r.reason||r.error||'No valid setup.')+'\nNo signal generated.\nMarket data: '+(r.marketDataVerified?'VERIFIED':'NOT VERIFIED')+(r.latestCompletedCandle?'\nLatest completed candles (UTC): H1 '+r.latestCompletedCandle.h1+' | M15 '+r.latestCompletedCandle.m15:'')}}else{const r=await api('/api/control',{action});$('activity').textContent=(action==='history'||action==='risk')?JSON.stringify(r,null,2):(r.message||JSON.stringify(r,null,2))}if(action==='analyze'||action==='analyze-btc'){setActivityState('ANALYSIS COMPLETE · '+(action==='analyze-btc'?'BTCUSD':'GOLD'),'done')}showView('activity');await refresh()}catch(e){$('activity').textContent='Action not completed: '+e.message+'\nNo success is assumed.'}finally{currentTask=null;b.disabled=false;await refresh()}}));
+$('saveSettings').addEventListener('click',async()=>{const s=settings();if(!(s.balance>0)||s.riskPercent<0.1||s.riskPercent>1){$('activity').textContent='Invalid settings. Balance must be positive and risk must be between 0.1% and 1%.';return}try{const r=await api('/api/settings',s);$('activity').textContent=r.message||'Settings saved.';showView('activity')}catch(e){$('activity').textContent='Settings not saved: '+e.message;showView('activity')}});
 $('telegramTest').addEventListener('click',async()=>{const b=$('telegramTest');b.disabled=true;$('activity').textContent='Testing Telegram delivery…';try{const r=await api('/api/telegram-test',{});$('activity').textContent=r.message||JSON.stringify(r,null,2)}catch(e){$('activity').textContent='Telegram test failed: '+e.message+'\\nConfigure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Vercel Preview environment variables, then redeploy.'}finally{b.disabled=false}});
 async function loadOutcomeHistory(){
   const r=await api('/api/outcomes');
