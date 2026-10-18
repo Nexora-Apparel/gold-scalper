@@ -127,6 +127,7 @@ function showView(view){
   document.querySelectorAll('[data-view]').forEach(section=>section.classList.toggle('view-hidden',section.dataset.view!==view));
   document.querySelectorAll('[data-tab]').forEach(tab=>{const active=tab.dataset.tab===view;tab.classList.toggle('active',active);tab.setAttribute('aria-current',active?'page':'false')});
   window.scrollTo({top:0,behavior:'smooth'});
+  if(view==='chart')setTimeout(()=>window.dispatchEvent(new Event('resize')),120);
 }
 document.querySelectorAll('[data-tab]').forEach(tab=>tab.addEventListener('click',()=>showView(tab.dataset.tab)));
 $('openFullChart').addEventListener('click',()=>showView('chart'));
