@@ -95,8 +95,8 @@ h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repea
 <div class="field"><label for="sessionEnd">Session ends (Lagos time)</label><input id="sessionEnd" type="time" value="20:00"></div>
 </div>
 <div class="check"><input id="goldEnabled" type="checkbox" checked><label for="goldEnabled">Enable XAUUSD (Gold)</label></div>
-<div class="check"><input id="btcEnabled" type="checkbox"><label for="btcEnabled">Enable BTCUSD (Bitcoin) — 24/7 market</label></div>
-<div class="check"><input id="majorsEnabled" type="checkbox" disabled><label for="majorsEnabled">Other currency pairs are not implemented yet (XAUUSD only)</label></div>
+<div class="check"><input id="btcEnabled" type="checkbox"><label for="btcEnabled">Enable BTCUSD (Bitcoin) — weekend and 24/7 monitoring</label></div>
+<div class="check"><input id="majorsEnabled" type="checkbox" disabled><label for="majorsEnabled">Pairs beyond XAUUSD and BTCUSD are not implemented yet</label></div>
 <div class="check"><input id="newsEnabled" type="checkbox" disabled><label for="newsEnabled">News filter unavailable — no verified economic-calendar feed connected</label></div>
 <button class="btn primary wide" id="saveSettings">SAVE SETTINGS</button><p class="notice">24-hour monitoring is the default while START BOT is active. To limit scans, choose Selected hours and set the Lagos-time window (for example, 01:00–07:00); the initial selected-hours values are 08:00–20:00. Existing pending signals continue to be checked outside the window until confirmed, invalidated, or expired. Scheduled runs can be delayed. Maximum signals per day defaults to 3. No broker orders are placed.</p>
 </section>
