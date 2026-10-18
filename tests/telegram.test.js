@@ -141,7 +141,7 @@ test("builds a compact black SELL badge with bold red text only", () => {
   assert.match(svg, /width="320" height="112"/);
   assert.match(svg, /fill="#000000"/);
   assert.match(svg, /stroke="#FF4D61"/);
-  assert.match(svg, /<path d="M0 0 V54 H32" transform="translate\\(216 29\\)"/);
+  assert.match(svg, /<path d="M0 0 V54 H32" transform="translate\(216 29\)"/);
   assert.doesNotMatch(svg, /<text\b|font-family/);
   assert.doesNotMatch(svg, /ENTRY|TAKE PROFIT|STOP LOSS|BTCUSD|65,000\.00/);
 });
