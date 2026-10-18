@@ -1,3 +1,5 @@
+import { getGoldMarketStatus } from "../lib/market-hours.js";
+
 function parseProviderTime(value) {
   if (typeof value !== "string") return NaN;
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
@@ -8,6 +10,13 @@ export default async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const marketStatus = getGoldMarketStatus();
+  if (!marketStatus.open) {
+    return res.status(200).json({ ok: false, symbol: "XAU/USD", interval: "15min",
+      marketOpen: false, marketStatus: marketStatus.status, dataFreshness: "not_applicable",
+      error: marketStatus.reason });
   }
 
   const apiKey = process.env.TWELVEDATA_API_KEY;

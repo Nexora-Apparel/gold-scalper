@@ -1,3 +1,4 @@
+import { getGoldMarketStatus } from "../lib/market-hours.js";
 import { ensureStorage, getControlState, getStoredSettings, getActiveSignal, getRecordedOutcome } from "../lib/storage.js";
 
 const MARKET_FRESHNESS_MS = 45 * 60 * 1000;
@@ -67,6 +68,7 @@ export default async function handler(req, res) {
     const btcHealth = marketHealth(btcLatestAnalysis, keyConfigured);
     const activeSignalNeedsMonitoring = Boolean(activeSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(activeSignal.state) || (["CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE", "INVALIDATED", "EXPIRED"].includes(activeSignal.state) && activeSignal.candidateNotification?.sent === true && activeSignal.lifecycleNotification?.sent !== true)));
     const sessionActive = withinSession(settings);
+    const goldMarketStatus = getGoldMarketStatus();
     return res.status(200).json({
       application: "ONLINE",
       database: "CONNECTED",
@@ -78,6 +80,11 @@ export default async function handler(req, res) {
       btcLastAnalysisStatus: btcHealth.lastAnalysisStatus,
       btcLastAnalysisMarketDataVerified: btcHealth.lastAnalysisMarketDataVerified,
       btcActiveSignalNeedsMonitoring,
+      marketOpen: goldMarketStatus.open,
+      marketStatus: goldMarketStatus.status,
+      marketStatusReason: goldMarketStatus.reason,
+      newsFilterEnabled: settings.newsEnabled === true,
+      newsCalendar: "Fair Economy weekly economic calendar; runtime status checked during candidate/confirmation validation",
       marketKeyConfigured: keyConfigured,
       telegram: telegramConfigured ? "Configured; owner-authenticated delivery test available" : "Not configured",
       telegramConfigured,
