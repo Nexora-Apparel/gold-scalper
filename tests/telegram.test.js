@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatSignalMessage } from "../lib/telegram.js";
+import { formatSignalMessage, buildSignalCardSvg } from "../lib/telegram.js";
 
 function candidate(overrides = {}) {
   return {
@@ -119,4 +119,32 @@ test("formats BTCUSD as BTCUSD and never labels it XAUUSD", () => {
   });
   assert.match(message, /BUY BTCUSD — SIGNAL CANDIDATE/);
   assert.doesNotMatch(message, /XAUUSD/);
+});
+
+
+test("builds a premium black-and-blue BUY image card with live signal levels", () => {
+  const svg = buildSignalCardSvg(candidate());
+  assert.match(svg, /<svg/);
+  assert.match(svg, /#35A7FF/);
+  assert.match(svg, /BUY/);
+  assert.match(svg, /4171\.00/);
+  assert.match(svg, /4211\.00/);
+  assert.match(svg, /4151\.00/);
+  assert.match(svg, /MANUAL REVIEW ONLY/);
+});
+
+test("builds a black-and-red SELL image card and uses BTCUSD when supplied", () => {
+  const base = candidate({
+    side: "SELL", symbol: "BTCUSD", entry: 65000, takeProfit: 63000, stopLoss: 66000,
+    riskReward: 2
+  });
+  const svg = buildSignalCardSvg({ ...base, symbol: "BTCUSD" });
+  assert.match(svg, /#FF4D61/);
+  assert.match(svg, /SELL/);
+  assert.match(svg, /BTCUSD/);
+  assert.match(svg, /65000\.00/);
+});
+
+test("refuses to render a card with invalid trade levels", () => {
+  assert.throws(() => buildSignalCardSvg(candidate({ side: "BUY", stopLoss: 4180 })), /do not match the trade direction/i);
 });
