@@ -212,19 +212,32 @@ export default async function handler(req, res) {
         }
       }
       if (active && active.state === "CONFIRMATION_PENDING_DELIVERY" && active.result?.signal) {
-        const confirmedResult = {
-          ...active.result,
-          signal: { ...active.result.signal, status: "CONFIRMED" },
-          confirmation: { status: "ENTRY_CONFIRMED", confirmedAt: active.confirmedAt, candleTime: active.confirmationCandleTime }
-        };
-        const delivery = await sendTelegramMessage(formatSignalMessage(confirmedResult));
-        result.entryMonitoring = {
-          state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
-          confirmationCandleTime: active.confirmationCandleTime,
-          ...(delivery.message ? { deliveryMessage: delivery.message } : {})
-        };
-        if (delivery.sent) {
-          await saveActiveSignal(sql, { ...active, state: "CONFIRMED_AND_NOTIFIED", telegramMessageId: delivery.messageId ?? null, notifiedAt: new Date().toISOString() });
+        if (newsStatus.blocked) {
+          // Do not release an entry-confirmation alert during a high-impact USD
+          // news window or when the calendar cannot be verified. Retry after it clears.
+          result.entryMonitoring = {
+            state: "CONFIRMED_AWAITING_NEWS_CLEAR",
+            confirmationCandleTime: active.confirmationCandleTime,
+            newsStatus: newsStatus.status,
+            note: "Entry confirmation is held until the news calendar is verified clear."
+          };
+        } else {
+          const confirmedResult = {
+            ...active.result,
+            signal: { ...active.result.signal, status: "CONFIRMED" },
+            confirmation: { status: "ENTRY_CONFIRMED", confirmedAt: active.confirmedAt, candleTime: active.confirmationCandleTime },
+            newsStatus: result.newsStatus,
+            checkedAt: result.checkedAt
+          };
+          const delivery = await sendTelegramMessage(formatSignalMessage(confirmedResult));
+          result.entryMonitoring = {
+            state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
+            confirmationCandleTime: active.confirmationCandleTime,
+            ...(delivery.message ? { deliveryMessage: delivery.message } : {})
+          };
+          if (delivery.sent) {
+            await saveActiveSignal(sql, { ...active, state: "CONFIRMED_AND_NOTIFIED", telegramMessageId: delivery.messageId ?? null, notifiedAt: new Date().toISOString() });
+          }
         }
       }
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
