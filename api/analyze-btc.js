@@ -379,7 +379,10 @@ export default async function handler(req, res) {
                 currentPrice: livePrice,
                 confirmation: { status: "ENTRY_CONFIRMED", confirmedAt: active.confirmedAt, candleTime: active.confirmationCandleTime }
               };
-              const delivery = await sendTelegramMessage(formatSignalMessage(confirmedResult));
+              const newsStatus = await getNewsStatus({ now: new Date() });
+              const delivery = (!newsStatus.ok || newsStatus.blocked)
+                ? { sent: false, message: newsStatus.reason || "News filter blocked confirmation delivery." }
+                : await sendTelegramMessage(formatSignalMessage({ ...confirmedResult, newsStatus }));
               result.entryMonitoring = {
                 state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
                 confirmationCandleTime: active.confirmationCandleTime,
@@ -419,7 +422,7 @@ export default async function handler(req, res) {
             createdAt: new Date().toISOString(),
             expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
             result,
-            candidateNotification: { sent: false }
+            candidateNotification: { sent: false, suppressed: true }
           };
           await saveActiveSignal(sql, active, "BTCUSD");
           result.entryMonitoring = {
@@ -442,77 +445,10 @@ export default async function handler(req, res) {
         }
       }
 
-      // Retry a pending-entry notification on later monitor passes if Telegram was unavailable.
-      // The sent flag is persisted so normal 15-minute scans never repeat an already-delivered alert.
-      if (active && active.state === "WAITING_FOR_ENTRY" && active.result?.signal &&
-          active.candidateNotification?.sent !== true) {
-        // Re-check the current quote before every first delivery or retry so a delayed Telegram
-        // alert cannot instruct the owner to place an entry that price has already crossed.
-        const pendingPriceUrl = new URL("https://api.twelvedata.com/price");
-        pendingPriceUrl.searchParams.set("symbol", "BTC/USD");
-        pendingPriceUrl.searchParams.set("apikey", key);
-        const pendingPriceResponse = await fetch(pendingPriceUrl.toString(), {
-          headers: { Accept: "application/json" }, signal: controller.signal
-        });
-        const pendingPricePayload = await pendingPriceResponse.json().catch(() => null);
-        const pendingLivePrice = Number(pendingPricePayload?.price);
-        if (!pendingPriceResponse.ok || !pendingPricePayload || pendingPricePayload.status === "error" ||
-            !Number.isFinite(pendingLivePrice) || pendingLivePrice <= 0) {
-          result.entryMonitoring = {
-            state: "WAITING_FOR_ENTRY",
-            created: result.entryMonitoring?.created === true,
-            telegramSent: false,
-            notificationStatus: "PENDING_ENTRY_LIVE_PRICE_UNVERIFIED",
-            note: "Current BTC/USD quote could not be verified; no pending-entry alert was sent. The bot will retry."
-          };
-        } else {
-          const signal = active.result.signal;
-          const triggerStillAhead = signal.side === "BUY"
-            ? Number(signal.entry) > pendingLivePrice
-            : Number(signal.entry) < pendingLivePrice;
-          if (!triggerStillAhead) {
-            active = {
-              ...active,
-              state: "INVALIDATED",
-              entryInvalidatedAt: new Date().toISOString(),
-              entryInvalidationReason: "Live BTC/USD price crossed the pending entry before notification delivery.",
-              invalidationPrice: pendingLivePrice
-            };
-            await saveActiveSignal(sql, active, "BTCUSD");
-            result.entryMonitoring = {
-              state: "INVALIDATED",
-              created: result.entryMonitoring?.created === true,
-              telegramSent: false,
-              note: "Live BTC/USD price crossed the pending entry before notification delivery; no stale pending alert was sent."
-            };
-          } else {
-            const pendingResult = {
-              ...active.result,
-              currentPrice: pendingLivePrice,
-              signal: { ...active.result.signal, status: "PENDING" }
-            };
-            const delivery = await sendTelegramMessage(formatSignalMessage(pendingResult));
-            const attemptedAt = new Date().toISOString();
-            active = {
-              ...active,
-              lastLivePrice: pendingLivePrice,
-              candidateNotification: delivery.sent
-                ? { sent: true, sentAt: attemptedAt, messageId: delivery.messageId ?? null }
-                : { sent: false, lastAttemptAt: attemptedAt, message: delivery.message || "Telegram delivery failed." }
-            };
-            await saveActiveSignal(sql, active, "BTCUSD");
-            result.entryMonitoring = {
-              state: "WAITING_FOR_ENTRY",
-              created: result.entryMonitoring?.created === true,
-              telegramSent: delivery.sent,
-              notificationStatus: delivery.sent ? "PENDING_ENTRY_SENT" : "PENDING_ENTRY_DELIVERY_FAILED",
-              note: delivery.sent
-                ? "Pending-entry alert sent after a fresh quote check. The bot will monitor for confirmation, invalidation, or expiry."
-                : "Telegram delivery failed; the bot will retry on a later monitor pass while the entry remains ahead of live price.",
-              ...(delivery.message ? { deliveryMessage: delivery.message } : {})
-            };
-          }
-        }
+      // Pending candidates are dashboard-only. Telegram is reserved for a confirmed entry.
+      if (active && active.state === "WAITING_FOR_ENTRY" && active.result?.signal) {
+        result.entryMonitoring = { state: "WAITING_FOR_ENTRY", telegramSent: false,
+          note: "No Telegram alert is sent for a candidate. Waiting for completed-M15 entry confirmation." };
       }
 
       await recordBTCHistory(sql, result);
