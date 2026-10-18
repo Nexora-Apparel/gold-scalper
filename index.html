@@ -15,6 +15,20 @@
 *{box-sizing:border-box}body{margin:0;background:#000;font:15px system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);min-height:100vh}
 main{max-width:760px;margin:auto;padding:18px 14px 40px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 20px}.brand{font-weight:800;font-size:21px;letter-spacing:.2px}.sub{font-size:12px;color:var(--muted);margin-top:3px}.pill{border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
 h2{font-size:15px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{background:rgba(20,28,48,.95);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 8px 24px #0002}.status{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #29355088}.status:last-child{border:0}.label{color:var(--muted);font-size:13px}.value{font-weight:700;font-size:13px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#64748b;margin-right:7px;vertical-align:middle}.dot.pulse{animation:statusPulse 1.1s ease-in-out infinite}@keyframes statusPulse{0%,100%{opacity:1;box-shadow:0 0 0 0 #4ade8055}50%{opacity:.35;box-shadow:0 0 0 5px #4ade8018}}.activity-badge{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:750}.activity-badge[data-state="working"]{color:#86efac;border-color:#246b48}.activity-badge[data-state="paused"]{color:#cbd5e1}.activity-badge[data-state="stopped"]{color:#fda4af;border-color:#7f3044}.activity-badge[data-state="done"]{color:#fde68a;border-color:#806a2f}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:1px solid var(--line);background:#17171b;color:var(--text);border-radius:12px;padding:14px 10px;min-height:48px;font-weight:750;font-size:13px;cursor:pointer}.btn.primary{background:var(--gold);color:#17130a;border-color:var(--gold)}.btn.danger{border-color:#7f3044;background:#381b2a;color:#ffd9e0}.btn:disabled{opacity:.55;cursor:wait}.wide{grid-column:1/-1}.settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#050506;border:1px solid var(--line);color:var(--text);padding:12px;border-radius:10px;font:inherit}.check{display:flex;gap:9px;align-items:center;padding:8px 0;font-size:13px}.check input{accent-color:var(--gold);width:18px;height:18px}.notice{color:var(--muted);font-size:12px;line-height:1.5}.log{font-size:13px;line-height:1.5;white-space:pre-wrap;color:#dce6f8;min-height:20px}.gold{color:var(--gold)}
+.news-banner{border:1px solid #3a3a43;border-radius:12px;padding:12px;margin:4px 0 12px;font-weight:800;font-size:13px;line-height:1.45;background:#101014}
+.news-banner[data-state="clear"]{border-color:#246b48;color:#86efac;background:#0b2118}
+.news-banner[data-state="blocked"]{border-color:#8a3445;color:#fecdd3;background:#2a1118}
+.news-banner[data-state="unavailable"]{border-color:#8a6b2c;color:#fde68a;background:#251d0b}
+.news-events{display:grid;gap:8px;margin-top:12px}
+.news-event{border:1px solid #29292f;border-radius:11px;padding:11px;background:#09090c}
+.news-event-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.news-event-title{font-size:13px;font-weight:750;line-height:1.4}
+.news-impact{font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-radius:999px;padding:4px 7px;white-space:nowrap;border:1px solid #494949;color:#d4d4d8}
+.news-impact.high{border-color:#8a3445;color:#fecdd3}.news-impact.medium{border-color:#8a6b2c;color:#fde68a}
+.news-event-time{font-size:11px;color:var(--muted);margin-top:6px}
+.news-event-data{font-size:11px;color:#d4d4d8;margin-top:6px;line-height:1.5}
+.news-empty{font-size:12px;color:var(--muted);line-height:1.5;padding:10px 0}
+
 .top{position:sticky;top:0;z-index:20;padding:12px 0;background:rgba(0,0,0,.94);backdrop-filter:blur(16px);margin-top:0}
 .top-actions{display:flex;align-items:center;gap:7px}
 .install-btn{border:1px solid #826b35;background:linear-gradient(135deg,#f8d878,#d8a83d);color:#17130a;border-radius:999px;padding:9px 11px;font-size:11px;font-weight:850;white-space:nowrap;cursor:pointer;box-shadow:0 5px 18px #f4c75e20}
@@ -55,6 +69,15 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <div class="status"><span class="label">Bot mode</span><span class="value" id="engineStatus"><i class="dot"></i>Checking</span></div>
 <div class="status"><span class="label">Current activity</span><span class="value" id="activityStatus"><span class="activity-badge" data-state="paused"><i class="dot"></i>CHECKING</span></span></div>
 <div class="status"><span class="label">Last recorded scan</span><span class="value" id="lastScanStatus">Not recorded</span></div>
+</section>
+<section class="card" id="newsPanel" data-view="dashboard">
+<h2>Economic news &amp; market risk</h2>
+<div id="newsHeadline" class="news-banner" role="status">Checking economic calendar…</div>
+<div class="status"><span class="label">Calendar source</span><span class="value" id="newsSource">Fair Economy</span></div>
+<div class="status"><span class="label">Last checked</span><span class="value" id="newsChecked">Checking…</span></div>
+<div id="newsEvents" class="news-events"><p class="notice">Loading upcoming USD economic releases…</p></div>
+<div class="actions" style="margin-top:10px"><button class="btn" id="refreshNews" type="button">↻ REFRESH NEWS</button></div>
+<p class="notice">This panel shows scheduled USD economic releases that can move Gold and Bitcoin—not live geopolitical headlines. Times are shown in Nigeria time (WAT). High-impact USD events block new signals for 30 minutes before and after scheduled release time. If the calendar cannot be verified, the signal engine must fail closed.</p>
 </section>
 <div class="actions" data-view="dashboard" style="margin:-2px 0 12px"><button class="btn primary wide" id="openFullChart" type="button">▣ OPEN FULL CHART</button></div>
 <section class="card" id="marketChart" data-view="chart"><div class="actions" style="margin-bottom:12px"><button class="btn" id="backToDashboard" type="button">← BACK TO DASHBOARD</button></div><h2>Full market chart</h2>
@@ -105,7 +128,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <div class="check"><input id="goldEnabled" type="checkbox" checked><label for="goldEnabled">Enable XAUUSD (Gold)</label></div>
 <div class="check"><input id="btcEnabled" type="checkbox"><label for="btcEnabled">Enable BTCUSD (Bitcoin) — weekend and 24/7 monitoring</label></div>
 <div class="check"><input id="majorsEnabled" type="checkbox" disabled><label for="majorsEnabled">Pairs beyond XAUUSD and BTCUSD are not implemented yet</label></div>
-<div class="check"><input id="newsEnabled" type="checkbox" disabled><label for="newsEnabled">News filter unavailable — no verified economic-calendar feed connected</label></div>
+<div class="check"><input id="newsEnabled" type="checkbox" checked disabled><label for="newsEnabled">Economic calendar protection is always enforced; see the dashboard news panel</label></div>
 <button class="btn primary wide" id="saveSettings">SAVE SETTINGS</button><p class="notice">24-hour monitoring is the default while START BOT is active. To limit scans, choose Selected hours and set the Lagos-time window (for example, 01:00–07:00); the initial selected-hours values are 08:00–20:00. Existing pending signals continue to be checked outside the window until confirmed, invalidated, or expired. Scheduled runs can be delayed. Maximum signals per day defaults to 3. No broker orders are placed.</p>
 </section>
 <section class="card" id="tradeOutcomes" data-view="outcomes"><h2>Trade outcome log</h2>
@@ -136,8 +159,36 @@ $('backToDashboard').addEventListener('click',()=>showView('dashboard'));
 showView('dashboard');
 
 async function api(path,body,afterLogin=false){let r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});let j={};try{j=await r.json()}catch{}if(r.status===401&&!afterLogin&&path!=='/api/login'){const password=window.prompt('Owner login required. Enter your dashboard password:');if(password===null||!password)throw new Error('Login cancelled. No action was executed.');const lr=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});let lj={};try{lj=await lr.json()}catch{}if(!lr.ok)throw new Error(lj.error||'Owner login failed.');return api(path,body,true)}if(!r.ok)throw new Error(j.error||('Request failed ('+r.status+')'));return j}
+function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function formatNewsTime(value){const d=new Date(value);if(!Number.isFinite(d.getTime()))return 'Time unavailable';return d.toLocaleString('en-GB',{timeZone:'Africa/Lagos',weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false})+' WAT'}
+async function refreshNews(){
+ const headline=$('newsHeadline'),list=$('newsEvents'),checked=$('newsChecked');
+ if(!headline||!list)return;
+ try{
+  const r=await api('/api/news');
+  headline.dataset.state=r.status==='CLEAR'?'clear':r.status==='BLOCKED'?'blocked':'unavailable';
+  headline.textContent=r.status==='CLEAR'?'NEWS FILTER: CLEAR — No high-impact USD release is inside the ±30-minute restricted window.':r.status==='BLOCKED'?'NEWS FILTER: BLOCKED — '+(r.reason||'A high-impact USD release is near its scheduled time.'):'NEWS FILTER: UNAVAILABLE — '+(r.reason||'Calendar could not be verified. Treat news risk as unknown.');
+  $('newsSource').textContent=r.source||'Economic calendar';
+  checked.textContent=r.checkedAt?formatNewsTime(r.checkedAt):'Not verified';
+  const events=Array.isArray(r.events)?r.events:[];
+  if(!events.length){list.innerHTML='<div class="news-empty">'+(r.ok?'No medium/high-impact USD events in the recent 12-hour or upcoming 7-day window.':'No verified events available. Do not assume the calendar is clear.')+'</div>';return}
+  list.innerHTML=events.map(e=>{
+   const actual=e.actual&&e.actual!=='null'?' · Actual: '+escapeHtml(e.actual):'';
+   const forecast=e.forecast&&e.forecast!=='null'?' · Forecast: '+escapeHtml(e.forecast):'';
+   const previous=e.previous&&e.previous!=='null'?' · Previous: '+escapeHtml(e.previous):'';
+   const past=Date.parse(e.time)<Date.now();
+   return '<article class="news-event"><div class="news-event-top"><div class="news-event-title">'+escapeHtml(e.title)+'</div><span class="news-impact '+escapeHtml(e.impact)+'">'+escapeHtml(e.impact)+' impact</span></div><div class="news-event-time">'+formatNewsTime(e.time)+(past?' · RELEASED':' · UPCOMING')+'</div><div class="news-event-data">USD'+actual+forecast+previous+'</div></article>';
+  }).join('');
+ }catch(e){
+  headline.dataset.state='unavailable';
+  headline.textContent='NEWS FILTER: UNAVAILABLE — '+e.message+' New signals should remain blocked until the calendar is verified.';
+  checked.textContent='Not verified';
+  list.innerHTML='<div class="news-empty">Unable to load verified calendar events. Refresh later; do not interpret this as “no news”.</div>';
+ }
+}
+$('refreshNews')?.addEventListener('click',async()=>{const b=$('refreshNews');b.disabled=true;try{await refreshNews()}finally{b.disabled=false}});
 function setStatus(id,text,ok=false){$(id).innerHTML='<i class="dot" style="background:'+(ok?'#4ade80':'#64748b')+'"></i>'+text}
-function settings(){return {balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),timeframe:$('timeframe').value,strategyMode:$('strategyMode').value,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:$('newsEnabled').checked}}
+function settings(){return {balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),timeframe:$('timeframe').value,strategyMode:$('strategyMode').value,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:true}}
 let lastAnalysisVerification=null;
 let currentTask=null;
 function setActivityState(label,state){const el=$("activityStatus");if(!el)return;el.innerHTML='<span class="activity-badge" data-state="'+state+'"><i class="dot '+(state==="working"?"pulse":"")+'"></i>'+label+"</span>"}
@@ -182,5 +233,5 @@ installButton.addEventListener('click',async()=>{
 });
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}
 
-loadSettings();refresh();updateSessionFields();setInterval(()=>{if(!currentTask)refresh()},15000);
+loadSettings();refresh();refreshNews();updateSessionFields();setInterval(()=>{if(!currentTask)refresh()},15000);setInterval(()=>{if(!currentTask)refreshNews()},300000);
 </script></body></html>
