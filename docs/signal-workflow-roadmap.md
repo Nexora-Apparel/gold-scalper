@@ -24,6 +24,16 @@ Build a personal XAUUSD signal assistant that can identify a potential setup bef
 7. Verify multiple consecutive runs and the full pending-entry/confirmation lifecycle; confirm that duplicate Telegram alerts are not produced.
 8. Keep the engine paused until operational checks pass. The scheduler cadence is approximate: GitHub may delay scheduled runs, so this is periodic monitoring, not real-time surveillance.
 
+## Phase 1 — implemented on feature branch (automated checks passed)
+
+- Minimum risk/reward is enforced against the actual rounded entry, stop, and target prices. Targets are not silently downgraded to a sub-minimum R multiple; Telegram formatting also rejects any signal below 1.5R or whose declared RR does not match its prices.
+- The quality score is now a transparent 100-point component score: H1 trend strength (20), zone quality (25), MSNR candle/price action (20), RSI (10), M15 EMA alignment (5), entry/stop quality (10), risk/reward (5), and preferred-session weighting (5). Configured 65/70/75/80 thresholds are applied as actual gates, and Telegram alerts include each component and the threshold. The score is a rule-based ranking, not a probability of winning.
+- New candidates are gated by the Fair Economy weekly economic calendar feed. High-impact USD events block new candidates within 30 minutes before/after the scheduled time. Calendar timeout, HTTP failure, empty/malformed payloads, or invalid event rows fail closed. Entry-confirmation Telegram delivery is held while the calendar is blocked/unavailable and retried after it clears.
+- London/New York session weighting is included in the score. Session hours are a Lagos-time approximation and are not an absolute restriction, so a user-configured overnight window remains usable but may receive a lower score.
+- The scheduled monitor no longer runs on every code push; it runs only by schedule or explicit manual dispatch, avoiding unintended live scans during edits.
+- npm run check passed on commit f41bd38d25164bb112850fc4bcb24b77c693aa55, including the new news-window tests and Telegram RR validation tests. The later workflow-only change removes the push trigger and does not alter application code.
+- Runtime/production verification remains outstanding: the scheduled monitor's preflight received HTTP 302 from the Vercel preview deployment, consistent with deployment protection/redirect. The monitor correctly stopped before requesting analysis. Do not treat Phase 1 as runtime-verified or enable live reliance until the intended deployment can be checked without weakening its protection.
+
 ## Target workflow
 1. **Market-data gate:** retrieve completed H1/M15 candles; reject malformed, stale, incomplete, or unavailable data.
 2. **Regime and setup:** evaluate trend, structure, support/resistance, momentum, volatility, and opposing-zone clearance. Never force a trade when filters disagree.
