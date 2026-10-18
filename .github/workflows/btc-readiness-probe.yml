@@ -6,7 +6,6 @@ on:
     paths:
       - "api/market-data-btc.js"
       - "api/analyze-btc.js"
-      - "api/diagnose-btc.js"
       - ".github/workflows/btc-readiness-probe.yml"
   workflow_dispatch:
 
