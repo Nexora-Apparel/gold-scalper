@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { analyzeGold } from "../lib/strategy.js";
 import { hasOwnerSession } from "../lib/auth.js";
 import { ensureStorage, getControlState, getStoredSettings, recordHistory, countSignalsToday, getActiveSignal, saveActiveSignal, claimMonitorLock, releaseMonitorLock, getRecordedOutcome } from "../lib/storage.js";
-import { sendTelegramMessage, formatSignalMessage } from "../lib/telegram.js";
+import { sendTelegramMessage, sendTelegramSignal } from "../lib/telegram.js";
 import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 import { processRsiRejectionAlert } from "../lib/rsi-rejection-alerts.js";
 import { getNewsStatus } from "../lib/news-filter.js";
@@ -382,7 +382,7 @@ export default async function handler(req, res) {
               const newsStatus = await getNewsStatus({ now: new Date() });
               const delivery = (!newsStatus.ok || newsStatus.blocked)
                 ? { sent: false, message: newsStatus.reason || "News filter blocked confirmation delivery." }
-                : await sendTelegramMessage(formatSignalMessage({ ...confirmedResult, newsStatus }));
+                : await sendTelegramSignal({ ...confirmedResult, newsStatus });
               result.entryMonitoring = {
                 state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
                 confirmationCandleTime: active.confirmationCandleTime,
