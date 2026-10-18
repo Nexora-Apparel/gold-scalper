@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bearerMatches } from "../api/diagnose-btc.js";
+import { bearerMatches } from "../api/market-data-btc.js";
 
 test("BTC Telegram diagnostic accepts the exact scheduler bearer secret", () => {
   assert.equal(bearerMatches("Bearer test-secret", "test-secret"), true);
