@@ -122,27 +122,26 @@ test("formats BTCUSD as BTCUSD and never labels it XAUUSD", () => {
 });
 
 
-test("builds a premium black-and-blue BUY image card with live signal levels", () => {
+test("builds a compact black BUY badge with bold blue text only", () => {
   const svg = buildSignalCardSvg(candidate());
-  assert.match(svg, /<svg/);
-  assert.match(svg, /#35A7FF/);
-  assert.match(svg, /BUY/);
-  assert.match(svg, /4,171\.00/);
-  assert.match(svg, /4,211\.00/);
-  assert.match(svg, /4,151\.00/);
-  assert.match(svg, /MANUAL REVIEW ONLY/);
+  assert.match(svg, /width="320" height="112"/);
+  assert.match(svg, /<rect width="320" height="112" rx="10" fill="#000000"/);
+  assert.match(svg, /font-size="64" font-weight="900"/);
+  assert.match(svg, /fill="#35A7FF">BUY<\/text>/);
+  assert.doesNotMatch(svg, /ENTRY|TAKE PROFIT|STOP LOSS|MANUAL REVIEW ONLY|XAUUSD/);
 });
 
-test("builds a black-and-red SELL image card and uses BTCUSD when supplied", () => {
+test("builds a compact black SELL badge with bold red text only", () => {
   const base = candidate({
     side: "SELL", symbol: "BTCUSD", entry: 65000, takeProfit: 63000, stopLoss: 66000,
     riskReward: 2
   });
   const svg = buildSignalCardSvg({ ...base, symbol: "BTCUSD" });
-  assert.match(svg, /#FF4D61/);
-  assert.match(svg, /SELL/);
-  assert.match(svg, /BTCUSD/);
-  assert.match(svg, /65,000\.00/);
+  assert.match(svg, /width="320" height="112"/);
+  assert.match(svg, /fill="#000000"/);
+  assert.match(svg, /font-size="64" font-weight="900"/);
+  assert.match(svg, /fill="#FF4D61">SELL<\/text>/);
+  assert.doesNotMatch(svg, /ENTRY|TAKE PROFIT|STOP LOSS|BTCUSD|65,000\.00/);
 });
 
 test("refuses to render a card with invalid trade levels", () => {
@@ -150,9 +149,9 @@ test("refuses to render a card with invalid trade levels", () => {
 });
 
 
-test("marks image card test renders as a non-live design preview", () => {
+test("preview image remains the same compact BUY badge without extra text", () => {
   const svg = buildSignalCardSvg({ ...candidate(), preview: true });
-  assert.match(svg, /DESIGN PREVIEW — SAMPLE DATA/);
-  assert.match(svg, /PREVIEW MODE • NOT A LIVE SIGNAL/);
-  assert.match(svg, /SAMPLE VALUES • NOT A LIVE SIGNAL/);
+  assert.match(svg, /fill="#35A7FF">BUY<\/text>/);
+  assert.match(svg, /fill="#000000"/);
+  assert.doesNotMatch(svg, /DESIGN PREVIEW|SAMPLE DATA|PREVIEW MODE|NOT A LIVE SIGNAL/);
 });
