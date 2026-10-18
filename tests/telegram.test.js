@@ -126,8 +126,9 @@ test("builds a compact black BUY badge with bold blue text only", () => {
   const svg = buildSignalCardSvg(candidate());
   assert.match(svg, /width="320" height="112"/);
   assert.match(svg, /<rect width="320" height="112" rx="10" fill="#000000"/);
-  assert.match(svg, /font-size="64" font-weight="900"/);
-  assert.match(svg, /fill="#35A7FF">BUY<\/text>/);
+  assert.match(svg, /stroke="#35A7FF"/);
+  assert.match(svg, /M0 0 V54/);
+  assert.doesNotMatch(svg, /<text\b|font-family/);
   assert.doesNotMatch(svg, /ENTRY|TAKE PROFIT|STOP LOSS|MANUAL REVIEW ONLY|XAUUSD/);
 });
 
@@ -139,8 +140,9 @@ test("builds a compact black SELL badge with bold red text only", () => {
   const svg = buildSignalCardSvg({ ...base, symbol: "BTCUSD" });
   assert.match(svg, /width="320" height="112"/);
   assert.match(svg, /fill="#000000"/);
-  assert.match(svg, /font-size="64" font-weight="900"/);
-  assert.match(svg, /fill="#FF4D61">SELL<\/text>/);
+  assert.match(svg, /stroke="#FF4D61"/);
+  assert.match(svg, /M32 0 H0 V54 H32/);
+  assert.doesNotMatch(svg, /<text\b|font-family/);
   assert.doesNotMatch(svg, /ENTRY|TAKE PROFIT|STOP LOSS|BTCUSD|65,000\.00/);
 });
 
@@ -151,7 +153,8 @@ test("refuses to render a card with invalid trade levels", () => {
 
 test("preview image remains the same compact BUY badge without extra text", () => {
   const svg = buildSignalCardSvg({ ...candidate(), preview: true });
-  assert.match(svg, /fill="#35A7FF">BUY<\/text>/);
+  assert.match(svg, /stroke="#35A7FF"/);
+  assert.doesNotMatch(svg, /<text\b|font-family/);
   assert.match(svg, /fill="#000000"/);
   assert.doesNotMatch(svg, /DESIGN PREVIEW|SAMPLE DATA|PREVIEW MODE|NOT A LIVE SIGNAL/);
 });
