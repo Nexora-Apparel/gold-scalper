@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluateNewsWindow } from "../lib/news-filter.js";
+import { evaluateNewsWindow, getNewsStatus } from "../lib/news-filter.js";
 
 const now = new Date("2026-10-19T12:00:00.000Z");
 function event(offsetMinutes, impact = "High", country = "USD") {
@@ -31,4 +31,31 @@ test("fails closed on empty or malformed calendars", () => {
     assert.equal(result.blocked, true);
     assert.equal(result.status, "UNAVAILABLE");
   }
+});
+
+test("calendar HTTP errors fail closed", async () => {
+  const result = await getNewsStatus({
+    now,
+    fetchImpl: async () => ({ ok: false, status: 503 })
+  });
+  assert.equal(result.blocked, true);
+  assert.equal(result.status, "UNAVAILABLE");
+});
+
+test("calendar network failures fail closed", async () => {
+  const result = await getNewsStatus({
+    now,
+    fetchImpl: async () => { throw new Error("network unavailable"); }
+  });
+  assert.equal(result.blocked, true);
+  assert.equal(result.status, "UNAVAILABLE");
+});
+
+test("calendar response with an unexpected JSON shape fails closed", async () => {
+  const result = await getNewsStatus({
+    now,
+    fetchImpl: async () => ({ ok: true, json: async () => ({ events: [] }) })
+  });
+  assert.equal(result.blocked, true);
+  assert.equal(result.status, "UNAVAILABLE");
 });
