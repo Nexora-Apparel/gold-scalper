@@ -83,6 +83,8 @@ export default async function handler(req, res) {
       marketOpen: goldMarketStatus.open,
       marketStatus: goldMarketStatus.status,
       marketStatusReason: goldMarketStatus.reason,
+      newsFilterEnabled: settings.newsEnabled === true,
+      newsCalendar: "Fair Economy weekly economic calendar; runtime status checked during candidate/confirmation validation",
       marketKeyConfigured: keyConfigured,
       telegram: telegramConfigured ? "Configured; owner-authenticated delivery test available" : "Not configured",
       telegramConfigured,
