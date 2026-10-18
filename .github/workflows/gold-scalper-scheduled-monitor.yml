@@ -41,6 +41,17 @@ jobs:
           GOLD_SCALPER_URL: https://gold-scalper-git-feature-personal-telegra-87c0a2-nexora-apparel.vercel.app
         run: |
           set -eu
+          # Independent guard: the currently deployed preview may not yet expose
+          # marketOpen, so never rely on its status response to avoid weekend scans.
+          weekday="$(date -u +%u)"
+          hour="$(date -u +%H)"
+          minute="$(date -u +%M)"
+          current_minutes=$((10#$hour * 60 + 10#$minute))
+          if [ "$weekday" = "6" ] || { [ "$weekday" = "7" ] && [ "$current_minutes" -lt 1320 ]; } || { [ "$weekday" = "5" ] && [ "$current_minutes" -ge 1260 ]; }; then
+            echo "Monitor skipped: conservative XAU/USD weekend market-hours guard is closed."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           response_file="$(mktemp)"
           trap 'rm -f "$response_file"' EXIT
           code="$(curl --silent --show-error --connect-timeout 8 --max-time 20 --retry 2 --retry-delay 2 --retry-connrefused \
