@@ -99,3 +99,22 @@ test("fails closed when timestamped candles are not newest-first", () => {
   assert.equal(result.signal, null);
   assert.match(result.reason, /Malformed|missing OHLC/i);
 });
+
+
+test("SMC-only mode does not mislabel a no-trade result as an MSNR rejection", () => {
+  const hourly = makeCandles(100, 60 * 60 * 1000, "flat");
+  const fifteen = makeCandles(120, 15 * 60 * 1000, "flat");
+  const result = analyzeGold(hourly, fifteen, { strategyMode: "SMC" });
+  assert.equal(result.status, "NO_TRADE");
+  assert.equal(result.signal, null);
+  assert.match(result.reason, /SMC/i);
+});
+
+test("combined MSNR + SMC mode requires both strategy confirmations", () => {
+  const hourly = makeCandles(100, 60 * 60 * 1000, "flat");
+  const fifteen = makeCandles(120, 15 * 60 * 1000, "flat");
+  const result = analyzeGold(hourly, fifteen, { strategyMode: "MSNR_SMC" });
+  assert.equal(result.status, "NO_TRADE");
+  assert.equal(result.signal, null);
+  assert.match(result.reason, /MSNR.*SMC|SMC.*MSNR/i);
+});
