@@ -128,7 +128,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <div class="check"><input id="goldEnabled" type="checkbox" checked><label for="goldEnabled">Enable XAUUSD (Gold)</label></div>
 <div class="check"><input id="btcEnabled" type="checkbox"><label for="btcEnabled">Enable BTCUSD (Bitcoin) — weekend and 24/7 monitoring</label></div>
 <div class="check"><input id="majorsEnabled" type="checkbox" disabled><label for="majorsEnabled">Pairs beyond XAUUSD and BTCUSD are not implemented yet</label></div>
-<div class="check"><input id="newsEnabled" type="checkbox" disabled><label for="newsEnabled">Economic calendar protection is always enforced; see the dashboard news panel</label></div>
+<div class="check"><input id="newsEnabled" type="checkbox" checked disabled><label for="newsEnabled">Economic calendar protection is always enforced; see the dashboard news panel</label></div>
 <button class="btn primary wide" id="saveSettings">SAVE SETTINGS</button><p class="notice">24-hour monitoring is the default while START BOT is active. To limit scans, choose Selected hours and set the Lagos-time window (for example, 01:00–07:00); the initial selected-hours values are 08:00–20:00. Existing pending signals continue to be checked outside the window until confirmed, invalidated, or expired. Scheduled runs can be delayed. Maximum signals per day defaults to 3. No broker orders are placed.</p>
 </section>
 <section class="card" id="tradeOutcomes" data-view="outcomes"><h2>Trade outcome log</h2>
@@ -188,7 +188,7 @@ async function refreshNews(){
 }
 $('refreshNews')?.addEventListener('click',async()=>{const b=$('refreshNews');b.disabled=true;try{await refreshNews()}finally{b.disabled=false}});
 function setStatus(id,text,ok=false){$(id).innerHTML='<i class="dot" style="background:'+(ok?'#4ade80':'#64748b')+'"></i>'+text}
-function settings(){return {balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),timeframe:$('timeframe').value,strategyMode:$('strategyMode').value,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:$('newsEnabled').checked}}
+function settings(){return {balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),timeframe:$('timeframe').value,strategyMode:$('strategyMode').value,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:true}}
 let lastAnalysisVerification=null;
 let currentTask=null;
 function setActivityState(label,state){const el=$("activityStatus");if(!el)return;el.innerHTML='<span class="activity-badge" data-state="'+state+'"><i class="dot '+(state==="working"?"pulse":"")+'"></i>'+label+"</span>"}
