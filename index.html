@@ -188,7 +188,7 @@ async function refreshNews(){
 }
 $('refreshNews')?.addEventListener('click',async()=>{const b=$('refreshNews');b.disabled=true;try{await refreshNews()}finally{b.disabled=false}});
 function setStatus(id,text,ok=false){$(id).innerHTML='<i class="dot" style="background:'+(ok?'#4ade80':'#64748b')+'"></i>'+text}
-function settings(){return {balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),timeframe:$('timeframe').value ,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:true}}
+function settings(){return {balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),timeframe:$('timeframe').value,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:true}}
 let lastAnalysisVerification=null;
 let currentTask=null;
 function setActivityState(label,state){const el=$("activityStatus");if(!el)return;el.innerHTML='<span class="activity-badge" data-state="'+state+'"><i class="dot '+(state==="working"?"pulse":"")+'"></i>'+label+"</span>"}
