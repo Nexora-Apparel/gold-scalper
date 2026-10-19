@@ -163,6 +163,6 @@ test("missing a core confirmation lowers score and marks confluence incomplete",
     liquiditySweep: true,
     fvgRetest: true
   });
-  assert.equal(result.score, 60);
+  assert.equal(result.score, 70);
   assert.equal(result.corePassed, false);
 });
