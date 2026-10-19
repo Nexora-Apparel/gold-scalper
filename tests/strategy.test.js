@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { analyzeGold } from "../lib/strategy.js";
+import { analyzeGold, scoreConfluence } from "../lib/strategy.js";
 
 function candle(time, open, high, low, close) {
   return { time: new Date(time).toISOString(), open, high, low, close };
@@ -126,4 +126,43 @@ test("MSNR-only input cannot switch the engine away from mandatory combined mode
   assert.equal(result.status, "NO_TRADE");
   assert.equal(result.signal, null);
   assert.match(result.reason, /mandatory.*MSNR.*SMC|MSNR.*SMC/i);
+});
+
+test("confluence score gives 75 points to the three mandatory confirmations", () => {
+  const result = scoreConfluence({
+    h1Direction: true,
+    zoneInteraction: true,
+    structureBreak: true
+  });
+  assert.equal(result.score, 75);
+  assert.equal(result.corePassed, true);
+  assert.equal(result.supportingEvidenceCount, 0);
+});
+
+test("optional confluence raises score without changing mandatory confirmation status", () => {
+  const result = scoreConfluence({
+    h1Direction: true,
+    zoneInteraction: true,
+    structureBreak: true,
+    liquiditySweep: true,
+    fvgRetest: true,
+    momentumAligned: true,
+    m15Aligned: true
+  });
+  assert.equal(result.score, 100);
+  assert.equal(result.corePassed, true);
+  assert.equal(result.supportingEvidenceCount, 4);
+  assert.equal(result.components.reduce((sum, item) => sum + item.points, 0), 100);
+});
+
+test("missing a core confirmation lowers score and marks confluence incomplete", () => {
+  const result = scoreConfluence({
+    h1Direction: true,
+    zoneInteraction: true,
+    structureBreak: false,
+    liquiditySweep: true,
+    fvgRetest: true
+  });
+  assert.equal(result.score, 60);
+  assert.equal(result.corePassed, false);
 });
