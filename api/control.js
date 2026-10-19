@@ -1,6 +1,13 @@
 import { hasOwnerSession } from "../lib/auth.js";
 import { ensureStorage, getControlState, saveControlState, getStoredSettings, getHistory } from "../lib/storage.js";
 
+export function startMessage(settings) {
+  const btcEnabled = settings?.btcEnabled === true;
+  const symbols = btcEnabled ? "XAUUSD and BTCUSD" : "XAUUSD";
+  const btcNote = btcEnabled ? "BTCUSD monitoring is enabled." : "BTCUSD remains disabled in saved settings; enable it in Settings to include Bitcoin scans.";
+  return `Scheduled ${symbols} monitoring enabled. ${btcNote} GitHub Actions will attempt scans every 15 minutes; runs may be delayed. Signal-only; no broker orders are placed.`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Method not allowed" }); }
   if (!hasOwnerSession(req)) return res.status(401).json({ error: "Owner login required. Sign in to use dashboard controls." });
@@ -36,9 +43,10 @@ export default async function handler(req, res) {
     }
     if (action === "start") {
       if (state.emergencyStop) return res.status(409).json({ error: "Emergency stop is active. Confirm a reset first." });
+      const settings = await getStoredSettings(sql);
       const next = { ...state, engine: "RUNNING", mode: "manual", updatedAt: new Date().toISOString() };
       await saveControlState(sql, next);
-      return res.status(200).json({ message: "Scheduled XAUUSD and enabled BTCUSD monitoring enabled. GitHub Actions will attempt scans every 15 minutes; runs may be delayed. Signal-only; no broker orders are placed.", control: next });
+      return res.status(200).json({ message: startMessage(settings), control: next });
     }
     if (action === "pause") {
       const next = { ...state, engine: "PAUSED", mode: "manual", updatedAt: new Date().toISOString() };
