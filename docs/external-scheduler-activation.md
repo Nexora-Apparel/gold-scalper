@@ -2,50 +2,45 @@
 
 ## Current state
 
-- The live monitor workflow is `.github/workflows/gold-scalper-scheduled-monitor.yml`.
-- The workflow's `push` trigger has been removed to prevent ordinary code commits from initiating live analysis.
-- `workflow_dispatch` remains available for manual verification.
-- The staggered GitHub `schedule` remains as a temporary fallback.
-- The production status endpoint reports the application and database online, with `CRON_SECRET`, Twelve Data and Telegram configuration present. A configured value does not by itself prove delivery or end-to-end operation.
-- A successful scheduled execution has not yet been confirmed. Recent run history queries found zero `schedule` and zero `workflow_dispatch` events.
+- The monitor workflow is `.github/workflows/gold-scalper-scheduled-monitor.yml`.
+- The workflow is manually dispatched only. There is no GitHub `schedule` trigger in the current workflow, so there is no built-in fallback timer.
+- The production status endpoint confirms the app/database are online and the XAUUSD feed was recently verified. This does not prove that cron-job.org is dispatching runs.
+- Production has the Vercel environment-variable entries `GITHUB_DISPATCH_TOKEN` and `SCHEDULER_TRIGGER_SECRET`. Their presence in Vercel does not prove the values are valid or that the external schedule is configured.
+- A successful recurring scheduled run has not been confirmed. Do not describe the bot as reliably automated until dispatches and end-to-end monitoring are observed.
 
-## External dispatch setup
+## Intended architecture
 
-Use cron-job.org (or an equivalent trusted scheduler) to call GitHub's workflow-dispatch API, not the Vercel analysis endpoint. This keeps the scheduler's short HTTP timeout away from the analysis request.
+Use cron-job.org (or another trusted scheduler) to call the Vercel relay endpoint:
 
-### GitHub token
-
-Create a fine-grained personal access token restricted to the `Nexora-Apparel/gold-scalper` repository. Grant only **Actions: Read and write**. Choose an expiry and document when it must be rotated. Never commit the token, include it in a URL, or place it in logs.
-
-### Scheduled HTTP request
-
+- Relay endpoint: `https://gold-scalper-nexora-apparel.vercel.app/api/scheduler-dispatch`
 - Method: `POST`
-- URL: `https://api.github.com/repos/Nexora-Apparel/gold-scalper/actions/workflows/gold-scalper-scheduled-monitor.yml/dispatches`
-- Body: `{"ref":"main"}`
-- Headers:
-  - `Authorization: Bearer <fine-grained-token>`
-  - `Accept: application/vnd.github+json`
-  - `X-GitHub-Api-Version: 2022-11-28`
-  - `User-Agent: gold-scalper`
-  - `Content-Type: application/json`
+- Header: `Authorization: Bearer <SCHEDULER_TRIGGER_SECRET>`
+- Expected response: HTTP `202` with `ok: true` and `queued: true`
 - Interval: every 15 minutes
-- Expected successful HTTP status: `204`
 
-Store the token in the scheduler's protected credential/header settings, not in a publicly visible request URL or repository file. If the scheduler UI cannot keep authorization headers private, do not use it.
+The relay validates `SCHEDULER_TRIGGER_SECRET`, then uses the server-side `GITHUB_DISPATCH_TOKEN` to dispatch the `Gold Scalper scheduled monitor` workflow against `main`. This keeps the GitHub token out of cron-job.org. Never put a secret in the URL, a public field, source code, or logs. Configure the job so its authorization header is private. If the scheduler cannot protect the header, do not use it.
+
+The relay is not the analysis endpoint. Do not point cron-job.org directly at `/api/analyze` or `/api/analyze-btc`; the GitHub workflow performs the authenticated analysis calls and handles the longer timeout.
 
 ## Verification sequence
 
-1. Use GitHub's Actions page to run **Gold Scalper scheduled monitor** manually, or send one dispatch request.
-2. Confirm a new run appears with event `workflow_dispatch`, not `push`.
-3. Inspect every step: scheduler configuration, production preflight, and authenticated analysis/pending-entry check. A green run where analysis is skipped outside the configured session is not proof that live analysis ran.
-4. During the configured `01:00–07:00 Africa/Lagos` session, confirm a dispatched run reaches the analysis step and validates fresh completed H1/M15 candles. A `NO_TRADE` result can be correct; do not force a signal for testing.
-5. Verify Telegram delivery only through a legitimate test or a real qualifying signal; do not infer delivery from `TELEGRAM_BOT_TOKEN` being configured.
-6. Confirm no duplicate active setup or duplicate Telegram notification across consecutive monitor runs.
-7. Let the external scheduler run reliably for at least one full session and review failures before removing the GitHub `schedule` fallback. Removing the fallback before this point could leave monitoring inactive if the external job or token fails.
+1. In cron-job.org, inspect the job URL, method, 15-minute schedule, and protected bearer header. Do not copy secrets into chat or screenshots.
+2. Trigger one test run from cron-job.org. Confirm the relay returns HTTP `202`. A `202` only means GitHub accepted the dispatch; it does not prove analysis succeeded.
+3. In GitHub Actions, confirm a new **Gold Scalper scheduled monitor** run appears with event `workflow_dispatch` and ref `main`.
+4. Inspect all workflow steps: configuration validation, production preflight, XAUUSD analysis/pending-entry check, and BTCUSD monitor.
+5. During the configured `01:00–07:00 Africa/Lagos` session, confirm fresh completed candles are verified. A `NO_TRADE` result can be correct; never force a signal for testing.
+6. Check the workflow result and the production status endpoint after the run. A green run that intentionally skips analysis outside the session or while paused is not proof that a market scan ran.
+7. Verify Telegram delivery only through a legitimate test or a real qualifying signal. A configured Telegram token is not proof of successful delivery.
+8. Confirm repeated runs do not create duplicate active setups or duplicate Telegram notifications. Review at least one full session before calling the scheduler reliable.
+
+## Known runtime checks to keep visible
+
+- `/api/status` currently reports whether BTCUSD is enabled separately from XAUUSD. If `btcEnabled` is false, the BTC monitor must not be described as active, even if its endpoint exists.
+- Production status previously showed XAUUSD fresh-candle verification, while BTCUSD was disabled and lacked recent fresh-candle verification. Confirm the owner-saved BTCUSD setting before counting BTC scans as operational.
+- The dashboard and workflow are signal-only/manual-review. No broker orders are placed.
 
 ## Safety boundaries
 
-- Do not alter strategy thresholds just to produce a signal.
-- Respect the emergency stop, engine state, session window, pending-entry lifecycle and daily signal limit.
-- This project is in manual-review mode; it does not place broker orders.
-- Do not declare the bot operational until repeated scheduled runs, fresh data validation and end-to-end Telegram behavior are verified.
+- Do not lower strategy, rounded-price minimum RR, news, stop/target, or entry-confirmation gates just to produce more signals.
+- Respect the emergency stop, engine state, configured session, pending-entry lifecycle, and daily signal limit.
+- Do not declare the bot operational until recurring dispatch, fresh market data, BTC enablement (if desired), and end-to-end Telegram behavior are verified.
