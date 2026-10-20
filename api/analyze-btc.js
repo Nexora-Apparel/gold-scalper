@@ -276,7 +276,7 @@ export default async function handler(req, res) {
         }
       }
       if (active && active.state === "WAITING_FOR_ENTRY") {
-        const lifecycle = evaluateSignalLifecycle(active, five);
+        const lifecycle = evaluateSignalLifecycle(active, five, Date.now(), 5 * 60 * 1000);
         if (lifecycle.changed) {
           active = lifecycle.active;
           await saveActiveSignal(sql, active, "BTCUSD");
