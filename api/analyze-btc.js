@@ -258,7 +258,7 @@ export default async function handler(req, res) {
       // Recount after acquiring the shared lock so concurrent Gold/BTC passes cannot exceed the shared daily cap.
       signalCount = await countSignalsToday(sql);
       // Send a pending-entry alert as soon as a fresh candidate is validated and its entry is still ahead.
-      // Subsequent completed M15 candles monitor confirmation, invalidation, and expiry.
+      // Subsequent completed M5 candles monitor entry confirmation, invalidation, and expiry.
       let active = await getActiveSignal(sql, "BTCUSD");
       if (active?.state === "CONFIRMED_AND_NOTIFIED" && active.result?.signal?.signalRef) {
         const recordedOutcome = await getRecordedOutcome(sql, active.result.signal.signalRef);
@@ -456,7 +456,7 @@ export default async function handler(req, res) {
       // Pending candidates are dashboard-only. Telegram is reserved for a confirmed entry.
       if (active && active.state === "WAITING_FOR_ENTRY" && active.result?.signal) {
         result.entryMonitoring = { state: "WAITING_FOR_ENTRY", telegramSent: false,
-          note: "No Telegram alert is sent for a candidate. Waiting for completed-M15 entry confirmation." };
+          note: "No Telegram alert is sent for a candidate. Waiting for completed-M5 entry confirmation." };
       }
 
       await recordBTCHistory(sql, result);
