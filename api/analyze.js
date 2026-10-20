@@ -214,9 +214,9 @@ export default async function handler(req, res) {
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
         const newsStatus = await getNewsStatus({ now: new Date() });
         result.newsStatus = newsStatus;
+        // News-calendar status is informational only. Provider outages must not suppress otherwise-valid signals.
         if (!newsStatus.ok || newsStatus.blocked) {
-          result = { ...result, status: "NO_TRADE", signal: null,
-            reason: newsStatus.reason || "Economic calendar could not be verified; new signals are blocked." };
+          result.newsWarning = newsStatus.reason || "Economic calendar status is unavailable; review current news manually.";
         }
       }
 
