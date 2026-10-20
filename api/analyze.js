@@ -406,9 +406,13 @@ export default async function handler(req, res) {
           confirmation: { status: "ENTRY_CONFIRMED", confirmedAt: active.confirmedAt, candleTime: active.confirmationCandleTime }
         };
         const newsStatus = await getNewsStatus({ now: new Date() });
-        const delivery = (!newsStatus.ok || newsStatus.blocked)
-          ? { sent: false, message: newsStatus.reason || "News filter blocked confirmation delivery." }
-          : await sendTelegramSignal({ ...confirmedResult, newsStatus });
+        // Calendar status is advisory; it must not suppress a confirmed signal notification.
+        const delivery = await sendTelegramSignal({
+          ...confirmedResult,
+          newsStatus,
+          ...(newsStatus.ok && newsStatus.blocked ? { newsWarning: newsStatus.reason } :
+            !newsStatus.ok ? { newsWarning: newsStatus.reason || "Calendar unavailable; review news manually." } : {})
+        });
         result.entryMonitoring = {
           state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
           confirmationCandleTime: active.confirmationCandleTime,
