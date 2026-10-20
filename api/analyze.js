@@ -204,6 +204,7 @@ export default async function handler(req, res) {
       ]);
       let result = {
         ...analyzeGold(hourly, fifteen, settings),
+        strategyVersion: "MSNR_SMC_CORE3_V1",
         source: "Twelve Data",
         checkedAt: new Date().toISOString(),
         marketDataVerified: true,
