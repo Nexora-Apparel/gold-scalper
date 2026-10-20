@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { analyzeGold, scoreConfluence } from "../lib/strategy.js";
+import { analyzeGold, scoreConfluence, detectAsianSessionSweep } from "../lib/strategy.js";
 
 function candle(time, open, high, low, close) {
   return { time: new Date(time).toISOString(), open, high, low, close };
@@ -165,4 +165,30 @@ test("missing a core confirmation lowers score and marks confluence incomplete",
   });
   assert.equal(result.score, 70);
   assert.equal(result.corePassed, false);
+});
+
+
+test("Asian session range detects a completed-session liquidity sweep and reclaim", () => {
+  const rows = [];
+  const start = Date.parse("2026-10-20T00:00:00Z"); // 01:00 Africa/Lagos
+  for (let i = 0; i < 28; i++) {
+    const open = 2000;
+    rows.push(candle(start + i * 15 * 60 * 1000, open, 2002, 1998, 2000));
+  }
+  // One M15 candle after 08:00 Lagos sweeps the Asian low and closes back above it.
+  rows.push(candle(Date.parse("2026-10-20T07:00:00Z"), 1999, 2001, 1996, 1999.5));
+  const result = detectAsianSessionSweep(rows, 0.1);
+  assert.equal(result.available, true);
+  assert.equal(result.bullishSweep, true);
+  assert.equal(result.bearishSweep, false);
+  assert.equal(result.asianLow, 1998);
+});
+
+test("Asian session sweep stays unavailable before the local 08:00 session boundary", () => {
+  const rows = [];
+  const start = Date.parse("2026-10-20T00:00:00Z");
+  for (let i = 0; i < 24; i++) rows.push(candle(start + i * 15 * 60 * 1000, 2000, 2002, 1998, 2000));
+  const result = detectAsianSessionSweep(rows, 0.1);
+  assert.equal(result.available, false);
+  assert.match(result.reason, /has not finished/);
 });

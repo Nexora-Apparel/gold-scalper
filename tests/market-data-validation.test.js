@@ -4,6 +4,7 @@ import { validateCandles, isWithinSession } from "../api/analyze.js";
 
 const HOUR = 60 * 60 * 1000;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
+const FIVE_MINUTES = 5 * 60 * 1000;
 
 function providerCandles(latestOpenTime, intervalMs, count = 30) {
   const latest = Date.parse(latestOpenTime);
@@ -52,4 +53,24 @@ test("Gold candidate session gate supports normal and overnight windows", () => 
 
 test("Gold 24-hour mode bypasses configured session hours", () => {
   assert.equal(isWithinSession({ scanMode: "24h", sessionStart: "01:00", sessionEnd: "07:00" }, new Date("2026-10-17T18:00:00Z")), true);
+});
+
+
+test("M5 validator accepts fresh completed candles for entry lifecycle monitoring", () => {
+  const now = Date.parse("2026-10-16T17:31:00Z");
+  const candles = providerCandles("2026-10-16T17:25:00Z", FIVE_MINUTES);
+  assert.equal(validateCandles(candles, "5min", 20, now).length, 30);
+});
+
+test("M5 validator rejects stale candles", () => {
+  const now = Date.parse("2026-10-16T17:31:00Z");
+  const candles = providerCandles("2026-10-16T17:00:00Z", FIVE_MINUTES);
+  assert.throws(() => validateCandles(candles, "5min", 20, now), /Stale 5min candles/);
+});
+
+test("market-data validator rejects duplicate timestamps", () => {
+  const now = Date.parse("2026-10-16T17:31:00Z");
+  const candles = providerCandles("2026-10-16T17:25:00Z", FIVE_MINUTES);
+  candles[1] = { ...candles[1], datetime: candles[0].datetime };
+  assert.throws(() => validateCandles(candles, "5min", 20, now), /duplicate candle timestamps/);
 });

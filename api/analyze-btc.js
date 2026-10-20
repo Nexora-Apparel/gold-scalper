@@ -7,7 +7,7 @@ import { evaluateSignalLifecycle } from "../lib/signal-lifecycle.js";
 import { processRsiRejectionAlert } from "../lib/rsi-rejection-alerts.js";
 import { getNewsStatus } from "../lib/news-filter.js";
 
-const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000 };
+const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000, "5min": 5 * 60 * 1000 };
 
 function recordBTCHistory(sql, result) {
   const normalized = { ...result, symbol: "BTCUSD" };
@@ -37,6 +37,7 @@ export function isWithinSession(settings, now = new Date()) {
 export function validateCandles(values, interval, minimum, now = Date.now()) {
   if (!Array.isArray(values)) throw new Error("Provider returned no candle data");
   const intervalMs = INTERVAL_MS[interval];
+  if (!Number.isFinite(intervalMs)) throw new Error(`Unsupported candle interval: ${interval}`);
   const parsed = values.map((v) => {
     const timeMs = parseProviderTime(v?.datetime);
     const candle = { time: v?.datetime, open: Number(v?.open), high: Number(v?.high), low: Number(v?.low), close: Number(v?.close), _timeMs: timeMs };
@@ -47,11 +48,13 @@ export function validateCandles(values, interval, minimum, now = Date.now()) {
     if (!valid) throw new Error("Provider returned malformed OHLC candles");
     return candle;
   });
+  const timestamps = parsed.map((c) => c._timeMs);
+  if (new Set(timestamps).size !== timestamps.length) throw new Error("Provider returned duplicate candle timestamps");
   const completed = parsed.filter((c) => c._timeMs + intervalMs <= now).sort((a, b) => b._timeMs - a._timeMs);
   if (completed.length < minimum) throw new Error("Insufficient completed candle history");
   // Provider timestamps mark candle open time; freshness must be measured from candle close.
   const latestAgeMs = now - (completed[0]._timeMs + intervalMs);
-  const freshnessLimit = interval === "15min" ? 45 * 60 * 1000 : 90 * 60 * 1000;
+  const freshnessLimit = interval === "5min" ? 20 * 60 * 1000 : interval === "15min" ? 45 * 60 * 1000 : 90 * 60 * 1000;
   if (latestAgeMs < 0 || latestAgeMs > freshnessLimit) throw new Error(`Stale ${interval} candles; latest completed candle is not fresh`);
   return completed.map(({ _timeMs, ...c }) => c);
 }
@@ -176,14 +179,14 @@ export default async function handler(req, res) {
         if (!r.ok || !j || j.status === "error" || !Array.isArray(j.values)) throw new Error(j?.message || "Provider returned no candle data");
         return validateCandles(j.values, interval, interval === "1h" ? 60 : 80);
       }
-      const [hourly, fifteen] = await Promise.all([candles("1h", 120), candles("15min", 250)]);
+      const [hourly, fifteen, five] = await Promise.all([candles("1h", 120), candles("15min", 250), candles("5min", 250)]);
       let result = {
         ...analyzeGold(hourly, fifteen, settings),
         symbol: "BTCUSD",
         source: "Twelve Data",
         checkedAt: new Date().toISOString(),
         marketDataVerified: true,
-        latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time },
+        latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time, m5: five[0].time },
         dataFreshness: "verified"
       };
       if (result.signal) result.signal.symbol = "BTCUSD";
@@ -269,7 +272,7 @@ export default async function handler(req, res) {
         }
       }
       if (active && active.state === "WAITING_FOR_ENTRY") {
-        const lifecycle = evaluateSignalLifecycle(active, fifteen);
+        const lifecycle = evaluateSignalLifecycle(active, five);
         if (lifecycle.changed) {
           active = lifecycle.active;
           await saveActiveSignal(sql, active, "BTCUSD");
