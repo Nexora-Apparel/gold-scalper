@@ -29,6 +29,11 @@ export function isWithinSession(settings, now = new Date()) {
   return start < end ? current >= start && current < end : current >= start || current < end;
 }
 
+export function isTelegramRiskValidationError(error) {
+  const message = typeof error === "string" ? error : error?.message;
+  return /Signal fails minimum 1\.5R Telegram delivery validation/i.test(String(message || ""));
+}
+
 export function validateCandles(values, interval, minimum, now = Date.now()) {
   if (!Array.isArray(values)) throw new Error("Provider returned no candle data");
   const intervalMs = INTERVAL_MS[interval];
@@ -517,6 +522,39 @@ export default async function handler(req, res) {
     } catch (error) {
       const timedOut = error?.name === "AbortError";
       const message = String(error?.message || "provider error");
+
+      // Telegram's final risk/reward validation happens after candles are verified.
+      // Treat a rejected signal as a signal-validation failure, never as a market-data outage.
+      if (isTelegramRiskValidationError(message)) {
+        const checkedAt = new Date().toISOString();
+        if (existingActiveSignal?.state === "CONFIRMATION_PENDING_DELIVERY") {
+          const notice = await sendTelegramMessage(
+            "⚠️ <b>SETUP REJECTED — DO NOT ENTER (XAUUSD)</b>\nThe setup failed final risk/reward validation after price confirmation. No trade alert was delivered. Do not enter this setup."
+          );
+          const invalidated = {
+            ...existingActiveSignal,
+            state: "INVALIDATED",
+            invalidatedAt: checkedAt,
+            invalidationReason: "Final rounded-price risk/reward validation failed the minimum 1.5R Telegram delivery check.",
+            lifecycleNotification: notice.sent
+              ? { sent: true, sentAt: checkedAt, messageId: notice.messageId ?? null }
+              : { sent: false, lastAttemptAt: checkedAt, message: notice.message || "Rejection notice delivery failed." }
+          };
+          await saveActiveSignal(sql, invalidated);
+        }
+        const rejected = {
+          status: "NO_TRADE",
+          signal: null,
+          marketDataVerified: true,
+          dataFreshness: "verified",
+          reason: "Signal rejected by final risk/reward validation. No Telegram trade alert was delivered; no new entry is approved.",
+          detail: message.slice(0, 200),
+          checkedAt
+        };
+        await recordHistory(sql, rejected);
+        res.setHeader("Cache-Control", "no-store");
+        return res.status(200).json(rejected);
+      }
       const utc = new Date();
       const day = utc.getUTCDay();
       const hour = utc.getUTCHours();
