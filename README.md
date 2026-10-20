@@ -4,24 +4,31 @@ Personal XAUUSD signal dashboard. The application generates rules-based **manual
 
 ## Current strategy
 
-- **MSNR (Multiple Support and Resistance):** builds price zones from confirmed H1 and M15 swing highs/lows, clustering nearby levels and tracking their source and touch count.
-- **H1 trend filter:** EMA 20 versus EMA 50 determines the permitted direction.
-- **M15 entry confirmation:** looks for a confirmed support/resistance rejection or a breakout-and-retest / breakdown-and-retest candle.
-- **Momentum filter:** M15 RSI must support the H1 direction; M15 EMA 20 is an additional quality check.
-- **Risk controls:** ATR-based stop-loss bounds, configured risk-to-reward target, and rejection when a nearby opposing zone does not leave enough room for the target.
-- Only completed candles are used; pivot levels require right-side candle confirmation. The engine returns NO_TRADE when conditions do not align.
-
-The quality score is a rule-based filter, **not** a win probability. This strategy has not yet been historically backtested and must not be assumed profitable.
+- **Fixed combined model:** the strategy always uses MSNR + SMC; dashboard settings cannot switch either model off.
+- **H1 direction:** EMA 20 versus EMA 50 determines the permitted direction.
+- **M15 setup context:** the latest completed M15 candle must show an MSNR support/resistance rejection or breakout-and-retest / breakdown-and-retest. An aligned M15 BOS/CHoCH is also mandatory.
+- **Supporting evidence:** liquidity sweeps, an Africa/Lagos Asian-session sweep, FVG retest, RSI momentum and EMA alignment are supporting confluence. They do not all have to be present and cannot replace the three core confirmations.
+- **ATR-aware risk:** M15 ATR helps set the entry buffer and stop distance. The stop distance must remain within configured volatility bounds, and the actual rounded-price risk/reward must satisfy the configured minimum (default 2:1).
+- **Completed candles only:** malformed, duplicate-timestamp, incomplete, stale, or unavailable candle data fails closed. H1/M15 remain the setup context; M5 is used for entry lifecycle monitoring when a pending setup exists.
+- The quality score is a rule-based ranking, **not** a win probability. The strategy has not been historically validated for profitability.
 
 ## Current scope
 
-- XAUUSD only; H1 trend + M15 MSNR setup.
-- Twelve Data candles; invalid, incomplete, stale, or unavailable data fails closed to NO_TRADE.
-- Persistent settings, control state, and analysis history in Neon.
-- Owner-authenticated dashboard, pause, emergency stop, reset, and manual on-demand analysis.
-- A valid pending-entry candidate is sent to Telegram immediately only after a fresh live quote confirms its entry is still ahead of price; the message includes the quote observed at alert time. The bot then monitors completed M15 candles and sends a follow-up when entry is confirmed, or an update if the setup is invalidated or expires. Alerts are pre-entry, but the 15-minute scheduler can be delayed and cannot guarantee a 30-minute lead time.
-- Monitoring runs whenever `/api/analyze` is called. The GitHub Actions workflow `.github/workflows/gold-scalper-scheduled-monitor.yml` runs on a 15-minute schedule from the default branch and supports manual dispatch. Scheduled GitHub workflows can be delayed and are not tick-level monitoring. The workflow authenticates with the `CRON_SECRET` repository secret and skips analysis when the engine is paused, emergency stop is active, or the configured session has no pending signal to monitor.
-- No automated trading, continuous/background scanning, economic-calendar/news filter, verified broker lot sizing, or backtest results.
+- **XAUUSD:** enabled by default; H1 + M15 setup logic and M5 pending-entry lifecycle monitoring.
+- **BTCUSD:** code path exists but Bitcoin is disabled in saved settings by default. A prior read-only data diagnostic succeeded; normal automated BTC lifecycle monitoring must be verified before enabling it.
+- **Market data:** Twelve Data candles and live quotes. Invalid, incomplete, stale, or unavailable data fails closed to NO_TRADE.
+- **News protection:** the economic-calendar filter fails closed if the calendar cannot be verified. This can suppress a valid setup during a provider outage; the restriction is intentional.
+- **Entry lifecycle:** a pending candidate is dashboard-only; no Telegram candidate alert is sent. A later completed M5 candle must touch the planned entry and close directionally. If SL or TP is touched first, the setup is invalidated. Pending setups expire after eight hours. Confirmation notifications older than 15 minutes from the confirmation candle close are not sent.
+- **Risk limits:** daily signal cap, minimum RR, valid directional SL/TP, data validation, news restrictions, emergency stop, and duplicate-monitor lock remain active. Risk amount is a budget estimate; broker-specific lot sizing is intentionally not supplied.
+- **Scheduler:** the current external cron-job.org relay has been observed running approximately every 15 minutes and dispatches `.github/workflows/gold-scalper-scheduled-monitor.yml`. That workflow is `workflow_dispatch` only. The current external schedule has **not** been changed to five minutes. M5 candles improve entry-lifecycle evaluation on each scheduled pass; true five-minute end-to-end scans require the external relay to be configured for every five minutes and then verified.
+- **No broker execution:** the application is a manual-review signal dashboard. It does not place MT5 or other broker orders.
+
+## Validation status
+
+- Automated repository checks run with `npm run check`; the recent M5 lifecycle, candle-validation, Asian-session, and timestamp regression tests passed in GitHub Actions.
+- Production deployment was verified READY after the M5 monitoring changes.
+- The database currently has no recorded manual trade outcomes. Therefore, a measured win rate, expectancy, average realized R, and maximum drawdown are not available. Do not treat code tests or the quality score as proof of strategy profitability.
+- A meaningful two-month paper-trading test remains necessary before real-money reliance.
 
 ## Required Vercel environment variables
 
