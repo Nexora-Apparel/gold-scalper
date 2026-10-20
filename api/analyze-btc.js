@@ -198,9 +198,9 @@ export default async function handler(req, res) {
       if (result.status === "SIGNAL_CANDIDATE" && result.signal) {
         const newsStatus = await getNewsStatus({ now: new Date() });
         result.newsStatus = newsStatus;
+        // News-calendar status is informational only. Provider outages must not suppress otherwise-valid signals.
         if (!newsStatus.ok || newsStatus.blocked) {
-          result = { ...result, status: "NO_TRADE", signal: null,
-            reason: newsStatus.reason || "Economic calendar could not be verified; new signals are blocked." };
+          result.newsWarning = newsStatus.reason || "Economic calendar status is unavailable; review current news manually.";
         }
       }
 
@@ -389,9 +389,14 @@ export default async function handler(req, res) {
                 confirmation: { status: "ENTRY_CONFIRMED", confirmedAt: active.confirmedAt, candleTime: active.confirmationCandleTime }
               };
               const newsStatus = await getNewsStatus({ now: new Date() });
-              const delivery = (!newsStatus.ok || newsStatus.blocked)
-                ? { sent: false, message: newsStatus.reason || "News filter blocked confirmation delivery." }
-                : await sendTelegramSignal({ ...confirmedResult, newsStatus });
+              // Do not let calendar outages or calendar-window flags block delivery of a confirmed signal.
+              // Include the calendar status so the owner can review it manually.
+              const delivery = await sendTelegramSignal({
+                ...confirmedResult,
+                newsStatus,
+                ...(newsStatus.ok && newsStatus.blocked ? { newsWarning: newsStatus.reason } :
+                  !newsStatus.ok ? { newsWarning: newsStatus.reason || "Calendar unavailable; review news manually." } : {})
+              });
               result.entryMonitoring = {
                 state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
                 confirmationCandleTime: active.confirmationCandleTime,
