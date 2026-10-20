@@ -1,0 +1,65 @@
+name: One-time BTC read-only readiness diagnostic
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/btc-readiness-diagnostic.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify BTCUSD feed without enabling trading
+        env:
+          GOLD_SCALPER_URL: https://gold-scalper-nexora-apparel.vercel.app
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -eu
+          test -n "$CRON_SECRET" || { echo "Missing CRON_SECRET"; exit 1; }
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          code="$(curl --silent --show-error --connect-timeout 8 --max-time 30 \
+            --output "$response_file" --write-out '%{http_code}' \
+            --request POST "${GOLD_SCALPER_URL%/}/api/market-data-btc" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{"diagnostic":true,"mode":"market"}')"
+          echo "BTC read-only diagnostic HTTP status: $code"
+          node --input-type=module - "$response_file" "$code" <<'NODE'
+          import fs from "node:fs";
+          let body;
+          try {
+            body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.error("BTC diagnostic returned invalid JSON.");
+            process.exit(1);
+          }
+          const summary = {
+            httpStatus: Number(process.argv[3]),
+            symbol: body.symbol ?? "BTC/USD",
+            diagnosticOnly: body.diagnosticOnly === true,
+            marketDataVerified: body.marketDataVerified === true,
+            dataFreshness: body.dataFreshness ?? "unknown",
+            h1CandleCount: body.h1CandleCount ?? null,
+            m15CandleCount: body.m15CandleCount ?? null,
+            latestCompletedCandle: body.latestCompletedCandle ?? null,
+            livePriceVerified: body.livePriceVerified === true,
+            analysisStatus: body.analysisStatus ?? null,
+            checkedAt: body.checkedAt ?? null,
+            error: body.error ?? null
+          };
+          console.log(JSON.stringify(summary));
+          if (Number(process.argv[3]) < 200 || Number(process.argv[3]) >= 300 ||
+              body.ok !== true || body.marketDataVerified !== true ||
+              body.livePriceVerified !== true || body.diagnosticOnly !== true) {
+            console.error("BTC market feed is not verified; keep BTCUSD disabled.");
+            process.exit(1);
+          }
+          console.log("BTC data is verified read-only. This diagnostic did not enable BTCUSD, send Telegram, write database state, or place orders.");
+          NODE
