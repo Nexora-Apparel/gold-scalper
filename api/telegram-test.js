@@ -6,8 +6,8 @@ function previewSignal(symbol, side) {
   const entry = symbol === "BTCUSD" ? 65000 : 4171;
   const distance = symbol === "BTCUSD" ? 1000 : 20;
   return {
-    preview: true,
-    status: "DESIGN_PREVIEW",
+    testSample: true,
+    status: "TEST_SAMPLE",
     quality: 88,
     symbol,
     signal: {
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
   return res.status(200).json({
     ok: true,
     status: "SENT",
-    message: "Both design previews delivered: blue BUY (XAUUSD) and red SELL (BTCUSD). Sample prices only; neither is a live trading signal.",
+    message: "Both TEST SAMPLE cards delivered with entry, TP, SL and risk/reward. All values are placeholders, not live signals.",
     messageIds: [buy.messageId, sell.messageId]
   });
 }
