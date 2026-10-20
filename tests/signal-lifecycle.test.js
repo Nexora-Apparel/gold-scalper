@@ -92,3 +92,14 @@ test("fails closed when stored signal prices contradict direction", () => {
   assert.equal(result.changed, false);
   assert.equal(result.active.state, "WAITING_FOR_ENTRY");
 });
+
+
+test("M5 confirmation time is based on the completed candle close, not the delayed scan time", () => {
+  const scanTime = Date.parse("2026-10-16T08:30:00Z");
+  const result = evaluateSignalLifecycle(active(), [
+    candle("2026-10-16T08:15:00Z", 4171, 4180, 4168, 4175)
+  ], scanTime, 5 * 60 * 1000);
+  assert.equal(result.active.state, "CONFIRMATION_PENDING_DELIVERY");
+  assert.equal(result.active.confirmedAt, "2026-10-16T08:20:00.000Z");
+  assert.equal(result.active.confirmationCandleClosedAt, "2026-10-16T08:20:00.000Z");
+});
