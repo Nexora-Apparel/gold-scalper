@@ -179,14 +179,18 @@ export default async function handler(req, res) {
         if (!r.ok || !j || j.status === "error" || !Array.isArray(j.values)) throw new Error(j?.message || "Provider returned no candle data");
         return validateCandles(j.values, interval, interval === "1h" ? 60 : 80);
       }
-      const [hourly, fifteen, five] = await Promise.all([candles("1h", 120), candles("15min", 250), candles("5min", 250)]);
+      const [hourly, fifteen, five] = await Promise.all([
+        candles("1h", 120),
+        candles("15min", 250),
+        existingActiveSignal?.state === "WAITING_FOR_ENTRY" ? candles("5min", 250) : Promise.resolve([])
+      ]);
       let result = {
         ...analyzeGold(hourly, fifteen, settings),
         symbol: "BTCUSD",
         source: "Twelve Data",
         checkedAt: new Date().toISOString(),
         marketDataVerified: true,
-        latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time, m5: five[0].time },
+        latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time, ...(five.length ? { m5: five[0].time } : {}) },
         dataFreshness: "verified"
       };
       if (result.signal) result.signal.symbol = "BTCUSD";
