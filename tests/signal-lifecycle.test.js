@@ -103,3 +103,23 @@ test("M5 confirmation time is based on the completed candle close, not the delay
   assert.equal(result.active.confirmedAt, "2026-10-16T08:20:00.000Z");
   assert.equal(result.active.confirmationCandleClosedAt, "2026-10-16T08:20:00.000Z");
 });
+
+
+test("M5 lifecycle ignores candles opened before the pending setup was queued", () => {
+  const pending = active("BUY", { createdAt: "2026-10-16T08:12:00Z" });
+  const result = evaluateSignalLifecycle(pending, [
+    candle("2026-10-16T08:05:00Z", 4171, 4180, 4168, 4175),
+    candle("2026-10-16T08:10:00Z", 4171, 4180, 4168, 4175),
+    candle("2026-10-16T08:15:00Z", 4171, 4180, 4168, 4175)
+  ], Date.parse("2026-10-16T08:20:00Z"), 5 * 60 * 1000);
+  assert.equal(result.active.state, "CONFIRMATION_PENDING_DELIVERY");
+  assert.equal(result.active.confirmationCandleTime, "2026-10-16T08:15:00Z");
+});
+
+test("M5 lifecycle cannot confirm from a candle that is still forming", () => {
+  const result = evaluateSignalLifecycle(active("BUY", { createdAt: "2026-10-16T08:12:00Z" }), [
+    candle("2026-10-16T08:15:00Z", 4171, 4180, 4168, 4175)
+  ], Date.parse("2026-10-16T08:18:00Z"), 5 * 60 * 1000);
+  assert.equal(result.changed, false);
+  assert.equal(result.active.state, "WAITING_FOR_ENTRY");
+});
