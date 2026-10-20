@@ -95,7 +95,7 @@ export default async function handler(req, res) {
       telegram: telegramConfigured ? "Configured; owner-authenticated delivery test available" : "Not configured",
       telegramConfigured,
       scheduler: cronSecretConfigured
-        ? "Scheduler authentication configured; heartbeat ${schedulerTelemetry.status.toLowerCase()}"
+        ? `Scheduler authentication configured; heartbeat ${schedulerTelemetry.status.toLowerCase()}`
         : "Not configured; CRON_SECRET is missing, so scheduled monitoring cannot authenticate",
       cronSecretConfigured,
       scanMode: settings.scanMode || "session",
