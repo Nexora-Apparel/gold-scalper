@@ -182,10 +182,12 @@ export default async function handler(req, res) {
         if (!r.ok || !j || j.status === "error" || !Array.isArray(j.values)) throw new Error(j?.message || "Provider returned no candle data");
         return validateCandles(j.values, interval, interval === "1h" ? 60 : 80);
       }
+      const legacyPending = existingActiveSignal?.state === "WAITING_FOR_ENTRY" &&
+        existingActiveSignal?.result?.signal?.strategyMode !== "EMA_RIBBON_RSI";
       const [hourly, fifteen, five] = await Promise.all([
-        candles("1h", 120),
-        candles("15min", 250),
-        (existingActiveSignal?.state === "WAITING_FOR_ENTRY" || (settings.strategyMode === "EMA_RIBBON_RSI" && settings.timeframe === "M5")) ? candles("5min", 250) : Promise.resolve([])
+        settings.strategyMode !== "EMA_RIBBON_RSI" || legacyPending ? candles("1h", 120) : Promise.resolve([]),
+        settings.strategyMode !== "EMA_RIBBON_RSI" || settings.timeframe === "M15" || legacyPending ? candles("15min", 250) : Promise.resolve([]),
+        legacyPending || (settings.strategyMode === "EMA_RIBBON_RSI" && settings.timeframe === "M5") ? candles("5min", 250) : Promise.resolve([])
       ]);
       const strategyCandles = settings.strategyMode === "EMA_RIBBON_RSI" && settings.timeframe === "M5" ? five : fifteen;
       let result = {
@@ -195,7 +197,7 @@ export default async function handler(req, res) {
         source: "Twelve Data",
         checkedAt: new Date().toISOString(),
         marketDataVerified: true,
-        latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time, ...(five.length ? { m5: five[0].time } : {}) },
+        latestCompletedCandle: { ...(hourly[0]?.time ? { h1: hourly[0].time } : {}), ...(fifteen[0]?.time ? { m15: fifteen[0].time } : {}), ...(five[0]?.time ? { m5: five[0].time } : {}) },
         dataFreshness: "verified"
       };
       if (result.signal) result.signal.symbol = "BTCUSD";
