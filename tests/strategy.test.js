@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { analyzeGold, scoreConfluence, detectAsianSessionSweep } from "../lib/strategy.js";
+import { analyzeGold, scoreConfluence, detectAsianSessionSweep, selectFvgRetest } from "../lib/strategy.js";
 
 function candle(time, open, high, low, close) {
   return { time: new Date(time).toISOString(), open, high, low, close };
@@ -201,4 +201,19 @@ test("Asian session sweep fails closed for candles without valid timestamps", ()
   }));
   assert.doesNotThrow(() => detectAsianSessionSweep(rows, 0.1));
   assert.equal(detectAsianSessionSweep(rows, 0.1).available, false);
+});
+
+
+test("FVG selection prefers the most recent valid retest after BOS", () => {
+  const last = { low: 100.8, high: 101.2 };
+  const gaps = [
+    { side: "BUY", low: 100, high: 102, index: 20 },
+    { side: "BUY", low: 100.5, high: 101.5, index: 25 },
+    { side: "BUY", low: 100.7, high: 101.3, index: 14 },
+    { side: "SELL", low: 100.9, high: 101.1, index: 27 },
+    { side: "BUY", low: 100.6, high: 101.4, index: 10 }
+  ];
+  const selected = selectFvgRetest(gaps, "BUY", 15, last, 30);
+  assert.equal(selected.index, 25);
+  assert.equal(selectFvgRetest(gaps, "BUY", 28, last, 30), null);
 });
