@@ -4,6 +4,7 @@ import { validateCandles, isWithinSession } from "../api/analyze-btc.js";
 
 const HOUR = 60 * 60 * 1000;
 const M15 = 15 * 60 * 1000;
+const M5 = 5 * 60 * 1000;
 
 function candles(latestOpenTime, intervalMs, count = 100, price = 65000) {
   const latest = Date.parse(latestOpenTime);
@@ -57,4 +58,18 @@ test("BTC monitoring supports overnight sessions", () => {
 test("BTC 24h scan mode ignores configured session hours", () => {
   const settings = { scanMode: "24h", sessionStart: "01:00", sessionEnd: "07:00" };
   assert.equal(isWithinSession(settings, new Date("2026-10-17T18:00:00Z")), true);
+});
+
+
+test("BTC validator accepts fresh completed M5 candles for lifecycle monitoring", () => {
+  const now = Date.parse("2026-10-17T09:31:00Z");
+  const values = candles("2026-10-17T09:25:00Z", M5, 100);
+  assert.equal(validateCandles(values, "5min", 80, now).length, 100);
+});
+
+test("BTC validator rejects duplicate candle timestamps", () => {
+  const now = Date.parse("2026-10-17T09:31:00Z");
+  const values = candles("2026-10-17T09:25:00Z", M5, 100);
+  values[8] = { ...values[8], datetime: values[7].datetime };
+  assert.throws(() => validateCandles(values, "5min", 80, now), /duplicate candle timestamps/);
 });
