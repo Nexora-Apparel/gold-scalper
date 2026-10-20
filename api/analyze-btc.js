@@ -139,7 +139,10 @@ export default async function handler(req, res) {
       return res.status(200).json(disabled);
     }
     const settings = {
-      strategyMode: "MSNR_SMC",
+      strategyMode: saved.strategyMode === "EMA_RIBBON_RSI" ? "EMA_RIBBON_RSI" : "MSNR_SMC",
+      timeframe: saved.timeframe === "M5" ? "M5" : "M15",
+      atrTargetMultiple: Number(saved.atrTargetMultiple) === 3 ? 3 : 4,
+      symbol: "BTCUSD",
       balance: Number(body.balance ?? saved.balance ?? 1000),
       currency: ["USD", "NGN", "EUR", "GBP"].includes(body.currency ?? saved.currency) ? (body.currency ?? saved.currency) : "USD",
       riskPercent: Number(body.riskPercent ?? saved.riskPercent ?? 0.5),
@@ -179,19 +182,22 @@ export default async function handler(req, res) {
         if (!r.ok || !j || j.status === "error" || !Array.isArray(j.values)) throw new Error(j?.message || "Provider returned no candle data");
         return validateCandles(j.values, interval, interval === "1h" ? 60 : 80);
       }
+      const legacyPending = existingActiveSignal?.state === "WAITING_FOR_ENTRY" &&
+        existingActiveSignal?.result?.signal?.strategyMode !== "EMA_RIBBON_RSI";
       const [hourly, fifteen, five] = await Promise.all([
-        candles("1h", 120),
-        candles("15min", 250),
-        existingActiveSignal?.state === "WAITING_FOR_ENTRY" ? candles("5min", 250) : Promise.resolve([])
+        settings.strategyMode !== "EMA_RIBBON_RSI" || legacyPending ? candles("1h", 120) : Promise.resolve([]),
+        settings.strategyMode !== "EMA_RIBBON_RSI" || settings.timeframe === "M15" || legacyPending ? candles("15min", 250) : Promise.resolve([]),
+        legacyPending || (settings.strategyMode === "EMA_RIBBON_RSI" && settings.timeframe === "M5") ? candles("5min", 250) : Promise.resolve([])
       ]);
+      const strategyCandles = settings.strategyMode === "EMA_RIBBON_RSI" && settings.timeframe === "M5" ? five : fifteen;
       let result = {
-        ...analyzeGold(hourly, fifteen, settings),
-        strategyVersion: "MSNR_SMC_CORE3_V1",
+        ...analyzeGold(hourly, strategyCandles, settings),
+        strategyVersion: settings.strategyMode === "EMA_RIBBON_RSI" ? "EMA_RIBBON_RSI_V1" : "MSNR_SMC_CORE3_V1",
         symbol: "BTCUSD",
         source: "Twelve Data",
         checkedAt: new Date().toISOString(),
         marketDataVerified: true,
-        latestCompletedCandle: { h1: hourly[0].time, m15: fifteen[0].time, ...(five.length ? { m5: five[0].time } : {}) },
+        latestCompletedCandle: { ...(hourly[0]?.time ? { h1: hourly[0].time } : {}), ...(fifteen[0]?.time ? { m15: fifteen[0].time } : {}), ...(five[0]?.time ? { m5: five[0].time } : {}) },
         dataFreshness: "verified"
       };
       if (result.signal) result.signal.symbol = "BTCUSD";
@@ -223,14 +229,20 @@ export default async function handler(req, res) {
             reason: "Unable to verify the current BTC/USD quote. The pending entry was not queued."
           };
         } else {
+          const intradayImmediate = settings.strategyMode === "EMA_RIBBON_RSI";
+          const priceInsideRisk = result.signal.side === "BUY"
+            ? livePrice > Number(result.signal.stopLoss) && livePrice < Number(result.signal.takeProfit)
+            : livePrice < Number(result.signal.stopLoss) && livePrice > Number(result.signal.takeProfit);
           const triggerStillAhead = result.signal.side === "BUY"
             ? result.signal.entry > livePrice
             : result.signal.entry < livePrice;
-          if (!triggerStillAhead) {
+          if (intradayImmediate ? !priceInsideRisk : !triggerStillAhead) {
             result = {
               ...result, status: "NO_TRADE", signal: null, livePriceVerified: true,
               currentPrice: livePrice,
-              reason: "The proposed pending entry has already been crossed or is no longer ahead of the current quote. No signal was queued."
+              reason: intradayImmediate
+                ? "The live quote has already reached or passed the planned stop-loss/target boundary; the candle-close signal was not approved."
+                : "The proposed pending entry has already been crossed or is no longer ahead of the current quote. No signal was queued."
             };
           } else {
             result.livePriceVerified = true;
@@ -430,6 +442,25 @@ export default async function handler(req, res) {
           result.signal = null;
           result.reason = `Daily signal limit reached (${signalCount}/${settings.maxSignals} Africa/Lagos time). No additional candidate was queued.`;
           result.entryMonitoring = { state: "DAILY_LIMIT_REACHED" };
+        } else if (activeCanBeReplaced && settings.strategyMode === "EMA_RIBBON_RSI") {
+          const delivery = await sendTelegramSignal({ ...result, currentPrice: result.currentPrice, signal: { ...result.signal, status: "CONFIRMED" } });
+          const deliveredAt = new Date().toISOString();
+          result.telegramDelivery = delivery.sent
+            ? { sent: true, sentAt: deliveredAt, messageId: delivery.messageId ?? null }
+            : { sent: false, message: delivery.message || "Telegram delivery failed." };
+          active = {
+            state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMATION_PENDING_DELIVERY",
+            createdAt: deliveredAt, confirmedAt: deliveredAt, confirmationCandleTime: result.signal.candleTime,
+            notifiedAt: delivery.sent ? deliveredAt : null, result,
+            candidateNotification: { sent: delivery.sent },
+            ...(delivery.sent ? { telegramMessageId: delivery.messageId ?? null } : { lastNotificationAttemptAt: deliveredAt, lastNotificationError: delivery.message || "Telegram delivery failed." })
+          };
+          await saveActiveSignal(sql, active, "BTCUSD");
+          result.entryMonitoring = {
+            state: active.state, created: true, telegramSent: delivery.sent,
+            note: delivery.sent ? "Candle-close signal was sent after live quote and risk-boundary validation." : "Signal passed; Telegram delivery failed and will be retried by the monitor.",
+            ...(delivery.message ? { deliveryMessage: delivery.message } : {})
+          };
         } else if (activeCanBeReplaced) {
           active = {
             state: "WAITING_FOR_ENTRY",
