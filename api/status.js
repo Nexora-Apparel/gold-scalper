@@ -1,4 +1,5 @@
 import { getGoldMarketStatus } from "../lib/market-hours.js";
+import { getSchedulerHealth } from "../lib/scheduler-health.js";
 import { ensureStorage, getControlState, getStoredSettings, getActiveSignal, getRecordedOutcome } from "../lib/storage.js";
 
 const MARKET_FRESHNESS_MS = 45 * 60 * 1000;
@@ -60,6 +61,8 @@ export default async function handler(req, res) {
       FROM gold_scalper_history WHERE symbol = 'XAUUSD' ORDER BY created_at DESC, id DESC LIMIT 1`;
     const latestBtcRows = await sql`SELECT status, result, created_at AS "createdAt"
       FROM gold_scalper_history WHERE symbol = 'BTCUSD' ORDER BY created_at DESC, id DESC LIMIT 1`;
+    const schedulerRows = await sql`SELECT created_at AS "createdAt" FROM gold_scalper_history ORDER BY created_at DESC, id DESC LIMIT 1`;
+    const schedulerTelemetry = getSchedulerHealth(schedulerRows[0]?.createdAt, Date.now());
     const btcActiveSignal = await getActiveSignal(sql, "BTCUSD");
     const btcActiveSignalNeedsMonitoring = Boolean(btcActiveSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(btcActiveSignal.state) || (["CONFIRMATION_EXPIRED", "INVALIDATED", "EXPIRED"].includes(btcActiveSignal.state) && btcActiveSignal.candidateNotification?.sent === true && btcActiveSignal.lifecycleNotification?.sent !== true)));
     const latestAnalysis = latestRows[0] || null;
@@ -73,6 +76,9 @@ export default async function handler(req, res) {
       application: "ONLINE",
       database: "CONNECTED",
       ...health,
+      schedulerHealth: !cronSecretConfigured ? "NOT_CONFIGURED" : schedulerTelemetry.status,
+      schedulerLastRunAt: schedulerTelemetry.lastRunAt,
+      schedulerAgeMinutes: schedulerTelemetry.ageMinutes,
       btcEnabled: settings.btcEnabled === true,
       btcMarketConnected: btcHealth.marketConnected,
       btcMarketData: btcHealth.marketData,
@@ -89,7 +95,7 @@ export default async function handler(req, res) {
       telegram: telegramConfigured ? "Configured; owner-authenticated delivery test available" : "Not configured",
       telegramConfigured,
       scheduler: cronSecretConfigured
-        ? "Scheduler authentication configured; see lastAnalysisAt for the latest recorded monitoring result"
+        ? "Scheduler authentication configured; heartbeat ${schedulerTelemetry.status.toLowerCase()}"
         : "Not configured; CRON_SECRET is missing, so scheduled monitoring cannot authenticate",
       cronSecretConfigured,
       scanMode: settings.scanMode || "session",
