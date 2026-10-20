@@ -192,8 +192,6 @@ export default async function handler(req, res) {
         ...analyzeGold(hourly, strategyCandles, settings),
         strategyVersion: settings.strategyMode === "EMA_RIBBON_RSI" ? "EMA_RIBBON_RSI_V1" : "MSNR_SMC_CORE3_V1",
         symbol: "BTCUSD",
-
-        symbol: "BTCUSD",
         source: "Twelve Data",
         checkedAt: new Date().toISOString(),
         marketDataVerified: true,
