@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateCandles, isWithinSession } from "../api/analyze.js";
+import { validateCandles, isWithinSession, isTelegramRiskValidationError } from "../api/analyze.js";
 
 const HOUR = 60 * 60 * 1000;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
@@ -73,4 +73,9 @@ test("market-data validator rejects duplicate timestamps", () => {
   const candles = providerCandles("2026-10-16T17:25:00Z", FIVE_MINUTES);
   candles[1] = { ...candles[1], datetime: candles[0].datetime };
   assert.throws(() => validateCandles(candles, "5min", 20, now), /duplicate candle timestamps/);
+});
+
+test("risk/reward Telegram validation errors are not classified as market-data failures", () => {
+  assert.equal(isTelegramRiskValidationError("Signal fails minimum 1.5R Telegram delivery validation."), true);
+  assert.equal(isTelegramRiskValidationError("Stale 15min candles; latest completed candle is not fresh"), false);
 });
