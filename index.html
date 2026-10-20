@@ -260,7 +260,9 @@ async function loadOutcomeHistory(){
   });
   if(previous&&[...select.options].some(o=>o.value===previous))select.value=previous;
   const s=r.statistics||{};
-  $('outcomeStats').textContent='Decided trades: '+(s.decided||0)+' · Wins: '+(s.wins||0)+' · Losses: '+(s.losses||0)+' · Win rate: '+(s.winRate===null?'N/A':s.winRate+'%')+' · Recorded net R: '+(s.netR??0);
+  const fmt=(v)=>v===null||v===undefined?'N/A':v;
+  const groupLine=(items)=>Array.isArray(items)&&items.length?items.map(x=>x.key+': n='+x.performanceSampleSize+', netR='+x.netR+', expectancyR='+fmt(x.expectancyR)).join(' · '):'No samples yet';
+  $('outcomeStats').textContent='Recorded outcomes: '+(s.recordedOutcomes??0)+' · Performance sample: '+(s.performanceSampleSize??0)+' · Decided: '+(s.decided||0)+' · Wins: '+(s.wins||0)+' · Losses: '+(s.losses||0)+' · Win rate: '+(s.winRate===null?'N/A':s.winRate+'%')+' · Net R: '+(s.netR??0)+' · Average R: '+fmt(s.averageR)+' · Expectancy R: '+fmt(s.expectancyR)+' · Max drawdown R: '+fmt(s.maxDrawdownR)+'\nBy symbol: '+groupLine(s.bySymbol)+'\nBy Lagos-time session: '+groupLine(s.bySession)+'\nBy quality band: '+groupLine(s.byQualityBand);
 }
 $('loadOutcomes').addEventListener('click',async()=>{const b=$('loadOutcomes');b.disabled=true;$('outcomeStats').textContent='Loading recorded signals…';try{await loadOutcomeHistory()}catch(e){$('outcomeStats').textContent='Could not load outcome history: '+e.message}finally{b.disabled=false}});
 $('saveOutcome').addEventListener('click',async()=>{const signalRef=$('outcomeSignal').value;if(!signalRef){$('outcomeStats').textContent='Select a signal reference first.';return}const raw=$('realizedR').value;const body={signalRef,outcome:$('outcomeValue').value,realizedR:raw===''?null:Number(raw),notes:$('outcomeNotes').value};const b=$('saveOutcome');b.disabled=true;try{const r=await api('/api/outcomes',body);$('outcomeStats').textContent=r.message||'Outcome saved.';await loadOutcomeHistory()}catch(e){$('outcomeStats').textContent='Outcome not saved: '+e.message}finally{b.disabled=false}});
