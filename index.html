@@ -106,7 +106,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <div class="status"><span class="label">Last checked</span><span class="value" id="newsChecked">Checking…</span></div>
 <div id="newsEvents" class="news-events"><p class="notice">Loading upcoming USD economic releases…</p></div>
 <div class="actions" style="margin-top:10px"><button class="btn" id="refreshNews" type="button">↻ REFRESH NEWS</button></div>
-<p class="notice">This panel shows scheduled USD economic releases that can move Gold and Bitcoin—not live geopolitical headlines. Times are shown in Nigeria time (WAT). High-impact USD events block new signals for 30 minutes before and after scheduled release time. If the calendar cannot be verified, the signal engine must fail closed.</p>
+<p class="notice">This panel shows scheduled USD economic releases that can move Gold and Bitcoin—not live geopolitical headlines. Times are shown in Nigeria time (WAT). High-impact USD events are shown as risk information. The economic calendar may be unavailable or rate-limited; this warning does not block signal generation or confirmed Telegram alerts. Review upcoming high-impact USD releases manually before acting on any signal.</p>
 </section>
 <div class="actions" data-view="dashboard" style="margin:-2px 0 12px"><button class="btn primary wide" id="openFullChart" type="button">▣ OPEN FULL CHART</button></div>
 <section class="card" id="marketChart" data-view="chart"><div class="actions" style="margin-bottom:12px"><button class="btn" id="backToDashboard" type="button">← BACK TO DASHBOARD</button></div><h2>Full market chart</h2>
@@ -212,7 +212,7 @@ async function refreshNews(){
  try{
   const r=await api('/api/news');
   headline.dataset.state=r.status==='CLEAR'?'clear':r.status==='BLOCKED'?'blocked':'unavailable';
-  headline.textContent=r.status==='CLEAR'?'NEWS FILTER: CLEAR — No high-impact USD release is inside the ±30-minute restricted window.':r.status==='BLOCKED'?'NEWS FILTER: BLOCKED — '+(r.reason||'A high-impact USD release is near its scheduled time.'):'NEWS FILTER: UNAVAILABLE — '+(r.reason||'Calendar could not be verified. Treat news risk as unknown.');
+  headline.textContent=r.status==='CLEAR'?'NEWS FILTER: CLEAR — No high-impact USD release is inside the ±30-minute restricted window.':r.status==='BLOCKED'?'NEWS FILTER: BLOCKED — '+(r.reason||'A high-impact USD release is near its scheduled time.'):'NEWS CALENDAR: UNAVAILABLE — '+(r.reason||'Calendar could not be verified. Treat news risk as unknown.');
   const sourceLabel=r.source||'Economic calendar';$('newsSource').innerHTML=sourceLabel.includes('FinanceCalendar')?escapeHtml(sourceLabel)+' · <a href="https://www.financecalendar.com/" target="_blank" rel="noopener noreferrer" style="color:#e7bd55">source</a>':escapeHtml(sourceLabel);
   checked.textContent=r.checkedAt?formatNewsTime(r.checkedAt):'Not verified';
   const events=Array.isArray(r.events)?r.events:[];
@@ -226,7 +226,7 @@ async function refreshNews(){
   }).join('');
  }catch(e){
   headline.dataset.state='unavailable';
-  headline.textContent='NEWS FILTER: UNAVAILABLE — '+e.message+' New signals should remain blocked until the calendar is verified.';
+  headline.textContent='NEWS CALENDAR: UNAVAILABLE — '+e.message+' This is an advisory warning only; signal generation is not blocked by calendar availability.';
   checked.textContent='Not verified';
   list.innerHTML='<div class="news-empty">Unable to load verified calendar events. Refresh later; do not interpret this as “no news”.</div>';
  }
