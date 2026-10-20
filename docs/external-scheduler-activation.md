@@ -4,9 +4,11 @@
 
 - The monitor workflow is `.github/workflows/gold-scalper-scheduled-monitor.yml`.
 - The workflow is manually dispatched only. There is no GitHub `schedule` trigger in the current workflow, so there is no built-in fallback timer.
-- The production status endpoint confirms the app/database are online and the XAUUSD feed was recently verified. This does not prove that cron-job.org is dispatching runs.
-- Production has the Vercel environment-variable entries `GITHUB_DISPATCH_TOKEN` and `SCHEDULER_TRIGGER_SECRET`. Their presence in Vercel does not prove the values are valid or that the external schedule is configured.
-- A successful recurring scheduled run has not been confirmed. Do not describe the bot as reliably automated until dispatches and end-to-end monitoring are observed.
+- Production status confirms the app/database are online and XAUUSD completed-candle data is being verified.
+- On 2026-10-20, successful `workflow_dispatch` monitor runs were observed at 15-minute intervals from 04:22Z through 05:37Z. Each run passed its prerequisite checks and authenticated analysis step.
+- The 05:37Z run verified fresh XAUUSD completed candles and correctly returned `NO_TRADE` because the actual rounded-price reward/risk was 1.64R, below the configured 2R minimum.
+- The same run skipped BTCUSD with `BTC_DISABLED`. BTCUSD is not currently active and its live data has not yet been verified.
+- The run history is evidence that recurring dispatches are reaching GitHub Actions; cron-job.org's saved configuration and protected header still need direct inspection before calling the scheduler fully audited.
 
 ## Intended architecture
 
