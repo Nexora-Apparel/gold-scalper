@@ -530,6 +530,12 @@ export default async function handler(req, res) {
         res.setHeader("Cache-Control", "no-store");
         return res.status(200).json(skipped);
       }
+      console.warn("XAU/USD candle verification failed:", {
+        strategyMode: settings.strategyMode,
+        timeframe: settings.timeframe,
+        timedOut,
+        detail: message.slice(0, 200)
+      });
       const unavailable = {
         status: "NO_TRADE", signal: null, marketDataVerified: false, dataFreshness: "unverified",
         error: "Unable to verify fresh, completed XAU/USD candles. No signal generated.",
