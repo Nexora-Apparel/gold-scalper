@@ -29,6 +29,11 @@ export function isWithinSession(settings, now = new Date()) {
   return start < end ? current >= start && current < end : current >= start || current < end;
 }
 
+export function isTelegramRiskValidationError(error) {
+  const message = typeof error === "string" ? error : error?.message;
+  return /Signal fails minimum 1\.5R Telegram delivery validation/i.test(String(message || ""));
+}
+
 export function validateCandles(values, interval, minimum, now = Date.now()) {
   if (!Array.isArray(values)) throw new Error("Provider returned no candle data");
   const intervalMs = INTERVAL_MS[interval];
@@ -520,7 +525,7 @@ export default async function handler(req, res) {
 
       // Telegram's final risk/reward validation happens after candles are verified.
       // Treat a rejected signal as a signal-validation failure, never as a market-data outage.
-      if (/Signal fails minimum 1\.5R Telegram delivery validation/i.test(message)) {
+      if (isTelegramRiskValidationError(message)) {
         const checkedAt = new Date().toISOString();
         if (existingActiveSignal?.state === "CONFIRMATION_PENDING_DELIVERY") {
           const notice = await sendTelegramMessage(
