@@ -217,3 +217,16 @@ test("FVG selection prefers the most recent valid retest after BOS", () => {
   assert.equal(selected.index, 25);
   assert.equal(selectFvgRetest(gaps, "BUY", 28, last, 30), null);
 });
+
+
+test("NO_TRADE includes strategy gate diagnostics without changing eligibility", () => {
+  const hourly = makeCandles(120, 60 * 60 * 1000, "flat");
+  const fifteen = makeCandles(250, 15 * 60 * 1000, "flat");
+  const result = analyzeGold(hourly, fifteen, { minRR: 2, minQuality: 70 });
+  assert.equal(result.status, "NO_TRADE");
+  assert.equal(result.strategyDiagnostics.h1Bias, "NEUTRAL");
+  assert.equal(typeof result.strategyDiagnostics.msnrBullishInteraction, "boolean");
+  assert.equal(typeof result.strategyDiagnostics.msnrBearishInteraction, "boolean");
+  assert.equal(typeof result.strategyDiagnostics.bullishStructureBreak, "boolean");
+  assert.equal(typeof result.strategyDiagnostics.bearishStructureBreak, "boolean");
+});
