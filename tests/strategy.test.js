@@ -192,3 +192,13 @@ test("Asian session sweep stays unavailable before the local 08:00 session bound
   assert.equal(result.available, false);
   assert.match(result.reason, /has not finished/);
 });
+
+
+test("Asian session sweep fails closed for candles without valid timestamps", () => {
+  const rows = Array.from({ length: 20 }, (_, i) => ({
+    open: 2000, high: 2002, low: 1998, close: 2000,
+    time: i === 19 ? "not-a-time" : new Date(Date.UTC(2026, 9, 20, 0, i * 15)).toISOString()
+  }));
+  assert.doesNotThrow(() => detectAsianSessionSweep(rows, 0.1));
+  assert.equal(detectAsianSessionSweep(rows, 0.1).available, false);
+});
