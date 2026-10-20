@@ -7,7 +7,9 @@
 - Production status confirms the app/database are online and XAUUSD completed-candle data is being verified.
 - On 2026-10-20, successful `workflow_dispatch` monitor runs were observed at 15-minute intervals from 04:22Z through 05:37Z. Each run passed its prerequisite checks and authenticated analysis step.
 - The 05:37Z run verified fresh XAUUSD completed candles and correctly returned `NO_TRADE` because the actual rounded-price reward/risk was 1.64R, below the configured 2R minimum.
-- The same run skipped BTCUSD with `BTC_DISABLED`. BTCUSD is not currently active and its live data has not yet been verified.
+- The same run skipped BTCUSD with `BTC_DISABLED`, so BTC trading/monitoring remains disabled.
+- A one-time read-only BTC diagnostic passed at 05:48:40Z on 2026-10-20: 119 validated H1 candles, 249 validated M15 candles, a verified live quote, and completed candles at H1 `2026-10-20 04:00:00` / M15 `2026-10-20 05:30:00` UTC. Diagnostic analysis returned `NO_TRADE`; no signal, Telegram message, database write, or broker order occurred.
+- This confirms the BTC market-data feed is accessible, not that BTC strategy monitoring is enabled. BTC remains disabled until the owner enables it in saved settings and a normal scheduled BTC analysis verifies data and lifecycle behavior. The temporary one-time diagnostic workflow was removed after this result.
 - The run history is evidence that recurring dispatches are reaching GitHub Actions; cron-job.org's saved configuration and protected header still need direct inspection before calling the scheduler fully audited.
 
 ## Intended architecture
