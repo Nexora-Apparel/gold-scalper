@@ -16,14 +16,14 @@ Personal XAUUSD signal dashboard. The application generates rules-based **manual
 - **BTCUSD:** code path exists but Bitcoin is disabled in saved settings by default. The selected strategy and timeframe are used for analysis; verify normal BTC market-data availability before enabling it.
 - **Market data:** Twelve Data candles and live quotes. Invalid, incomplete, stale, or unavailable data fails closed to NO_TRADE.
 - **News panel:** calendar availability is advisory and does not block an otherwise valid signal. Review news risk manually when the calendar is unavailable.
-- **Entry lifecycle:** a pending candidate is dashboard-only; no Telegram candidate alert is sent. A later completed M5 candle must touch the planned entry and close directionally. If SL or TP is touched first, the setup is invalidated. Pending setups expire after eight hours. Confirmation notifications older than 15 minutes from the confirmation candle close are not sent.
-- **Risk limits:** daily signal cap, minimum RR, valid directional SL/TP, data validation, news restrictions, emergency stop, and duplicate-monitor lock remain active. Risk amount is a budget estimate; broker-specific lot sizing is intentionally not supplied.
+- **Entry lifecycle:** MSNR + SMC uses the existing pending-entry lifecycle: a later completed M5 candle must touch the planned entry and close directionally; SL/TP touched first invalidates the setup. EMA Ribbon + RSI uses the completed trigger candle close as its entry and sends the signal after live quote and SL/TP-boundary checks. Telegram failures are retried by the monitor where supported.
+- **Risk limits:** daily signal cap, valid directional SL/TP, data validation, emergency stop, and duplicate-monitor lock remain active. Economic-calendar availability is advisory and does not block signal generation; check news manually. Risk amount is a budget estimate; broker-specific lot sizing is intentionally not supplied.
 - **Scheduler:** the current external cron-job.org relay has been observed running approximately every 15 minutes and dispatches `.github/workflows/gold-scalper-scheduled-monitor.yml`. That workflow is `workflow_dispatch` only. The current external schedule has **not** been changed to five minutes. Selecting M5 changes the strategy candle interval, but scans still occur only when the external relay runs (observed around every 15 minutes). For reliable coverage of every completed M5 candle, change the external relay to five minutes and verify it.
 - **No broker execution:** the application is a manual-review signal dashboard. It does not place MT5 or other broker orders.
 
 ## Validation status
 
-- Automated repository checks run with `npm run check`; the recent M5 lifecycle, candle-validation, Asian-session, and timestamp regression tests passed in GitHub Actions.
+- Automated repository checks run with `npm run check`; the selectable EMA Ribbon + RSI branch passed the GitHub Actions check suite, including syntax checks and the new indicator/risk tests.
 - Production deployment was verified READY after the M5 monitoring changes.
 - The database currently has no recorded manual trade outcomes. Therefore, a measured win rate, expectancy, average realized R, and maximum drawdown are not available. Do not treat code tests or the quality score as proof of strategy profitability.
 - A meaningful two-month paper-trading test remains necessary before real-money reliance.
