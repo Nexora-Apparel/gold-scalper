@@ -2,25 +2,23 @@
 
 Personal XAUUSD signal dashboard. The application generates rules-based **manual-review candidates only**. It does not place broker orders and does not promise profitable or accurate predictions.
 
-## Current strategy
+## Selectable strategies
 
-- **Fixed combined model:** the strategy always uses MSNR + SMC; dashboard settings cannot switch either model off.
-- **H1 direction:** EMA 20 versus EMA 50 determines the permitted direction.
-- **M15 setup context:** the latest completed M15 candle must show an MSNR support/resistance rejection or breakout-and-retest / breakdown-and-retest. An aligned M15 BOS/CHoCH is also mandatory.
-- **Supporting evidence:** liquidity sweeps, an Africa/Lagos Asian-session sweep, FVG retest, RSI momentum and EMA alignment are supporting confluence. They do not all have to be present and cannot replace the three core confirmations.
-- **ATR-aware risk:** M15 ATR helps set the entry buffer and stop distance. The stop distance must remain within configured volatility bounds, and the actual rounded-price risk/reward must satisfy the configured minimum (default 2:1).
-- **Completed candles only:** malformed, duplicate-timestamp, incomplete, stale, or unavailable candle data fails closed. H1/M15 remain the setup context; M5 is used for entry lifecycle monitoring when a pending setup exists.
-- The quality score is a rule-based ranking, **not** a win probability. The strategy has not been historically validated for profitability.
+- **MSNR + SMC (default):** H1 direction, M15 support/resistance context, aligned BOS/CHoCH, and ATR-aware risk. Existing pending-entry lifecycle remains unchanged.
+- **EMA Ribbon + RSI (intraday option):** selectable from Strategy settings; supports completed M5 or M15 candles. Buy requires EMA9 > EMA21 > EMA50, the previous close at/below EMA9 followed by a completed close above EMA9, and RSI(14) > 50. Sell requires the inverse stack, a close crossing below EMA9, and RSI(14) < 50.
+- **Risk engine:** ATR(14), stop at 2×ATR, and target at either 3×ATR (1.5R) or 4×ATR (2R). The signal entry is the trigger candle close. Before a signal is sent, the API checks a current quote and rejects it if price has already reached the stop or target boundary.
+- **Closed candles only:** incomplete, malformed, stale, or unavailable market data fails closed. The new strategy does not require H1 candles, so an hourly-feed failure should not block its M5/M15 analysis.
+- **No automatic execution:** this remains a manual-review signal dashboard. A Telegram message is a signal notification, not a broker order or a guarantee of profit.
 
 ## Current scope
 
-- **XAUUSD:** enabled by default; H1 + M15 setup logic and M5 pending-entry lifecycle monitoring.
-- **BTCUSD:** code path exists but Bitcoin is disabled in saved settings by default. A prior read-only data diagnostic succeeded; normal automated BTC lifecycle monitoring must be verified before enabling it.
+- **XAUUSD:** enabled by default. Select either the existing MSNR + SMC model or EMA Ribbon + RSI from Strategy settings.
+- **BTCUSD:** code path exists but Bitcoin is disabled in saved settings by default. The selected strategy and timeframe are used for analysis; verify normal BTC market-data availability before enabling it.
 - **Market data:** Twelve Data candles and live quotes. Invalid, incomplete, stale, or unavailable data fails closed to NO_TRADE.
-- **News protection:** the economic-calendar filter fails closed if the calendar cannot be verified. This can suppress a valid setup during a provider outage; the restriction is intentional.
+- **News panel:** calendar availability is advisory and does not block an otherwise valid signal. Review news risk manually when the calendar is unavailable.
 - **Entry lifecycle:** a pending candidate is dashboard-only; no Telegram candidate alert is sent. A later completed M5 candle must touch the planned entry and close directionally. If SL or TP is touched first, the setup is invalidated. Pending setups expire after eight hours. Confirmation notifications older than 15 minutes from the confirmation candle close are not sent.
 - **Risk limits:** daily signal cap, minimum RR, valid directional SL/TP, data validation, news restrictions, emergency stop, and duplicate-monitor lock remain active. Risk amount is a budget estimate; broker-specific lot sizing is intentionally not supplied.
-- **Scheduler:** the current external cron-job.org relay has been observed running approximately every 15 minutes and dispatches `.github/workflows/gold-scalper-scheduled-monitor.yml`. That workflow is `workflow_dispatch` only. The current external schedule has **not** been changed to five minutes. M5 candles improve entry-lifecycle evaluation on each scheduled pass; true five-minute end-to-end scans require the external relay to be configured for every five minutes and then verified.
+- **Scheduler:** the current external cron-job.org relay has been observed running approximately every 15 minutes and dispatches `.github/workflows/gold-scalper-scheduled-monitor.yml`. That workflow is `workflow_dispatch` only. The current external schedule has **not** been changed to five minutes. Selecting M5 changes the strategy candle interval, but scans still occur only when the external relay runs (observed around every 15 minutes). For reliable coverage of every completed M5 candle, change the external relay to five minutes and verify it.
 - **No broker execution:** the application is a manual-review signal dashboard. It does not place MT5 or other broker orders.
 
 ## Validation status
