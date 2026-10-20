@@ -1,6 +1,6 @@
 import { hasOwnerSession } from "../lib/auth.js";
 import { ensureStorage } from "../lib/storage.js";
-import { validateOutcomeInput } from "../lib/outcomes.js";
+import { summarizeOutcomes, validateOutcomeInput } from "../lib/outcomes.js";
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
@@ -32,25 +32,16 @@ export default async function handler(req, res) {
         ORDER BY h.created_at DESC, h.id DESC
         LIMIT 50
       `;
-      const statsRows = await sql`
-        SELECT
-          COUNT(*) FILTER (WHERE outcome IN ('WIN', 'LOSS'))::int AS decided,
-          COUNT(*) FILTER (WHERE outcome = 'WIN')::int AS wins,
-          COUNT(*) FILTER (WHERE outcome = 'LOSS')::int AS losses,
-          COALESCE(SUM(realized_r), 0)::float AS "netR"
-        FROM gold_scalper_outcomes
+      const performanceRows = await sql`
+        SELECT o.outcome, o.realized_r AS "realizedR", o.recorded_at AS "recordedAt",
+          h.symbol, h.result->>'quality' AS quality, h.created_at AS "signalCreatedAt"
+        FROM gold_scalper_outcomes o
+        LEFT JOIN gold_scalper_history h ON h.id = o.history_id
+        ORDER BY o.recorded_at ASC, o.id ASC
       `;
-      const stats = statsRows[0] || { decided: 0, wins: 0, losses: 0, netR: 0 };
-      const decided = Number(stats.decided || 0);
       return res.status(200).json({
         signals: rows,
-        statistics: {
-          decided,
-          wins: Number(stats.wins || 0),
-          losses: Number(stats.losses || 0),
-          winRate: decided ? Number((Number(stats.wins || 0) / decided * 100).toFixed(1)) : null,
-          netR: Number(Number(stats.netR || 0).toFixed(3))
-        }
+        statistics: summarizeOutcomes(performanceRows)
       });
     }
 
