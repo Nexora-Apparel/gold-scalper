@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { analyzeGold, scoreConfluence, detectAsianSessionSweep, selectFvgRetest } from "../lib/strategy.js";
+import { analyzeGold, scoreConfluence, detectAsianSessionSweep, selectFvgRetest, zoneTouchedWithinLookback } from "../lib/strategy.js";
 
 function candle(time, open, high, low, close) {
   return { time: new Date(time).toISOString(), open, high, low, close };
@@ -229,4 +229,27 @@ test("NO_TRADE includes strategy gate diagnostics without changing eligibility",
   assert.equal(typeof result.strategyDiagnostics.msnrBearishInteraction, "boolean");
   assert.equal(typeof result.strategyDiagnostics.bullishStructureBreak, "boolean");
   assert.equal(typeof result.strategyDiagnostics.bearishStructureBreak, "boolean");
+});
+
+test("MSNR zone interaction accepts a touch within the last three completed candles", () => {
+  const candles = [
+    candle(Date.UTC(2026, 0, 1, 0, 0), 101, 102, 100, 101),
+    candle(Date.UTC(2026, 0, 1, 0, 15), 101, 103, 101, 102),
+    candle(Date.UTC(2026, 0, 1, 0, 30), 102, 104, 101.5, 103)
+  ];
+  const support = { price: 100.5 };
+  const resistance = { price: 103.5 };
+  assert.equal(zoneTouchedWithinLookback(candles, support, "BUY", 0.1, 3), true);
+  assert.equal(zoneTouchedWithinLookback(candles, resistance, "SELL", 0.1, 3), true);
+  assert.equal(zoneTouchedWithinLookback(candles, support, "BUY", 0.1, 2), false);
+});
+
+test("MSNR zone interaction rejects touches older than the configured lookback", () => {
+  const candles = [
+    candle(Date.UTC(2026, 0, 1, 0, 0), 101, 102, 100, 101),
+    candle(Date.UTC(2026, 0, 1, 0, 15), 101, 103, 101, 102),
+    candle(Date.UTC(2026, 0, 1, 0, 30), 102, 104, 101.5, 103),
+    candle(Date.UTC(2026, 0, 1, 0, 45), 103, 105, 102, 104)
+  ];
+  assert.equal(zoneTouchedWithinLookback(candles, { price: 100.5 }, "BUY", 0.1, 3), false);
 });
