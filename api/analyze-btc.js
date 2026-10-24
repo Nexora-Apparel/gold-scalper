@@ -146,7 +146,7 @@ export default async function handler(req, res) {
       balance: Number(body.balance ?? saved.balance ?? 1000),
       currency: ["USD", "NGN", "EUR", "GBP"].includes(body.currency ?? saved.currency) ? (body.currency ?? saved.currency) : "USD",
       riskPercent: Number(body.riskPercent ?? saved.riskPercent ?? 0.5),
-      minRR: Number(body.minRR ?? saved.minRR ?? 2),
+      minRR: Number(body.minRR ?? saved.minRR ?? 1.5),
       minQuality: Number(body.minQuality ?? saved.minQuality ?? 70),
       maxSignals: Number(body.maxSignals ?? saved.maxSignals ?? 3),
       scanMode: saved.scanMode || "session",
