@@ -445,7 +445,8 @@ class FloatingAssistantService : Service() {
                         if (side == "BUY" || side == "SELL") side else null)
                 }
                 mobileEngine?.clearPosition()
-                prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side").apply()
+                prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side")
+                    .remove("active_position_entry").remove("active_position_volume").apply()
                 activePositionId = null; lastPositionSignature = null
                 latestText = "POSITION JOURNALED CLOSED"
                 updateNotification(latestText)
