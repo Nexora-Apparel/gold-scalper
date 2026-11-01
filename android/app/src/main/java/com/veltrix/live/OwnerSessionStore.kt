@@ -49,7 +49,7 @@ class OwnerSessionStore(context: Context) {
         val cookie = prefs.getString("cookie", null) ?: return false
         if (symbol != "XAUUSD" && symbol != "XAGUSD") return false
         if (!bid.isFinite() || !ask.isFinite() || bid <= 0.0 || ask <= bid) return false
-        val sequence = prefs.getLong("broker_quote_sequence", 0L) + 1L
+        val sequence = maxOf(prefs.getLong("broker_quote_sequence", 0L) + 1L, observedAtMillis)
         prefs.edit().putLong("broker_quote_sequence", sequence).apply()
         val body = JSONObject()
             .put("sequence", sequence)
