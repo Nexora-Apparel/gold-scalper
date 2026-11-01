@@ -9,7 +9,7 @@ import { getGoldMarketStatus } from "../lib/market-hours.js";
 
 const INTERVAL_MS = { "1h": 60 * 60 * 1000, "15min": 15 * 60 * 1000, "5min": 5 * 60 * 1000 };
 
-async function recordDashboardUpdate() { return { sent: true, status: "DASHBOARD_ONLY", message: "Lifecycle update retained in dashboard and Neon journal." }; }
+async function recordDashboardUpdate() { return { recorded: true, status: "DASHBOARD_ONLY", message: "Lifecycle update retained in dashboard and Neon journal." }; }
 
 function parseProviderTime(value) {
   if (typeof value !== "string") return NaN;
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
         const delivery = await recordDashboardUpdate(message);
         pausedSignal = {
           ...pausedSignal,
-          lifecycleNotification: delivery.sent
+          lifecycleNotification: delivery.recorded
             ? { sent: true, sentAt: new Date().toISOString(), messageId: delivery.messageId ?? null }
             : { sent: false, lastAttemptAt: new Date().toISOString(), message: delivery.message || "dashboard journal recording failed." }
         };
@@ -164,7 +164,7 @@ export default async function handler(req, res) {
     if (existingActiveSignal?.state === "CONFIRMED_AND_NOTIFIED") {
       const signalRef = existingActiveSignal.result?.signal?.signalRef;
       const recordedOutcome = signalRef ? await getRecordedOutcome(sql, signalRef) : null;
-      const notifiedMs = Date.parse(existingActiveSignal.notifiedAt || existingActiveSignal.confirmedAt || "");
+      const notifiedMs = Date.parse(existingActiveSignal.recordedAt || existingActiveSignal.notifiedAt || existingActiveSignal.confirmedAt || "");
       if (recordedOutcome) {
         existingActiveSignal = { ...existingActiveSignal, state: "CLOSED_WITH_OUTCOME", closedAt: recordedOutcome.recordedAt || new Date().toISOString(), recordedOutcome: recordedOutcome.outcome };
         await saveActiveSignal(sql, existingActiveSignal);
@@ -300,7 +300,7 @@ export default async function handler(req, res) {
       }
       // Safety valve: a confirmed signal with no recorded outcome must not block new signals forever.
       if (active?.state === "CONFIRMED_AND_NOTIFIED") {
-        const notifiedMs = Date.parse(active.notifiedAt || active.confirmedAt || "");
+        const notifiedMs = Date.parse(active.recordedAt || active.notifiedAt || active.confirmedAt || "");
         if (Number.isFinite(notifiedMs) && Date.now() - notifiedMs > 24 * 60 * 60 * 1000) {
           active = { ...active, state: "CLOSED_WITHOUT_OUTCOME", closedAt: new Date().toISOString() };
           await saveActiveSignal(sql, active);
@@ -387,7 +387,7 @@ export default async function handler(req, res) {
           active.candidateNotification?.sent === true && active.lifecycleNotification?.sent !== true) {
         const invalidated = active.state === "INVALIDATED";
         const confirmationExpired = active.state === "CONFIRMATION_EXPIRED";
-        const update = await sendTelegramMessage(confirmationExpired
+        const update = await recordDashboardUpdate(confirmationExpired
           ? "⚠️ <b>EXPIRED — DO NOT ENTER (XAUUSD)</b>\nThe confirmation alert was delayed or the live price had already reached the stop-loss/target boundary. Do not act on the delayed entry confirmation; check the current market manually."
           : invalidated
             ? "⚠️ <b>INVALIDATED — DO NOT ENTER (XAUUSD)</b>\nPrice touched the stop-loss or target before entry confirmation. Do not place this pending order; cancel it if you placed it manually."
@@ -395,16 +395,16 @@ export default async function handler(req, res) {
         const attemptedAt = new Date().toISOString();
         active = {
           ...active,
-          lifecycleNotification: update.sent
+          lifecycleNotification: update.recorded
             ? { sent: true, sentAt: attemptedAt, messageId: update.messageId ?? null }
             : { sent: false, lastAttemptAt: attemptedAt, message: update.message || "dashboard journal recording failed." }
         };
         await saveActiveSignal(sql, active);
         result.entryMonitoring = {
           state: active.state,
-          updateNotified: update.sent,
-          note: update.sent
-            ? "The pending setup update was delivered to Telegram."
+          updateNotified: update.recorded,
+          note: update.recorded
+            ? "The pending setup update was recorded in the dashboard journal."
             : "dashboard journal recording failed; the setup update will be retried on a later monitor pass.",
           ...(update.message ? { deliveryMessage: update.message } : {})
         };
@@ -425,12 +425,12 @@ export default async function handler(req, res) {
             !newsStatus.ok ? { newsWarning: newsStatus.reason || "Calendar unavailable; review news manually." } : {})
         });
         result.entryMonitoring = {
-          state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
+          state: delivery.recorded ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMED_AWAITING_TELEGRAM",
           confirmationCandleTime: active.confirmationCandleTime,
           ...(delivery.message ? { deliveryMessage: delivery.message } : {})
         };
-        if (delivery.sent) {
-          active = { ...active, state: "CONFIRMED_AND_NOTIFIED", telegramMessageId: delivery.messageId ?? null, notifiedAt: new Date().toISOString() };
+        if (delivery.recorded) {
+          active = { ...active, state: "CONFIRMED_AND_NOTIFIED", notifiedAt: new Date().toISOString() };
         } else {
           active = { ...active, lastNotificationAttemptAt: new Date().toISOString(), lastNotificationError: delivery.message || "dashboard journal recording failed." };
         }
@@ -451,22 +451,22 @@ export default async function handler(req, res) {
           result.reason = "Outside the configured Africa/Lagos monitoring session. Existing XAUUSD setups will still be monitored, but no new setup was queued.";
           result.entryMonitoring = { state: "OUTSIDE_SESSION" };
         } else if (activeCanBeReplaced && settings.strategyMode === "EMA_RIBBON_RSI") {
-          const delivery = await sendTelegramSignal({ ...result, currentPrice: result.currentPrice, signal: { ...result.signal, status: "CONFIRMED" } });
+          const delivery = await recordDashboardUpdate({ ...result, currentPrice: result.currentPrice, signal: { ...result.signal, status: "CONFIRMED" } });
           const deliveredAt = new Date().toISOString();
-          result.dashboardDelivery = delivery.sent
+          result.dashboardDelivery = delivery.recorded
             ? { sent: true, sentAt: deliveredAt, messageId: delivery.messageId ?? null }
             : { sent: false, message: delivery.message || "dashboard journal recording failed." };
           active = {
-            state: delivery.sent ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMATION_PENDING_DELIVERY",
+            state: delivery.recorded ? "CONFIRMED_AND_NOTIFIED" : "CONFIRMATION_PENDING_DELIVERY",
             createdAt: deliveredAt, confirmedAt: deliveredAt, confirmationCandleTime: result.signal.candleTime,
-            notifiedAt: delivery.sent ? deliveredAt : null, result,
-            candidateNotification: { sent: delivery.sent },
-            ...(delivery.sent ? { telegramMessageId: delivery.messageId ?? null } : { lastNotificationAttemptAt: deliveredAt, lastNotificationError: delivery.message || "dashboard journal recording failed." })
+            notifiedAt: delivery.recorded ? deliveredAt : null, result,
+            candidateNotification: { sent: delivery.recorded },
+            ...(delivery.recorded ? { dashboardRecordId: delivery.messageId ?? null } : { lastNotificationAttemptAt: deliveredAt, lastNotificationError: delivery.message || "dashboard journal recording failed." })
           };
           await saveActiveSignal(sql, active);
           result.entryMonitoring = {
-            state: active.state, created: true, dashboardRecorded: delivery.sent,
-            note: delivery.sent ? "Candle-close signal was sent after live quote and risk-boundary validation." : "Signal passed; dashboard journal recording failed and will be retried by the monitor.",
+            state: active.state, created: true, dashboardRecorded: delivery.recorded,
+            note: delivery.recorded ? "Candle-close signal was recorded after live quote and risk-boundary validation." : "Signal passed; dashboard journal recording failed and will be retried by the monitor.",
             ...(delivery.message ? { deliveryMessage: delivery.message } : {})
           };
         } else if (activeCanBeReplaced) {
@@ -498,7 +498,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // Pending candidates are dashboard-only. Telegram is reserved for a confirmed entry.
+      // Pending candidates are dashboard-only. dashboard journal is reserved for a confirmed entry.
       if (active && active.state === "WAITING_FOR_ENTRY" && active.result?.signal) {
         result.entryMonitoring = { state: "WAITING_FOR_ENTRY", dashboardRecorded: false,
           note: "No dashboard journal recording is sent for a candidate. Waiting for completed-M5 entry confirmation." };
@@ -516,7 +516,7 @@ export default async function handler(req, res) {
       if (isSignalRiskValidationError(message)) {
         const checkedAt = new Date().toISOString();
         if (existingActiveSignal?.state === "CONFIRMATION_PENDING_DELIVERY") {
-          const notice = await sendTelegramMessage(
+          const notice = await recordDashboardUpdate(
             "⚠️ <b>SETUP REJECTED — DO NOT ENTER (XAUUSD)</b>\nThe setup failed final risk/reward validation after price confirmation. No trade alert was delivered. Do not enter this setup."
           );
           const invalidated = {
@@ -524,7 +524,7 @@ export default async function handler(req, res) {
             state: "INVALIDATED",
             invalidatedAt: checkedAt,
             invalidationReason: "Final rounded-price risk/reward validation failed the minimum 1.5R dashboard journal recording check.",
-            lifecycleNotification: notice.sent
+            lifecycleNotification: notice.recorded
               ? { sent: true, sentAt: checkedAt, messageId: notice.messageId ?? null }
               : { sent: false, lastAttemptAt: checkedAt, message: notice.message || "Rejection notice delivery failed." }
           };
@@ -535,7 +535,7 @@ export default async function handler(req, res) {
           signal: null,
           marketDataVerified: true,
           dataFreshness: "verified",
-          reason: "Signal rejected by final risk/reward validation. No Telegram trade alert was delivered; no new entry is approved.",
+          reason: "Signal rejected by final risk/reward validation. No dashboard journal trade alert was delivered; no new entry is approved.",
           detail: message.slice(0, 200),
           checkedAt
         };
