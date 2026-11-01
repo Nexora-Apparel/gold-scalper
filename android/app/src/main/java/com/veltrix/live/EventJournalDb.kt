@@ -33,7 +33,7 @@ class EventJournalDb(context: Context) : SQLiteOpenHelper(context, "veltrix_even
 
     @Synchronized
     fun record(type: String, symbol: String, payload: JSONObject = JSONObject(), side: String? = null): String {
-        require(type in setOf("QUOTE_STATE", "MARKET_STATE", "SIGNAL", "NO_TRADE", "SIGNAL_REJECTED", "MISSED_OPPORTUNITY", "POSITION_OPENED", "EXIT_RECOMMENDED", "POSITION_CLOSED", "FEED_ERROR", "ENGINE_STATE", "EMERGENCY_STOP"))
+        require(type in setOf("QUOTE_STATE", "MARKET_STATE", "SIGNAL", "NO_TRADE", "SIGNAL_REJECTED", "MISSED_OPPORTUNITY", "POSITION_OPENED", "EXIT_RECOMMENDED", "POSITION_CLOSED", "FEED_ERROR", "ENGINE_STATE", "EMERGENCY_STOP", "POSITION_OUTCOME_RECORDED"))
         require(symbol == "XAUUSD" || symbol == "XAGUSD")
         require(side == null || side == "BUY" || side == "SELL")
         val id = UUID.randomUUID().toString()
