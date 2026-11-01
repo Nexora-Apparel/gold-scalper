@@ -189,7 +189,7 @@ class FloatingAssistantService : Service() {
             engine.onTick(tick)
             lastTickAt = System.currentTimeMillis()
             feedHealthy = tick.live
-            if (tick.live && currentDecisionText?.startsWith("HOLD_UNVERIFIED") == true) currentDecisionText = null
+            if (tick.live && currentDecisionText?.startsWith("HOLD · FEED UNVERIFIED") == true) currentDecisionText = null
             latestText = currentDecisionText ?: if (!tick.live) "Market closed or quote stale" else ("Bid " + tick.bid + " · Ask " + tick.ask)
             if (lastQuoteState != tick.live) {
                 lastQuoteState = tick.live
