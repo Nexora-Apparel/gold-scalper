@@ -24,6 +24,8 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.view.Gravity
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -83,7 +85,16 @@ class FloatingAssistantService : Service() {
                 }
                 Handler(Looper.getMainLooper()).post {
                     (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
-                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE")
+                    if (!paused && fresh && dot?.animation == null) {
+                        dot?.startAnimation(AlphaAnimation(0.45f, 1.0f).apply {
+                            duration = 900
+                            repeatMode = Animation.REVERSE
+                            repeatCount = Animation.INFINITE
+                        })
+                    } else if ((paused || !fresh) && dot?.animation != null) {
+                        dot?.clearAnimation()
+                    }
+                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
                 }
                 Thread.sleep(1000)
             }
