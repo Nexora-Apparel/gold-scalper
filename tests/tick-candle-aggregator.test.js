@@ -57,3 +57,11 @@ test("flush emits only current partial candle and labels it incomplete after str
   assert.equal(c.source,"biquote_ticks");
   assert.equal(agg.snapshot("XAGUSD"),null);
 });
+
+
+test("rejects non-finite and negative spreads instead of silently recording zero",()=>{
+  const agg=new TickCandleAggregator();
+  const t=Date.parse("2026-11-01T08:01:02Z");
+  assert.throws(()=>agg.ingest({...q("XAUUSD",t,2650),spread:NaN}),/Invalid normalized quote/);
+  assert.throws(()=>agg.ingest({...q("XAUUSD",t,2650),spread:-0.1}),/Invalid normalized quote/);
+});
