@@ -17,6 +17,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.graphics.Bitmap
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Handler
@@ -205,17 +206,31 @@ class FloatingAssistantService : Service() {
                 }
                 lastOcrAt = now
                 val frame = source.acquireLatestImage() ?: return@setOnImageAvailableListener
+                var paddedBitmap: Bitmap? = null
+                var croppedBitmap: Bitmap? = null
                 try {
-                    val input = InputImage.fromMediaImage(frame, 0)
+                    val plane = frame.planes[0]
+                    val pixelStride = plane.pixelStride
+                    val rowPadding = plane.rowStride - pixelStride * frame.width
+                    paddedBitmap = Bitmap.createBitmap(frame.width + rowPadding / pixelStride, frame.height, Bitmap.Config.ARGB_8888)
+                    paddedBitmap.copyPixelsFromBuffer(plane.buffer)
+                    croppedBitmap = Bitmap.createBitmap(paddedBitmap, 0, 0, frame.width, frame.height)
+                    val input = InputImage.fromBitmap(croppedBitmap, 0)
                     textRecognizer.process(input)
                         .addOnSuccessListener { result -> handleScreenText(result.text) }
                         .addOnFailureListener { error ->
                             latestText = "Local screen reading unavailable"
                             journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenOcrError", error.message ?: "unknown"))
                         }
-                        .addOnCompleteListener { frame.close() }
+                        .addOnCompleteListener {
+                            frame.close()
+                            try { croppedBitmap?.recycle() } catch (_: Exception) {}
+                            try { if (paddedBitmap !== croppedBitmap) paddedBitmap?.recycle() } catch (_: Exception) {}
+                        }
                 } catch (error: Exception) {
                     frame.close()
+                    try { croppedBitmap?.recycle() } catch (_: Exception) {}
+                    try { if (paddedBitmap !== croppedBitmap) paddedBitmap?.recycle() } catch (_: Exception) {}
                     latestText = "Screen frame rejected"
                 }
             }, handler)
