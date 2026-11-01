@@ -218,7 +218,9 @@ class FloatingAssistantService : Service() {
                 val entryPrice = if (payload.isNull("signalEntryPrice")) null else payload.optDouble("signalEntryPrice").takeIf { it.isFinite() && it > 0.0 }
                 val entrySide = payload.optString("signalEntryPriceSide")
                 val entryLabel = if (entryPrice != null && entrySide in setOf("ASK", "BID")) " · MT5 " + entrySide + " " + entryPrice else ""
-                currentDecisionText = actionLabel + entryLabel + " · MANUAL MT5 CONFIRMATION"
+                val quoteAgeMs = payload.optLong("brokerQuoteAgeMs", -1L)
+                val quoteAgeLabel = if (quoteAgeMs >= 0L) " · QUOTE AGE " + quoteAgeMs + "ms" else ""
+                currentDecisionText = actionLabel + entryLabel + quoteAgeLabel + " · MANUAL MT5 CONFIRMATION"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             } else if (eventType == "NO_TRADE" && !criticalExitAlert) {
