@@ -25,6 +25,13 @@ class MobileScalpingEngineTest {
         engine.checkTimeouts(11000L)
         assertEquals(0, events.size)
     }
+    @Test fun acceptsFreshObservedMt5SpreadOnlyForSelectedInstrument() {
+        val engine = MobileScalpingEngine("XAUUSD") { _, _, _ -> }
+        val now = System.currentTimeMillis()
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.50, 4172.70, now))
+        assertTrue(!engine.updateMt5ObservedQuote("XAGUSD", 31.40, 31.60, now))
+        assertTrue(!engine.updateMt5ObservedQuote("XAUUSD", 4172.70, 4172.50, now))
+    }
     @Test fun requiresFreshBrokerQuoteToMatchBothSidesAndSpread() {
         val engine = MobileScalpingEngine("XAUUSD") { _, _, _ -> }
         val now = System.currentTimeMillis()
