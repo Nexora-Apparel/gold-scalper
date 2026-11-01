@@ -65,7 +65,8 @@ class FloatingAssistantService : Service() {
     @Volatile private var pendingSignalEventId: String? = null
     private var activePositionId: String? = null
     private var missingPositionFrames = 0
-    private val textRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+    private val textRecognizerDelegate = lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+    private val textRecognizer by textRecognizerDelegate
 
     override fun onCreate() {
         super.onCreate()
@@ -627,7 +628,7 @@ class FloatingAssistantService : Service() {
         prefs.edit().putBoolean("assistant_active", false).apply()
         hub?.stop()
         stopScreenObservation()
-        try { textRecognizer.close() } catch (_: Exception) {}
+        try { if (textRecognizerDelegate.isInitialized()) textRecognizer.close() } catch (_: Exception) {}
         worker.shutdownNow()
         syncWorker.shutdownNow()
         try { panel?.let { windowManager.removeView(it) } } catch (_: Exception) {}
