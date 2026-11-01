@@ -7,6 +7,9 @@ data class Mt5ScreenSnapshot(
     val volumeLots: Double?,
     val entryPrice: Double?,
     val floatingProfit: Double?,
+    val bid: Double?,
+    val ask: Double?,
+    val quoteDetected: Boolean,
     val positionDetected: Boolean,
     val noOpenPositions: Boolean,
     val confidence: Double
@@ -47,6 +50,9 @@ object Mt5ScreenParser {
         val entry = labelledNumber(listOf("open price", "price open", "entry price"))
         val volume = labelledNumber(listOf("volume", "lots", "lot"))
         val profit = labelledNumber(listOf("profit", "p/l"))
+        val bid = labelledNumber(listOf("bid"))
+        val ask = labelledNumber(listOf("ask"))
+        val quoteDetected = symbol != null && bid != null && ask != null && bid > 0 && ask > bid
         val detected = tradeTab && symbol != null && side != null && entry != null && entry > 0
         val noOpenPositions = tradeTab && Regex("NO\\s+(OPEN\\s+)?POSITIONS?").containsMatchIn(all)
         val confidence = when {
@@ -55,6 +61,6 @@ object Mt5ScreenParser {
             tradeTab -> 0.35
             else -> 0.0
         }
-        return Mt5ScreenSnapshot(tradeTab, symbol, side, volume, entry, profit, detected, noOpenPositions, confidence)
+        return Mt5ScreenSnapshot(tradeTab, symbol, side, volume, entry, profit, bid, ask, quoteDetected, detected, noOpenPositions, confidence)
     }
 }
