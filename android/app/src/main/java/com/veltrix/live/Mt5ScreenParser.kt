@@ -35,18 +35,19 @@ object Mt5ScreenParser {
             else -> null
         }
         fun labelledNumber(labels: List<String>): Double? {
-            val line = lines.firstOrNull { value -> labels.any { value.lowercase().contains(it) } } ?: return null
-            val numbers = numberPattern.findAll(line).mapNotNull { match ->
-                val token = match.value
-                val value = when {
+            for (label in labels) {
+                val line = lines.firstOrNull { it.lowercase().contains(label) } ?: continue
+                val index = line.lowercase().indexOf(label)
+                if (index < 0) continue
+                val token = numberPattern.find(line.substring(index + label.length))?.value ?: continue
+                val normalizedToken = when {
                     token.contains(",") && token.contains(".") -> token.replace(",", "")
-                    Regex("-?\\d{1,3}(,\\d{3})+").matches(token) -> token.replace(",", "")
                     token.contains(",") -> token.replace(",", ".")
                     else -> token
                 }
-                value.toDoubleOrNull()
-            }.toList()
-            return numbers.lastOrNull()
+                normalizedToken.toDoubleOrNull()?.let { return it }
+            }
+            return null
         }
         val entry = labelledNumber(listOf("open price", "price open", "entry price"))
         val volume = labelledNumber(listOf("volume", "lots", "lot"))
