@@ -96,6 +96,9 @@ class FloatingAssistantService : Service() {
             if (eventType == "SIGNAL" || eventType == "EXIT_RECOMMENDED") {
                 latestText = payload.optString("action") + " · manual MT5 only"
                 updateNotification(latestText)
+            } else if (eventType == "ENGINE_STATE" && payload.has("exnessQuoteVerification")) {
+                latestText = "EXNESS QUOTE " + payload.optString("exnessQuoteVerification") + " · SIGNALS BLOCKED UNTIL VERIFIED"
+                updateNotification(latestText)
             }
         }
         mobileEngine = engine
