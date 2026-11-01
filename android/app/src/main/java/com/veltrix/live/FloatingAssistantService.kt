@@ -43,7 +43,7 @@ class FloatingAssistantService : Service() {
                 val fresh = feedHealthy && System.currentTimeMillis() - lastTickAt <= 5000
                 if (feedHealthy && !fresh) latestText = "STALE FEED · NO SIGNAL"
                 Handler(Looper.getMainLooper()).post {
-                    dot?.setBackgroundColor(if (paused) 0xFF737373.toInt() else if (fresh) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
+                    (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
                     panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE")
                 }
                 Thread.sleep(1000)
