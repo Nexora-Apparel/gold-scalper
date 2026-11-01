@@ -53,6 +53,11 @@ class Mt5ScreenParserTest {
         assertEquals(4172.55, result.bid!!, 0.0001)
         assertEquals(4172.70, result.ask!!, 0.0001)
     }
+    @Test fun rejectsBidAskTextWithoutMt5ScreenContext() {
+        val result = Mt5ScreenParser.parse("XAUUSD\\nBid 4172.50\\nAsk 4172.70")
+        assertFalse(result.quoteDetected)
+        assertNull(result.spread)
+    }
     @Test fun parsesEuropeanDecimalAndThousandsSeparators() {
         val result = Mt5ScreenParser.parse("Trade\nXAUUSD\nBUY 0.01\nOpen Price 4.172,55")
         assertEquals(4172.55, result.entryPrice!!, 0.0001)
