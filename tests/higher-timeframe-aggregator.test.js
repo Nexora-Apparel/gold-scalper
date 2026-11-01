@@ -17,7 +17,10 @@ test("emits M5 and M15 only after complete contiguous constituent minutes",()=>{
   assert.equal(result.completed.length,2);
   assert.equal(result.completed.find(c=>c.timeframe==="M5").constituentMinutes,5);
   assert.equal(result.completed.find(c=>c.timeframe==="M15").constituentMinutes,15);
-  assert.equal(emitted.length,2);
+  // Three completed M5 buckets (08:00, 08:05, 08:10) and one M15 bucket.
+  assert.equal(emitted.length,4);
+  assert.equal(emitted.filter(c=>c.timeframe==="M5").length,3);
+  assert.equal(emitted.filter(c=>c.timeframe==="M15").length,1);
 });
 
 test("does not fabricate context candles when constituent M1 data has gaps",()=>{
