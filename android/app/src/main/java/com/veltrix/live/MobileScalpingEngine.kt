@@ -14,7 +14,7 @@ class MobileScalpingEngine(
     private data class Sample(val time: Long, val mid: Double, val spread: Double)
     private data class Bar(val time: Long, val open: Double, val high: Double, val low: Double, val close: Double)
     private data class ActiveBar(val time: Long, val open: Double, var high: Double, var low: Double, var close: Double)
-    private data class PendingSignal(val side: String, val at: Long, val confidence: Double)
+    private data class PendingSignal(val side: String, val at: Long, val confidence: Double, val referencePrice: Double, val spread: Double)
 
     private val samples = mutableListOf<Sample>()
     private val bars = mutableListOf<Bar>()
@@ -41,12 +41,20 @@ class MobileScalpingEngine(
         val pending = pendingSignal
         if (pending != null) {
             val age = System.currentTimeMillis() - pending.at
-            if (side == pending.side && age in 0L..10000L) {
-                onEvent("ENGINE_STATE", side, JSONObject().put("signalAccepted", true).put("signalAgeMs", age))
+            val priceTolerance = max(pending.spread * 2.0, pending.referencePrice * 0.0001)
+            val priceMatches = pending.referencePrice <= 0.0 || abs(entryPrice - pending.referencePrice) <= priceTolerance
+            if (side == pending.side && age in 0L..10000L && priceMatches) {
+                onEvent("ENGINE_STATE", side, JSONObject().put("signalAccepted", true).put("signalAgeMs", age)
+                    .put("entryPriceDeviation", abs(entryPrice - pending.referencePrice)))
             } else {
+                val reason = when {
+                    age > 10000L -> "signal_expired_before_position_confirmation"
+                    side != pending.side -> "different_side_position_detected"
+                    else -> "entry_price_deviated_from_signal"
+                }
                 onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject()
-                    .put("reason", if (age > 10000L) "signal_expired_before_position_confirmation" else "different_side_position_detected")
-                    .put("signalAgeMs", age))
+                    .put("reason", reason).put("signalAgeMs", age)
+                    .put("signalReferencePrice", pending.referencePrice).put("detectedEntryPrice", entryPrice))
             }
             pendingSignal = null
         }
@@ -80,9 +88,9 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
-    fun restorePendingSignal(side: String?, at: Long, confidence: Double) {
+    fun restorePendingSignal(side: String?, at: Long, confidence: Double, referencePrice: Double = 0.0, spread: Double = 0.0) {
         if ((side == "BUY" || side == "SELL") && at > 0 && confidence.isFinite() && confidence in 0.0..1.0) {
-            pendingSignal = PendingSignal(side, at, confidence)
+            pendingSignal = PendingSignal(side, at, confidence, referencePrice, spread)
         }
     }
 
@@ -264,7 +272,7 @@ class MobileScalpingEngine(
                 action = if (direction == "UP") "BUY_NOW" else "SELL_NOW"
                 side = if (direction == "UP") "BUY" else "SELL"
                 lastSignalAt = now
-                pendingSignal = PendingSignal(side!!, System.currentTimeMillis(), confidence)
+                pendingSignal = PendingSignal(side!!, System.currentTimeMillis(), confidence, tick.mid, tick.spread)
             }
         } else if (confidence < 0.72) reasons.add("confidence_below_threshold")
 
@@ -290,6 +298,8 @@ class MobileScalpingEngine(
                 .put("processingLatencyMs", (System.currentTimeMillis() - tick.timestampMillis).coerceAtLeast(0L))
                 .put("validForSeconds", if (side != null) 10 else 0)
                 .put("signalAt", if (side != null) pendingSignal?.at ?: System.currentTimeMillis() else JSONObject.NULL)
+                .put("signalMid", if (side != null) tick.mid else JSONObject.NULL)
+                .put("signalSpread", if (side != null) tick.spread else JSONObject.NULL)
                 .put("quoteBid", tick.bid).put("quoteAsk", tick.ask)
                 .put("quoteMid", tick.mid).put("spread", tick.spread).put("spreadPercent", spreadPercent)
                 .put("volatilityRegime", volatility)
