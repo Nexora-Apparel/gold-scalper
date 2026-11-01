@@ -25,7 +25,7 @@ export default async function handler(req, res) {
         VALUES (${stateKey}, ${JSON.stringify(checked.value)}::jsonb, NOW())
         ON CONFLICT (state_key) DO UPDATE
           SET state_value = EXCLUDED.state_value, updated_at = NOW()
-          WHERE COALESCE((gold_scalper_state.state_value->>'sequence')::bigint, 0) < ${sequence}
+          WHERE (COALESCE((gold_scalper_state.state_value->>'sequence')::bigint, 0) < ${sequence} OR ${sequence} = 1)
             AND (gold_scalper_state.state_value->>'observedAt')::timestamptz < ${observedAt}::timestamptz
         RETURNING state_value->>'sequence' AS sequence`;
       if (!rows.length) return res.status(409).json({ ok: false, error: "Duplicate or out-of-order broker quote observation." });
