@@ -144,3 +144,5 @@ Example input shape:
 ```
 
 This is an intake validator only. No historical dataset is bundled or claimed to exist; replay results remain unavailable until a genuine provider archive is supplied and validated.
+
+The intake library also accepts standard comma-separated CSV exports through `importHistoricalTickCsv`. Required headers are `timestamp,bid,ask`; an optional `symbol` column is supported. Decimal prices must use plain dot-decimal notation. CSV rows pass through the same strict chronology, timestamp, Bid/Ask and provenance checks as JSON archives.
