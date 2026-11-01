@@ -61,6 +61,7 @@ class FloatingAssistantService : Service() {
     private var lastOcrAt = 0L
     private var lastPositionSignature: String? = null
     private var lastScreenTimeframe: String? = null
+    private var lastScreenMismatch: String? = null
     @Volatile private var pendingSignalEventId: String? = null
     private var activePositionId: String? = null
     private var missingPositionFrames = 0
@@ -358,11 +359,19 @@ class FloatingAssistantService : Service() {
         val snapshot = Mt5ScreenParser.parse(text, prefs.getString("symbol", "XAUUSD"))
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
         if (snapshot.symbol != null && snapshot.symbol != symbol) {
-            journal.record("ENGINE_STATE", symbol, JSONObject().put("screenSymbolMismatch", true)
-                .put("selectedSymbol", symbol).put("detectedSymbol", snapshot.symbol)
-                .put("screenTimeframe", snapshot.timeframe ?: JSONObject.NULL))
+            if (lastScreenMismatch != snapshot.symbol) {
+                lastScreenMismatch = snapshot.symbol
+                journal.record("ENGINE_STATE", symbol, JSONObject().put("screenSymbolMismatch", true)
+                    .put("selectedSymbol", symbol).put("detectedSymbol", snapshot.symbol)
+                    .put("screenTimeframe", snapshot.timeframe ?: JSONObject.NULL))
+            }
             latestText = "MT5 SCREEN SYMBOL MISMATCH · SELECT " + symbol
             return
+        }
+        if (lastScreenMismatch != null) {
+            journal.record("ENGINE_STATE", symbol, JSONObject().put("screenSymbolMismatch", false)
+                .put("selectedSymbol", symbol).put("screenTimeframe", snapshot.timeframe ?: JSONObject.NULL))
+            lastScreenMismatch = null
         }
         if (snapshot.timeframe != null && snapshot.timeframe != lastScreenTimeframe) {
             lastScreenTimeframe = snapshot.timeframe
