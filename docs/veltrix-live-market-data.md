@@ -173,3 +173,6 @@ The intake library also accepts standard comma-separated CSV exports through `im
 - Journal-derived signal timestamps use the original `payload.tickTimestamp` from the market tick that triggered the decision, not the later batch-sync arrival time. Events without that original tick timestamp are excluded from replay.
 
 - Replay reports are persisted in a separate IndexedDB object store, assigned content-derived SHA-256 IDs, and can be reopened, exported or deleted from the browser's saved replay history. This remains local-only; export important reports for backup.
+
+- Replay now runs six entry-latency sensitivity scenarios (0, 250, 500, 1,000, 2,000 and 3,000 ms) for every partition. The 0 ms case is an idealised baseline only. Entry is taken at the first archived tick at or after signal time plus the assumed latency; the quote must arrive within a further 1.5 seconds. The holding horizon starts from the actual selected entry tick. These are latency assumptions, not measured Android-to-Exness execution times.
+- Browser-imported archives must contain at least ten ticks so each 60/20/20 partition has at least two quotes and can be replayed independently.
