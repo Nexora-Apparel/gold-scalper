@@ -293,8 +293,10 @@ async function refreshScalpingEvents(){
   list.innerHTML=events.map(event=>{
    const detail=event.payload&&typeof event.payload==='object'?JSON.stringify(event.payload):'';
    const time=event.occurredAt?new Date(event.occurredAt).toLocaleString('en-GB',{timeZone:'Africa/Lagos'}):'Time unavailable';
-   return '<article class="news-event"><div class="news-event-top"><div class="news-event-title">'+escapeHtml(event.type)+' · '+escapeHtml(event.symbol)+(event.side?' · '+escapeHtml(event.side):'')+'</div><span class="news-impact">'+escapeHtml(event.type.replaceAll('_',' '))+'</span></div><div class="news-event-time">'+escapeHtml(time)+' WAT</div><div class="news-event-data">'+escapeHtml(detail.slice(0,900))+'</div></article>';
+   const recordButton=event.type==='POSITION_CLOSED'&&event.payload?.positionId?'<button class="btn" data-record-position="'+escapeHtml(event.payload.positionId)+'" data-symbol="'+escapeHtml(event.symbol)+'" type="button">RECORD THIS TRADE RESULT</button>':'';
+   return '<article class="news-event"><div class="news-event-top"><div class="news-event-title">'+escapeHtml(event.type)+' · '+escapeHtml(event.symbol)+(event.side?' · '+escapeHtml(event.side):'')+'</div><span class="news-impact">'+escapeHtml(event.type.replaceAll('_',' '))+'</span></div><div class="news-event-time">'+escapeHtml(time)+' WAT</div><div class="news-event-data">'+escapeHtml(detail.slice(0,900))+'</div>'+recordButton+'</article>';
   }).join('');
+  list.querySelectorAll('[data-record-position]').forEach(button=>button.addEventListener('click',()=>{$('outcomePositionId').value=button.dataset.recordPosition;$('outcomeSymbol').value=button.dataset.symbol; $('outcomeRealizedR').focus();$('outcomeSaveStatus').textContent='Enter the final net realized R for this exact MT5 position.';}));
  }catch(error){summary.textContent='Event journal unavailable: '+error.message;list.innerHTML='<div class="news-empty">No journal data was assumed. Verify owner session and database connection.</div>'}
 }
 $('refreshScalpingEvents')?.addEventListener('click',async()=>{const button=$('refreshScalpingEvents');button.disabled=true;try{await refreshScalpingEvents()}finally{button.disabled=false}});
