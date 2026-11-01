@@ -39,7 +39,7 @@ export default async function handler(req, res) {
         duplicates: checked.value.length - inserted, duplicateOutcomes
       });
     }
-    const limit = Math.min(1000, Math.max(1, Number(req.query?.limit) || 100));
+    const limit = Math.min(1000, Math.max(1, Math.trunc(Number(req.query?.limit) || 100)));
     const requestedSymbol = String(req.query?.symbol || "").toUpperCase();
     if (requestedSymbol && !["XAUUSD", "XAGUSD"].includes(requestedSymbol)) {
       return res.status(400).json({ error: "symbol must be XAUUSD or XAGUSD." });
@@ -69,6 +69,7 @@ export default async function handler(req, res) {
       ORDER BY CASE WHEN ${eventType}::text IS NOT NULL THEN occurred_at END ASC, CASE WHEN ${eventType}::text IS NULL THEN occurred_at END DESC, CASE WHEN ${eventType}::text IS NOT NULL THEN id END ASC, CASE WHEN ${eventType}::text IS NULL THEN id END DESC LIMIT ${limit + 1}`;
     const truncated = rows.length > limit;
     const events = truncated ? rows.slice(0, limit) : rows;
+    if (eventType === "SIGNAL") return res.status(200).json({ events, truncated });
     const totals = await sql`SELECT event_type AS type, COUNT(*)::int AS count FROM veltrix_scalping_events GROUP BY event_type ORDER BY event_type`;
     const totalRows = await sql`SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE event_type = 'POSITION_CLOSED')::int AS closed_positions, COUNT(*) FILTER (WHERE event_type = 'MISSED_OPPORTUNITY')::int AS missed_opportunities FROM veltrix_scalping_events`;
     const outcomeRows = await sql`WITH outcomes AS (
