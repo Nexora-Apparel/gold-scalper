@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.media.projection.MediaProjectionManager
 import android.view.Gravity
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -67,6 +68,15 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 401 && Settings.canDrawOverlays(this)) startAssistant()
+        if (requestCode == 402 && resultCode == RESULT_OK && data != null) {
+            val service = Intent(this, FloatingAssistantService::class.java)
+                .putExtra("projection_result_code", resultCode)
+                .putExtra("projection_data", data)
+            startForegroundService(service)
+        }
     }
-    private fun startAssistant() { startForegroundService(Intent(this, FloatingAssistantService::class.java)) }
+    private fun startAssistant() {
+        val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        startActivityForResult(manager.createScreenCaptureIntent(), 402)
+    }
 }
