@@ -223,6 +223,8 @@ class MobileScalpingEngine(
             val payload = JSONObject()
                 .put("action", action).put("confidence", confidence)
                 .put("provider", "biquote").put("providerSource", tick.source)
+                .put("tickTimestamp", java.time.Instant.ofEpochMilli(tick.timestampMillis).toString())
+                .put("processingLatencyMs", (System.currentTimeMillis() - tick.timestampMillis).coerceAtLeast(0L))
                 .put("validForSeconds", if (side != null) 10 else 0)
                 .put("signalAt", if (side != null) now else JSONObject.NULL)
                 .put("quoteBid", tick.bid).put("quoteAsk", tick.ask)
