@@ -25,6 +25,9 @@ class MobileScalpingEngine(
     private var activePosition: Pair<String, Double>? = null
     private var lastExitFingerprint = ""
     private var pendingSignal: PendingSignal? = null
+    private var pendingExitAt = 0L
+    private var pendingExitLogged = false
+    private var pendingExitReason = ""
     private var latestTick: LiveTick? = null
     private var lastAcceptedTickAt = 0L
     private var exnessVerifiedUntil = 0L
@@ -80,14 +83,22 @@ class MobileScalpingEngine(
 
     @Synchronized
     fun checkTimeouts(now: Long = System.currentTimeMillis()) {
-        val pending = pendingSignal ?: return
-        if (now - pending.at >= 10000L) {
+        val pending = pendingSignal
+        if (pending != null && now - pending.at >= 10000L) {
             onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject()
                 .put("reason", "signal_expired_without_detected_mt5_position")
                 .put("signalAgeMs", now - pending.at)
                 .put("confidence", pending.confidence)
                 .put("validForSeconds", 10))
             pendingSignal = null
+        }
+        val position = activePosition
+        if (position != null && pendingExitAt > 0 && !pendingExitLogged && now - pendingExitAt >= 5000L) {
+            pendingExitLogged = true
+            onEvent("EXIT_NOT_CONFIRMED", position.first, JSONObject()
+                .put("reason", pendingExitReason)
+                .put("confirmationDelayMs", now - pendingExitAt)
+                .put("manualMT5ConfirmationRequired", true))
         }
     }
 
@@ -114,6 +125,9 @@ class MobileScalpingEngine(
     fun clearPosition() {
         activePosition = null
         lastExitFingerprint = ""
+        pendingExitAt = 0L
+        pendingExitLogged = false
+        pendingExitReason = ""
     }
 
     @Synchronized
@@ -297,6 +311,20 @@ class MobileScalpingEngine(
                 action = "CLOSE_NOW"; reason = "Short-term momentum and tick pressure reversed against the position."
             }
             else -> { action = "HOLD"; reason = "No emergency exit condition confirmed." }
+        }
+        if (action == "CLOSE_NOW") {
+            if (pendingExitAt == 0L) {
+                pendingExitAt = System.currentTimeMillis()
+                pendingExitLogged = false
+                pendingExitReason = reason
+            }
+        } else if (action == "HOLD" && pendingExitAt > 0L) {
+            onEvent("EXIT_RECOMMENDATION_CLEARED", side, JSONObject()
+                .put("reason", "exit_conditions_no_longer_confirmed")
+                .put("previousExitReason", pendingExitReason))
+            pendingExitAt = 0L
+            pendingExitLogged = false
+            pendingExitReason = ""
         }
         val fingerprint = action + "|" + reason
         if (fingerprint == lastExitFingerprint) return
