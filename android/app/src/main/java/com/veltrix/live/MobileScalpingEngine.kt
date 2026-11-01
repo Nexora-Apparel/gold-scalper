@@ -155,12 +155,23 @@ class MobileScalpingEngine(
 
     @Synchronized
     fun shutdown() {
-        val pending = pendingSignal ?: return
-        onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject()
-            .put("reason", "assistant_stopped_before_position_confirmation")
-            .put("signalAgeMs", System.currentTimeMillis() - pending.at)
-            .put("confidence", pending.confidence))
-        pendingSignal = null
+        val pending = pendingSignal
+        if (pending != null) {
+            onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject()
+                .put("reason", "assistant_stopped_before_position_confirmation")
+                .put("signalAgeMs", System.currentTimeMillis() - pending.at)
+                .put("confidence", pending.confidence))
+            pendingSignal = null
+        }
+        val position = activePosition
+        if (position != null && pendingExitAt > 0L && !pendingExitLogged) {
+            onEvent("EXIT_NOT_CONFIRMED", position.first, JSONObject()
+                .put("reason", pendingExitReason)
+                .put("confirmationDelayMs", System.currentTimeMillis() - pendingExitAt)
+                .put("manualMT5ConfirmationRequired", true)
+                .put("assistantStopped", true))
+            pendingExitLogged = true
+        }
     }
 
     @Synchronized
