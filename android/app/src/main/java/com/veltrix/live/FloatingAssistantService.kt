@@ -59,6 +59,7 @@ class FloatingAssistantService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        prefs.edit().putBoolean("assistant_active", true).apply()
         startForeground(7101, notification("Connecting to biquote market data"))
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         showFloatingDot()
@@ -335,6 +336,13 @@ class FloatingAssistantService : Service() {
 
     @Suppress("DEPRECATION")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "CHANGE_SYMBOL") {
+            hub?.stop()
+            mobileEngine?.clearPosition()
+            lastPositionSignature = null
+            connectSelectedMarket()
+            journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("marketSelectionChanged", true))
+        }
         val resultCode = intent?.getIntExtra("projection_result_code", Activity.RESULT_CANCELED) ?: Activity.RESULT_CANCELED
         val projectionData: Intent? = if (Build.VERSION.SDK_INT >= 33) intent?.getParcelableExtra("projection_data", Intent::class.java)
             else intent?.getParcelableExtra("projection_data")
@@ -346,6 +354,7 @@ class FloatingAssistantService : Service() {
 
     override fun onDestroy() {
         paused = true
+        prefs.edit().putBoolean("assistant_active", false).apply()
         hub?.stop()
         stopScreenObservation()
         try { textRecognizer.close() } catch (_: Exception) {}
