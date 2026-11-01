@@ -63,7 +63,7 @@ function parseSignals(text, filename, symbol) {
     clean.push({ id: typeof item.id === "string" ? item.id : "signal-" + (i + 1), symbol, side, timestamp: new Date(timestampMs).toISOString(), timestampMs });
   }
   clean.sort((a, b) => a.timestampMs - b.timestampMs);
-  return { metadata: { sourceReference: metadata.sourceReference, strategy: metadata.strategy || "unspecified" }, signals: clean };
+  return { metadata: { sourceReference: metadata.sourceReference, strategy: metadata.strategy || "unspecified", provider: typeof metadata.provider === "string" ? metadata.provider : null }, signals: clean };
 }
 function partitionQuotes(quotes, start, end) {
   return quotes.filter((q) => {
