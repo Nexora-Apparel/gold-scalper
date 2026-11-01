@@ -138,6 +138,22 @@ class MainActivity : Activity() {
             setOnClickListener { if (!Settings.canDrawOverlays(this@MainActivity)) startActivityForResult(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)), 401) else startAssistant() }
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 20 })
         root.addView(Button(this).apply { text = "STOP FLOATING ASSISTANT"; setOnClickListener { stopService(Intent(this@MainActivity, FloatingAssistantService::class.java)) } }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 10 })
+        root.addView(Button(this).apply {
+            text = "ALLOW UNRESTRICTED BACKGROUND RUNNING"
+            setOnClickListener {
+                val power = getSystemService(POWER_SERVICE) as android.os.PowerManager
+                if (power.isIgnoringBatteryOptimizations(packageName)) {
+                    Toast.makeText(this@MainActivity, "Battery optimization is already disabled for VELTRIX LIVE.", Toast.LENGTH_SHORT).show()
+                } else {
+                    try {
+                        startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + packageName)))
+                    } catch (_: Exception) {
+                        startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                    }
+                }
+            }
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 10 })
+
         root.addView(TextView(this).apply {
             text = "The Android system will request screen-capture permission. Frames are processed locally to read MT5 trade details; full-screen images are never uploaded. Only structured events sync after owner login. The assistant never places, modifies, or closes orders. Verify every quote against Exness MT5."
             textSize = 12f; setTextColor(0xFF9CA3AF.toInt()); setPadding(0, 24, 0, 0)
