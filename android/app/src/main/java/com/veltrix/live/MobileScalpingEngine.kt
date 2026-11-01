@@ -468,6 +468,8 @@ class MobileScalpingEngine(
                 .put("mt5ObservedBid", observedMt5Quote?.bid ?: JSONObject.NULL)
                 .put("mt5ObservedAsk", observedMt5Quote?.ask ?: JSONObject.NULL)
                 .put("mt5ObservedSpread", observedMt5Quote?.spread ?: JSONObject.NULL)
+                .put("brokerQuoteObservedAt", freshMt5Quote?.let { java.time.Instant.ofEpochMilli(it.observedAt).toString() } ?: JSONObject.NULL)
+                .put("brokerQuoteAgeMs", freshMt5Quote?.let { (System.currentTimeMillis() - it.observedAt).coerceAtLeast(0L) } ?: JSONObject.NULL)
                 .put("spreadSource", spreadSource).put("spreadPercent", spreadPercent)
                 .put("mt5ReferenceQuoteVerification", when {
                     freshMt5Quote == null -> "NOT_OBSERVED"
