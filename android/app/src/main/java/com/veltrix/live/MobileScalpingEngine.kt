@@ -123,6 +123,7 @@ class MobileScalpingEngine(
         latestTick = tick
         if (exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
             exnessVerifiedUntil = 0L
+            lastExnessMatch = false
             onEvent("ENGINE_STATE", null, JSONObject().put("exnessQuoteVerification", "EXPIRED").put("signalGenerationEnabled", false))
         }
         val now = tick.timestampMillis
