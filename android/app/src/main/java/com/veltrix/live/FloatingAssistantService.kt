@@ -499,6 +499,7 @@ class FloatingAssistantService : Service() {
                 val side = prefs.getString("active_position_side", null)
                 val positionId = activePositionId ?: prefs.getString("active_position_id", null)
                 val payload = JSONObject().put("positionId", positionId ?: JSONObject.NULL)
+                    .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
                     .put("source", "manual_mt5_journal_entry").put("exitPrice", if (exitPrice > 0) exitPrice else JSONObject.NULL)
                 journal.record("POSITION_CLOSED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", payload, if (side == "BUY" || side == "SELL") side else null)
                 if (realizedR.isFinite() && positionId != null) {
