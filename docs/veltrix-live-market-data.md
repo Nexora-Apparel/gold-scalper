@@ -106,3 +106,5 @@ The Android production foreground service now instantiates the mobile engine wit
 Signal events also carry the MT5 observation timestamp, quote age, executable-side entry reference (Ask for BUY, Bid for SELL) and source label. The Android notification displays that side-specific reference and still requires the user to confirm the live quote in MT5 before acting.
 
 The Android floating indicator now distinguishes a fresh reference stream from a broker-corroborated state: red/live-ready only while the MT5 quote verification window is valid, amber while waiting for an MT5 match or while the feed is unavailable, and grey when paused. Fresh quote publication uses its own worker, separate from historical journal uploads, so a slow batch sync cannot queue the live observation behind it.
+
+Broker quote verification is also the mobile engine's constructor default. Reference-feed-only operation must be explicitly selected by a development/test caller; production code cannot accidentally fall back to Biquote-only signal generation by omitting the broker-verification option.
