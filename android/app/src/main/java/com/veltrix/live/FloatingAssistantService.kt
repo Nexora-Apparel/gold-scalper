@@ -349,6 +349,13 @@ class FloatingAssistantService : Service() {
             connectSelectedMarket()
             journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("marketSelectionChanged", true))
         }
+        if (intent?.action == "VERIFY_QUOTES") {
+            val bid = intent.getDoubleExtra("exness_bid", 0.0)
+            val ask = intent.getDoubleExtra("exness_ask", 0.0)
+            val matched = mobileEngine?.verifyExnessQuote(bid, ask) == true
+            latestText = if (matched) "EXNESS QUOTE VERIFIED · 5 MIN" else "EXNESS QUOTE MISMATCH · NO SIGNAL"
+            updateNotification(latestText)
+        }
         val resultCode = intent?.getIntExtra("projection_result_code", Activity.RESULT_CANCELED) ?: Activity.RESULT_CANCELED
         val projectionData: Intent? = if (Build.VERSION.SDK_INT >= 33) intent?.getParcelableExtra("projection_data", Intent::class.java)
             else intent?.getParcelableExtra("projection_data")
