@@ -92,7 +92,7 @@ export function validateArchive({ metadata, quotes } = {}) {
     symbol,provider,sourceReference,dataKind:"tick",tickCount:normalized.length,
     startAt:normalized[0].timestamp,endAt:normalized.at(-1).timestamp,durationMs:endMs-startMs,
     medianIntervalMs:percentile(.5),p95IntervalMs:percentile(.95),
-    maxGapMs:intervals.length?Math.max(...intervals):null,chronological:true,
+    maxGapMs:intervals.length?intervals.reduce((max,value)=>Math.max(max,value),0):null,chronological:true,
     quoteIntegrityValidated:true,splitMethod:"chronological_60_20_20",
     partitions:{train:partition(0,split1),validation:partition(split1,split2),heldOutTest:partition(split2,normalized.length)},
     importedAt:new Date().toISOString()
@@ -170,10 +170,11 @@ if (typeof document !== "undefined") {
   const status=$("archiveStatus"), list=$("archiveList");
   const show=(message,error=false)=>{status.textContent=message;status.dataset.error=String(error);};
   const fmt=n=>n==null?"—":Number(n).toLocaleString();
+  const esc=value=>String(value).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   async function renderList(){
     const archives=await listArchives();
     if(!archives.length){list.innerHTML='<p class="muted">No local archives imported.</p>';return;}
-    list.innerHTML=archives.map(({id,manifest:m})=>'<article class="archive"><b>'+m.symbol+' · '+m.provider+'</b><small>'+m.startAt+' → '+m.endAt+'</small><small>'+fmt(m.tickCount)+' ticks · SHA-256 '+id.slice(0,16)+'…</small><small>Train '+fmt(m.partitions.train.tickCount)+' · Validation '+fmt(m.partitions.validation.tickCount)+' · Held-out test '+fmt(m.partitions.heldOutTest.tickCount)+'</small><div class="row"><button data-export="'+id+'">EXPORT</button><button data-delete="'+id+'" class="quiet">DELETE</button></div></article>').join("");
+    list.innerHTML=archives.map(({id,manifest:m})=>'<article class="archive"><b>'+m.symbol+' · '+esc(m.provider)+'</b><small>'+m.startAt+' → '+m.endAt+'</small><small>'+fmt(m.tickCount)+' ticks · SHA-256 '+id.slice(0,16)+'…</small><small>Train '+fmt(m.partitions.train.tickCount)+' · Validation '+fmt(m.partitions.validation.tickCount)+' · Held-out test '+fmt(m.partitions.heldOutTest.tickCount)+'</small><div class="row"><button data-export="'+id+'">EXPORT</button><button data-delete="'+id+'" class="quiet">DELETE</button></div></article>').join("");
     list.querySelectorAll("[data-export]").forEach(b=>b.onclick=async()=>{const item=await exportArchive(b.dataset.export);if(!item)return;const blob=new Blob([JSON.stringify({metadata:{symbol:item.manifest.symbol,provider:item.manifest.provider,sourceReference:item.manifest.sourceReference,dataKind:"tick"},quotes:item.quotes})],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=item.manifest.symbol+"-"+item.id.slice(0,12)+".json";a.click();URL.revokeObjectURL(url);});
     list.querySelectorAll("[data-delete]").forEach(b=>b.onclick=async()=>{await deleteArchive(b.dataset.delete);await renderList();show("Archive deleted from this browser only.");});
   }
