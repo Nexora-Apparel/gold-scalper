@@ -31,4 +31,3 @@ test("requires numeric realized R for manually recorded outcomes",()=>{
   assert.equal(validateScalpingEvent({eventId:"outcome-1",type:"POSITION_OUTCOME_RECORDED",symbol:"XAUUSD",payload:{realizedR:1.25}}).ok,true);
   assert.equal(validateScalpingEvent({eventId:"outcome-2",type:"POSITION_OUTCOME_RECORDED",symbol:"XAUUSD",payload:{realizedR:"not-a-number"}}).ok,false);
 });
-});
