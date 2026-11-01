@@ -1,58 +1,61 @@
-# Gold Scalper
+# VELTRIX LIVE
 
-Personal XAUUSD signal dashboard. The application generates rules-based **manual-review candidates only**. It does not place broker orders and does not promise profitable or accurate predictions.
+Personal rules-based market-analysis dashboard for manual review. It records signal candidates, lifecycle changes, missed setups, and manually entered outcomes in the dashboard and Neon journal. It does not place broker orders and makes no profitability or accuracy guarantee.
 
-## Selectable strategies
+## Current release scope
 
-- **MSNR + SMC (default):** H1 direction, M15 support/resistance context, aligned BOS/CHoCH, and ATR-aware risk. Existing pending-entry lifecycle remains unchanged.
-- **EMA Ribbon + RSI (intraday option):** selectable from Strategy settings; supports completed M5 or M15 candles. Buy requires EMA9 > EMA21 > EMA50, the previous close at/below EMA9 followed by a completed close above EMA9, and RSI(14) > 50. Sell requires the inverse stack, a close crossing below EMA9, and RSI(14) < 50.
-- **Risk engine:** ATR(14), stop at 2×ATR, and target at either 3×ATR (1.5R) or 4×ATR (2R). The signal entry is the trigger candle close. Before a signal is sent, the API checks a current quote and rejects it if price has already reached the stop or target boundary.
-- **Closed candles only:** incomplete, malformed, stale, or unavailable market data fails closed. The new strategy does not require H1 candles, so an hourly-feed failure should not block its M5/M15 analysis.
-- **No automatic execution:** this remains a manual-review signal dashboard. A Telegram message is a signal notification, not a broker order or a guarantee of profit.
+- **XAUUSD (Gold):** the only instrument with an active signal-analysis engine in this release.
+- **XAGUSD (Silver):** available as a TradingView chart symbol only. Silver signal analysis is not enabled yet; the dashboard labels this explicitly.
+- **BTCUSD:** removed from active dashboard, API routes, and scheduled monitoring. Existing historical records are preserved.
+- **Notifications:** dashboard and Neon journal only. Telegram transport, Telegram test UI, credentials, and API calls have been removed.
+- **Execution:** manual review only. No MT5 orders, broker orders, or automated position management are placed.
+- **Signal frequency:** no fixed daily signal quota. The system keeps one active signal lifecycle at a time and does not stack another entry while the existing signal is active.
 
-## Current scope
+## Strategy and risk controls
 
-- **XAUUSD:** enabled by default. Select either the existing MSNR + SMC model or EMA Ribbon + RSI from Strategy settings.
-- **BTCUSD:** code path exists but Bitcoin is disabled in saved settings by default. The selected strategy and timeframe are used for analysis; verify normal BTC market-data availability before enabling it.
-- **Market data:** Twelve Data candles and live quotes. Invalid, incomplete, stale, or unavailable data fails closed to NO_TRADE.
-- **News panel:** calendar availability is advisory and does not block an otherwise valid signal. Review news risk manually when the calendar is unavailable.
-- **Entry lifecycle:** MSNR + SMC uses the existing pending-entry lifecycle: a later completed M5 candle must touch the planned entry and close directionally; SL/TP touched first invalidates the setup. EMA Ribbon + RSI uses the completed trigger candle close as its entry and sends the signal after live quote and SL/TP-boundary checks. Telegram failures are retried by the monitor where supported.
-- **Risk limits:** daily signal cap, valid directional SL/TP, data validation, emergency stop, and duplicate-monitor lock remain active. Economic-calendar availability is advisory and does not block signal generation; check news manually. Risk amount is a budget estimate; broker-specific lot sizing is intentionally not supplied.
-- **Scheduler:** the current external cron-job.org relay has been observed running approximately every 15 minutes and dispatches `.github/workflows/gold-scalper-scheduled-monitor.yml`. That workflow is `workflow_dispatch` only. The current external schedule has **not** been changed to five minutes. Selecting M5 changes the strategy candle interval, but scans still occur only when the external relay runs (observed around every 15 minutes). For reliable coverage of every completed M5 candle, change the external relay to five minutes and verify it.
-- **No broker execution:** the application is a manual-review signal dashboard. It does not place MT5 or other broker orders.
+- **MSNR + SMC:** H1 directional context, M15 structure and support/resistance, BOS/CHoCH, liquidity/FVG context, momentum and ATR-aware risk.
+- **EMA Ribbon + RSI:** selectable strategy using completed M5 or M15 candles; EMA 9/21/50 alignment, EMA9 trigger and RSI(14) confirmation.
+- **Risk:** configurable account balance, currency and 0.1%–1% risk budget; minimum reward/risk validation; ATR-based stop and target controls.
+- **Market data:** Twelve Data completed candles and live quote checks. Malformed, incomplete, stale or unavailable data fails closed to NO_TRADE.
+- **Economic calendar:** advisory status is shown in the dashboard. Calendar outages do not fabricate a clear-news result; review news manually.
+- **Lifecycle:** pending setup, entry confirmation, invalidation, expiry, and closure/outcome recording. A signal is not a trade until the owner manually executes it.
+- **Safety:** owner authentication, pause/resume, emergency stop, persistent state, monitor lock, and manual outcome journal.
 
-## Validation status
+## Scheduler architecture
 
-- Automated repository checks run with `npm run check`; the selectable EMA Ribbon + RSI branch passed the GitHub Actions check suite, including syntax checks and the new indicator/risk tests.
-- Production deployment was verified READY after the M5 monitoring changes.
-- The database currently has no recorded manual trade outcomes. Therefore, a measured win rate, expectancy, average realized R, and maximum drawdown are not available. Do not treat code tests or the quality score as proof of strategy profitability.
-- A meaningful two-month paper-trading test remains necessary before real-money reliance.
+cron-job.org calls the protected Vercel relay `POST /api/scheduler-dispatch`. The relay validates `SCHEDULER_TRIGGER_SECRET` and dispatches the fixed GitHub Actions workflow on `main` using `GITHUB_DISPATCH_TOKEN`. The workflow then calls the production `/api/status` and authenticated `/api/analyze` endpoints using `CRON_SECRET`.
+
+The external scheduler is configured for approximately 15-minute intervals. The workflow itself is `workflow_dispatch` only; GitHub scheduled events are not configured as a fallback. Runs may be delayed and are not tick-level monitoring. Selecting M5 changes the strategy candle interval, but does not make the external scheduler run every five minutes.
+
+## Automated validation
+
+Run `npm install` and `npm run check`. GitHub Actions also builds and tests the Android companion. Unit tests prove behavior against test fixtures; they do not establish live-market accuracy or profitability.
 
 ## Required Vercel environment variables
 
-Configure the appropriate values for **Preview and Production**. Keep their database URLs separate; Preview uses the preview Neon branch and Production uses the Neon `main` branch. Redeploy after changing environment variables:
+Configure Preview and Production separately. Preview should use its own Neon branch; Production uses the production database branch.
 
-- `DATABASE_URL` — Neon connection string for the matching environment's database branch.
-- `TWELVEDATA_API_KEY` — Twelve Data API key.
+- `DATABASE_URL` — Neon connection string for the target environment.
+- `TWELVEDATA_API_KEY` — market-data provider key.
 - `DASHBOARD_PASSWORD` — strong owner password.
-- `SESSION_SECRET` — random secret at least 32 characters.
-- `CRON_SECRET` — a random secret at least 32 characters; the scheduled monitor sends it as `Authorization: Bearer <CRON_SECRET>`. The same value must be available to the Vercel Production environment and as a GitHub Actions repository secret named `CRON_SECRET`.
-- `TELEGRAM_BOT_TOKEN` — token from Telegram's official BotFather.
-- `TELEGRAM_CHAT_ID` — the private chat or group ID where the bot should send messages.
+- `SESSION_SECRET` — random secret of at least 32 characters.
+- `CRON_SECRET` — random secret of at least 32 characters. Set the same value as a GitHub Actions repository secret; the workflow sends it as `Authorization: Bearer <CRON_SECRET>` to the production analysis endpoint.
+- `SCHEDULER_TRIGGER_SECRET` — Production-only random secret used in the cron-job.org relay Authorization header.
+- `GITHUB_DISPATCH_TOKEN` — Production-only fine-grained GitHub token restricted to this repository with Actions: Read and write permission.
 
-Add `CRON_SECRET` under GitHub repository Settings → Secrets and variables → Actions. The scheduled workflow uses the stable Production deployment URL in its workflow file, so a `GOLD_SCALPER_URL` repository secret is not required. Never commit tokens or passwords to Git. In Telegram, create a bot through BotFather, open the bot and press Start, then determine the chat ID using a trusted method. For a group, add the bot and verify it is allowed to post. Set both Telegram environment variables in Vercel Preview and Production, then redeploy.
+Never commit, paste, or log secrets. Do not expose tokens in URLs or screenshots. After changing Vercel environment variables, redeploy the relevant environment.
 
 ## First-run checklist
 
-1. Open the Production dashboard at `https://gold-scalper-nexora-apparel.vercel.app` and sign in with the owner password.
-2. Confirm system/database status and saved settings.
-3. Use **TEST TELEGRAM DELIVERY** if you need to re-verify delivery on this deployment.
-4. Press START BOT to enable scheduled monitoring; the deployed engine state is stored persistently.
-5. Confirm GitHub Actions shows a successful scheduled-monitor run. Runs may be delayed; they are not tick-level monitoring.
-6. A `NO_TRADE` result is valid when the strategy rules do not align; never force a trade.
-7. Confirm history persists after refresh, and test pause and emergency stop. Resetting emergency stop leaves the engine paused.
-8. Do not use a candidate on a live account until independently validated.
+1. Open the dashboard and sign in with the owner password.
+2. Confirm application and database status.
+3. Review saved strategy, timeframe, risk and monitoring-session settings.
+4. Keep the engine paused until market data and scheduler prerequisites are verified.
+5. Start monitoring only after the protected scheduler relay and GitHub workflow are confirmed.
+6. Review signal history and the Neon journal after each scan.
+7. Record every manually taken or not-taken signal outcome; do not infer outcomes without checking the actual trade.
+8. Keep the system in manual-review mode until at least two months of forward paper testing have been evaluated.
 
-## Signal interpretation
+## Interpretation
 
-A signal is a rules-based candidate, not a guarantee. Risk amount is only a cash-risk budget estimate. Lot size is intentionally not supplied until the broker's XAUUSD contract size, tick value, and account-currency conversion are verified. Check live price, spread, market hours, and scheduled news manually before any trade decision.
+A quality score is a model score, not win probability. Risk amount is a budget estimate, not broker lot sizing. Verify live quote, spread, contract size, tick value, account-currency conversion, market hours and scheduled news before any manual trade decision. No win-rate or expectancy claim is supported until measured from a sufficiently large, chronological out-of-sample sample.

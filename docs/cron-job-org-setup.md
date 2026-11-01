@@ -21,7 +21,7 @@ Do not use the bot's `CRON_SECRET` as the relay secret. These secrets have separ
 - Optional header: `Content-Type: application/json`
 - Body: `{}`
 
-Keep the existing GitHub Actions schedule enabled until cron-job.org has successfully triggered and the workflow has completed successfully several times. Do not remove the fallback merely because the HTTP test returns success.
+The GitHub Actions workflow is manual-dispatch-only and has no scheduled fallback. Keep the external cron-job.org job disabled until both Production relay secrets are configured and the protected POST has been verified. A successful HTTP 202 confirms queueing only; verify the resulting GitHub Actions run separately.
 
 ## Endpoint behavior and security
 
