@@ -9,8 +9,8 @@ import kotlin.math.sign
 
 class MobileScalpingEngine(
     private val symbol: String,
-    private val onEvent: (String, String?, JSONObject) -> Unit,
-    private val requireBrokerQuoteParity: Boolean = false
+    private val requireBrokerQuoteParity: Boolean = false,
+    private val onEvent: (String, String?, JSONObject) -> Unit
 ) {
     private data class Sample(val time: Long, val mid: Double, val spread: Double)
     private data class Bar(val time: Long, val open: Double, val high: Double, val low: Double, val close: Double)
