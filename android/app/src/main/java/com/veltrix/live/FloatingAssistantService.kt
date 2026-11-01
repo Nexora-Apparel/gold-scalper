@@ -213,7 +213,11 @@ class FloatingAssistantService : Service() {
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             } else if (eventType == "SIGNAL") {
-                currentDecisionText = payload.optString("action").replace("_", " ") + " · manual MT5 only"
+                val actionLabel = payload.optString("action").replace("_", " ")
+                val entryPrice = if (payload.isNull("signalEntryPrice")) null else payload.optDouble("signalEntryPrice").takeIf { it.isFinite() && it > 0.0 }
+                val entrySide = payload.optString("signalEntryPriceSide")
+                val entryLabel = if (entryPrice != null && entrySide in setOf("ASK", "BID")) " · MT5 " + entrySide + " " + entryPrice else ""
+                currentDecisionText = actionLabel + entryLabel + " · MANUAL MT5 CONFIRMATION"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             } else if (eventType == "NO_TRADE" && !criticalExitAlert) {
