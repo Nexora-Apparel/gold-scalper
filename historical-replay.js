@@ -45,7 +45,7 @@ function renderReport(result) {
   report.replaceChildren();
   const meta = document.createElement("p");
   meta.className = "notice";
-  meta.textContent = result.archive.symbol + " · " + result.archive.provider + " · " + result.archive.tickCount.toLocaleString() + " ticks · " + result.signalCount + " imported signals · " + result.signalSource;
+  meta.textContent = result.archive.symbol + " · " + result.archive.provider + " · " + result.archive.tickCount.toLocaleString() + " ticks · p95 tick gap " + result.archive.p95IntervalMs + " ms · maximum gap " + result.archive.maxGapMs + " ms · " + result.signalCount + " imported signals · " + result.signalSource;
   report.append(meta);
   const confidenceNote = document.createElement("p");
   confidenceNote.className = "notice";
@@ -57,10 +57,10 @@ function renderReport(result) {
     const title = document.createElement("h3");
     title.textContent = name + " · " + data.quoteCount.toLocaleString() + " quotes · " + data.signalCount.toLocaleString() + " signals";
     section.append(title);
-    renderTable(section, ["Horizon", "Evaluated", "Gross wins", "Gross hit", "Gross 95% CI", "Mean gross", "Net evaluated", "Net wins", "Net hit", "Net 95% CI", "Mean net"],
-      data.summary.map((r) => [r.horizonSeconds + "s", r.evaluated, r.wins, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netEvaluated, r.netWins, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
-    renderTable(section, ["Side", "Horizon", "Evaluated", "Gross hit", "Gross 95% CI", "Mean gross", "Net evaluated", "Net hit", "Net 95% CI", "Mean net"],
-      data.summaryBySide.map((r) => [r.side, r.horizonSeconds + "s", r.evaluated, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netEvaluated, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
+    renderTable(section, ["Horizon", "Evaluated", "Decisive", "Gross W/L/F", "Gross hit", "Gross 95% CI", "Mean gross", "Net decisive", "Net W/L/F", "Net hit", "Net 95% CI", "Mean net"],
+      data.summary.map((r) => [r.horizonSeconds + "s", r.evaluated, r.decisive, r.wins + "/" + r.losses + "/" + r.flats, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netDecisive, r.netWins + "/" + r.netLosses + "/" + r.netFlats, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
+    renderTable(section, ["Side", "Horizon", "Evaluated", "Decisive", "Gross W/L/F", "Gross hit", "Gross CI", "Mean gross", "Net decisive", "Net W/L/F", "Net hit", "Net CI", "Mean net"],
+      data.summaryBySide.map((r) => [r.side, r.horizonSeconds + "s", r.evaluated, r.decisive, r.wins + "/" + r.losses + "/" + r.flats, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netDecisive, r.netWins + "/" + r.netLosses + "/" + r.netFlats, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
     const skipped = document.createElement("p");
     skipped.className = "notice";
     skipped.textContent = "Skipped signals/horizons: " + data.skippedSignalsOrHorizons + " · " + JSON.stringify(data.skipped);
