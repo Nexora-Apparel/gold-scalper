@@ -260,10 +260,6 @@ class FloatingAssistantService : Service() {
                 lastPositionSignature = listOf(symbol, savedSide, savedEntry.toString()).joinToString("|")
             }
         }
-        engine.restorePendingExit(
-            prefs.getLong("pending_exit_at", 0L),
-            prefs.getString("pending_exit_reason", null)
-        )
         hub = BiquoteHubClient(symbol, { tick ->
             if (!tick.live) engine.onFeedStale()
             engine.onTick(tick)
