@@ -62,7 +62,15 @@ class FloatingAssistantService : Service() {
 
     private fun connectSelectedMarket() {
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
+        val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
+            journal.record(eventType, symbol, payload, side)
+            if (eventType == "SIGNAL") {
+                latestText = payload.optString("action") + " · manual MT5 only"
+                updateNotification(latestText)
+            }
+        }
         hub = BiquoteHubClient(symbol, { tick ->
+            engine.onTick(tick)
             lastTickAt = System.currentTimeMillis()
             feedHealthy = tick.live
             latestText = if (tick.live) "Bid " + tick.bid + " · Ask " + tick.ask else "Market closed or quote stale"
