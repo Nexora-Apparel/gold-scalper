@@ -18,6 +18,7 @@ class BiquoteHubClient(
     @Volatile private var stopped = false
     @Volatile private var connection: HubConnection? = null
     @Volatile private var retrySeconds = 1L
+    @Volatile private var reconnectScheduled = false
 
     fun start() { connect() }
 
@@ -73,11 +74,20 @@ class BiquoteHubClient(
         }
     }
 
+    @Synchronized
     private fun scheduleReconnect() {
-        if (stopped) return
+        if (stopped || reconnectScheduled) return
+        reconnectScheduled = true
         val delay = retrySeconds.coerceAtMost(30)
         retrySeconds = (retrySeconds * 2).coerceAtMost(30)
-        executor.schedule({ connect() }, delay, TimeUnit.SECONDS)
+        try {
+            executor.schedule({
+                reconnectScheduled = false
+                connect()
+            }, delay, TimeUnit.SECONDS)
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
+            reconnectScheduled = false
+        }
     }
 
     fun stop() {
