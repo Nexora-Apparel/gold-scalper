@@ -145,3 +145,25 @@ test("reports Wilson 95 percent confidence intervals rather than implying precis
   assert.ok(interval.lowerPercent < 100);
   assert.equal(interval.upperPercent, 100);
 });
+
+test("applies configured signal-to-entry latency before selecting the executable entry quote", () => {
+  const result = replayScalpingSignals({
+    symbol: "XAUUSD",
+    quotes: [q(0, 2650, 2650.2), q(250, 2650.1, 2650.3), q(5250, 2650.6, 2650.8)],
+    signals: [{ symbol: "XAUUSD", side: "BUY", timestamp: new Date(base).toISOString() }],
+    horizonsSeconds: [5],
+    entryLatencyMs: 250
+  });
+  const row = result.results[0];
+  assert.equal(row.entryPrice, 2650.3);
+  assert.equal(row.configuredEntryLatencyMs, 250);
+  assert.equal(row.actualEntryDelayMs, 250);
+  assert.equal(result.entryLatencyMs, 250);
+});
+
+test("rejects invalid or excessive execution latency assumptions", () => {
+  assert.throws(() => replayScalpingSignals({
+    symbol: "XAUUSD", quotes: [q(0, 2650, 2650.2), q(5000, 2650.5, 2650.7)],
+    signals: [], entryLatencyMs: 30001
+  }), /entry latency is capped/);
+});
