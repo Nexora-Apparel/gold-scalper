@@ -133,7 +133,8 @@ function openDb() {
 }
 export async function saveArchive(archive) {
   const db=await openDb();
-  const bytes=new TextEncoder().encode(JSON.stringify({manifest:archive.manifest,quotes:archive.quotes}));
+  const {symbol,provider,sourceReference,dataKind,startAt,endAt,tickCount}=archive.manifest;
+  const bytes=new TextEncoder().encode(JSON.stringify({symbol,provider,sourceReference,dataKind,startAt,endAt,tickCount,quotes:archive.quotes}));
   const digest=await crypto.subtle.digest("SHA-256",bytes);
   const id=[...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,"0")).join("");
   return new Promise((resolve,reject)=>{
