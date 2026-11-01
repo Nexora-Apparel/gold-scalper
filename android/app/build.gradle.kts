@@ -21,6 +21,7 @@ android {
 }
 dependencies {
     implementation("com.microsoft.signalr:signalr:8.0.7")
+    implementation("io.reactivex.rxjava3:rxjava:3.1.10")
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
