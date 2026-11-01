@@ -28,7 +28,21 @@ export default async function handler(req, res) {
     const rows = symbol
       ? await sql`SELECT event_id AS "eventId", event_type AS type, symbol, side, occurred_at AS "occurredAt", payload FROM veltrix_scalping_events WHERE symbol = ${symbol} ORDER BY occurred_at DESC, id DESC LIMIT ${limit}`
       : await sql`SELECT event_id AS "eventId", event_type AS type, symbol, side, occurred_at AS "occurredAt", payload FROM veltrix_scalping_events ORDER BY occurred_at DESC, id DESC LIMIT ${limit}`;
-    return res.status(200).json({ events: rows });
+    const totals = await sql`SELECT event_type AS type, COUNT(*)::int AS count
+      FROM veltrix_scalping_events GROUP BY event_type ORDER BY event_type`;
+    const totalRows = await sql`SELECT COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE event_type = 'POSITION_CLOSED')::int AS closed_positions,
+      COUNT(*) FILTER (WHERE event_type = 'MISSED_OPPORTUNITY')::int AS missed_opportunities
+      FROM veltrix_scalping_events`;
+    return res.status(200).json({
+      events: rows,
+      summary: {
+        totalEvents: Number(totalRows[0]?.total || 0),
+        closedPositions: Number(totalRows[0]?.closed_positions || 0),
+        missedOpportunities: Number(totalRows[0]?.missed_opportunities || 0),
+        counts: Object.fromEntries(totals.map(row => [row.type, Number(row.count)]))
+      }
+    });
   } catch (error) {
     console.error("Scalping event journal failure:", error?.message || "unknown error");
     return res.status(503).json({ error: "Scalping event journal is unavailable; no event was assumed saved." });
