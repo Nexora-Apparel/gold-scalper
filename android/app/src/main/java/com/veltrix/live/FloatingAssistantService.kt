@@ -156,7 +156,7 @@ class FloatingAssistantService : Service() {
             if ((savedSide == "BUY" || savedSide == "SELL") && savedEntry != null && savedEntry > 0) {
                 engine.setPosition(savedSide, savedEntry)
                 activePositionId = prefs.getString("active_position_id", null)
-                lastPositionSignature = listOf(symbol, savedSide, savedEntry.toString(), prefs.getString("active_position_volume", "0")).joinToString("|")
+                lastPositionSignature = listOf(symbol, savedSide, savedEntry.toString()).joinToString("|")
             }
         }
         hub = BiquoteHubClient(symbol, { tick ->
@@ -359,7 +359,17 @@ class FloatingAssistantService : Service() {
             return
         }
         if (snapshot.positionDetected && snapshot.side != null && snapshot.entryPrice != null) {
-            val signature = listOf(symbol, snapshot.side, snapshot.entryPrice.toString(), snapshot.volumeLots?.toString() ?: "").joinToString("|")
+            val signature = listOf(symbol, snapshot.side, snapshot.entryPrice.toString()).joinToString("|")
+            val existing = lastPositionSignature?.split("|")
+            if (prefs.getBoolean("position_active", false) && existing != null &&
+                (existing.getOrNull(1) != snapshot.side || existing.getOrNull(2) != snapshot.entryPrice.toString())) {
+                journal.record("ENGINE_STATE", symbol, JSONObject()
+                    .put("positionTrackingConflict", true)
+                    .put("note", "A second or changed MT5 position was detected; only one position can be tracked safely.")
+                    .put("detectedSide", snapshot.side).put("detectedEntry", snapshot.entryPrice))
+                latestText = "POSITION TRACKING CONFLICT · VERIFY MT5 MANUALLY"
+                return
+            }
             missingPositionFrames = 0
             activePositionId = activePositionId ?: prefs.getString("active_position_id", null) ?: UUID.randomUUID().toString()
             prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId)
@@ -440,7 +450,7 @@ class FloatingAssistantService : Service() {
             if (side == "BUY" || side == "SELL") {
                 if (entry > 0 && mobileEngine != null && !prefs.getBoolean("position_active", false)) {
                     activePositionId = UUID.randomUUID().toString()
-                    lastPositionSignature = listOf(prefs.getString("symbol", "XAUUSD"), side, entry.toString(), volume.toString()).joinToString("|")
+                    lastPositionSignature = listOf(prefs.getString("symbol", "XAUUSD"), side, entry.toString()).joinToString("|")
                     prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId)
                         .putString("active_position_side", side).putString("active_position_entry", entry.toString())
                         .putString("active_position_volume", volume.toString()).apply()
