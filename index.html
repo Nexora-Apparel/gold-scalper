@@ -309,9 +309,9 @@ async function saveScalpingOutcome(){
  try{
   const symbol=$('outcomeSymbol')?.value||'XAUUSD';
   const eventId='manual-outcome-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
-  await api('/api/scalping-events',[{eventId,type:'POSITION_OUTCOME_RECORDED',symbol,side:null,payload:{positionId,realizedR,outcomeSource:'manual_after_fees_and_slippage'}}]);
+  const saved=await api('/api/scalping-events',[{eventId,type:'POSITION_OUTCOME_RECORDED',symbol,side:null,payload:{positionId,realizedR,outcomeSource:'manual_after_fees_and_slippage'}}]);
   input.value='';$('outcomePositionId').value='';
-  status.textContent='Closed-trade result saved for position '+positionId+'. Win rate and net R have been updated.';
+  status.textContent=saved.duplicateOutcomes>0?'An outcome is already recorded for position '+positionId+'. No duplicate was added.':'Closed-trade result saved for position '+positionId+'. Win rate and net R have been updated.';
   await refreshScalpingEvents();
  }catch(error){status.textContent='Outcome was not confirmed saved: '+error.message}
  finally{button.disabled=false}
