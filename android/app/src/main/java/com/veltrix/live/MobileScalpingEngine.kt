@@ -26,6 +26,7 @@ class MobileScalpingEngine(
     private var lastExitFingerprint = ""
     private var pendingSignal: PendingSignal? = null
     private var latestTick: LiveTick? = null
+    private var lastAcceptedTickAt = 0L
     private var exnessVerifiedUntil = 0L
     private var lastExnessMatch: Boolean? = null
     @Volatile private var paused = false
@@ -122,6 +123,30 @@ class MobileScalpingEngine(
     fun onTick(tick: LiveTick) {
         checkTimeouts()
         if (tick.symbol != symbol) return
+        if (!tick.live) {
+            latestTick = tick
+            evaluatePositionExit(tick, "QUIET", 1.0, null, 0.0)
+            val staleFingerprint = "NO_TRADE|quote_not_live_or_fresh"
+            if (staleFingerprint != lastFingerprint) {
+                lastFingerprint = staleFingerprint
+                onEvent("NO_TRADE", null, JSONObject().put("action", "NO_TRADE")
+                    .put("reasons", JSONArray().put("quote_not_live_or_fresh"))
+                    .put("provider", "biquote").put("providerSource", tick.source))
+            }
+            return
+        }
+        if (lastAcceptedTickAt > 0 && tick.timestampMillis <= lastAcceptedTickAt) return
+        if (lastAcceptedTickAt > 0 && tick.timestampMillis - lastAcceptedTickAt > 5000L) {
+            val gap = tick.timestampMillis - lastAcceptedTickAt
+            samples.clear()
+            bars.clear()
+            activeBar = null
+            lastMarketFingerprint = ""
+            lastFingerprint = ""
+            onEvent("ENGINE_STATE", null, JSONObject().put("contextReset", "tick_gap")
+                .put("gapMs", gap).put("reason", "M1_M5_M15_context_must_rebuild"))
+        }
+        lastAcceptedTickAt = tick.timestampMillis
         latestTick = tick
         if (exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
             exnessVerifiedUntil = 0L
