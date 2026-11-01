@@ -16,6 +16,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
+import org.json.JSONObject
 import java.util.concurrent.Executors
 
 class FloatingAssistantService : Service() {
@@ -30,6 +31,8 @@ class FloatingAssistantService : Service() {
     @Volatile private var lastTickAt = 0L
     @Volatile private var latestText = "Connecting to market feed…"
     private val prefs by lazy { getSharedPreferences("veltrix_live", MODE_PRIVATE) }
+    private val journal by lazy { EventJournalDb(this) }
+    @Volatile private var lastQuoteState: Boolean? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -57,10 +60,16 @@ class FloatingAssistantService : Service() {
             lastTickAt = System.currentTimeMillis()
             feedHealthy = tick.live
             latestText = if (tick.live) "Bid " + tick.bid + " · Ask " + tick.ask else "Market closed or quote stale"
+            if (lastQuoteState != tick.live) {
+                lastQuoteState = tick.live
+                journal.record("QUOTE_STATE", symbol, JSONObject().put("live", tick.live).put("bid", tick.bid).put("ask", tick.ask))
+            }
             updateNotification(if (tick.live) "Live " + symbol + " tick stream" else symbol + " quote is not live")
         }, { state ->
             feedHealthy = false
             latestText = state
+            val type = if (state.contains("failed", true) || state.contains("disconnected", true) || state.contains("invalid", true)) "FEED_ERROR" else "ENGINE_STATE"
+            journal.record(type, symbol, JSONObject().put("state", state))
             updateNotification(state)
         })
         hub?.start()
