@@ -40,3 +40,13 @@ test("rejects multiple outcome events for the same position in one batch",()=>{
   ]);
   assert.equal(result.ok,false);
 });
+
+test("summarizes missed opportunities and unconfirmed exits", () => {
+  const result = summarizeScalpingEvents([
+    { type: "MISSED_OPPORTUNITY" },
+    { type: "EXIT_NOT_CONFIRMED" },
+    { type: "EXIT_RECOMMENDATION_CLEARED" }
+  ]);
+  assert.equal(result.missedOpportunities, 1);
+  assert.equal(result.missedExitConfirmations, 1);
+});
