@@ -89,6 +89,7 @@ class FloatingAssistantService : Service() {
                 val now = System.currentTimeMillis()
                 if (now - lastMt5SpreadAt > 2500L) latestMt5SpreadText = null
                 val fresh = feedHealthy && now - lastTickAt <= 5000
+                val brokerVerified = mobileEngine?.hasFreshBrokerQuoteVerification(now) == true
                 if (feedHealthy && !fresh) {
                     feedHealthy = false
                     latestText = "STALE FEED · NO SIGNAL"
@@ -110,7 +111,7 @@ class FloatingAssistantService : Service() {
                     }
                 }
                 Handler(Looper.getMainLooper()).post {
-                    (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
+                    (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh && brokerVerified) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
                     if (!paused && fresh && dot?.animation == null) {
                         dot?.startAnimation(AlphaAnimation(0.45f, 1.0f).apply {
                             duration = 900
@@ -120,7 +121,7 @@ class FloatingAssistantService : Service() {
                     } else if ((paused || !fresh) && dot?.animation != null) {
                         dot?.clearAnimation()
                     }
-                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + (latestMt5SpreadText ?: "MT5 QUOTE UNAVAILABLE · SIGNALS BLOCKED") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
+                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + (latestMt5SpreadText ?: "MT5 QUOTE UNAVAILABLE · SIGNALS BLOCKED") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (!fresh) "FEED ISSUE" else if (brokerVerified) "BROKER VERIFIED" else "WAITING FOR MT5 QUOTE MATCH") + "\nTap panel to pause/resume · tap dot to hide"
                 }
                 Thread.sleep(1000)
             }
