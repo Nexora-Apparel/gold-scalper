@@ -38,9 +38,13 @@ class BiquoteHubClient(
                 }
                 hub.start().timeout(15, TimeUnit.SECONDS).subscribe({
                     try {
-                        hub.send("Subscribe", listOf(symbol))
-                        retrySeconds = 1L
-                        onState("Subscribed to " + symbol)
+                        hub.invoke("Subscribe", listOf(symbol)).timeout(15, TimeUnit.SECONDS).subscribe({
+                            retrySeconds = 1L
+                            onState("Subscribed to " + symbol)
+                        }, { subscribeError ->
+                            onState("Feed subscription failed: " + (subscribeError.message ?: "unknown"))
+                            scheduleReconnect()
+                        })
                     } catch (error: Exception) {
                         onState("Feed subscription failed: " + (error.message ?: "unknown"))
                         scheduleReconnect()
