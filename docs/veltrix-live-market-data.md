@@ -68,3 +68,14 @@ When a fresh MT5 screen OCR quote is available, the Android engine compares both
 ## Android quote integrity gate
 
 Before a tick enters the Android signal calculations, the engine rejects non-finite Bid/Ask/Mid/Spread values, non-positive Bid/Mid, Ask less than or equal to Bid, negative spread, and Mid outside the observed Bid/Ask interval (with a small rounding tolerance). Rejected ticks cannot update momentum windows or generate BUY/SELL recommendations. The engine records a structured rejection reason and `quoteStreamValid=false`, deduplicates repeated validation-state events, and returns to `quoteStreamValid=true` only after a valid quote arrives. Quote validity is distinct from overall signal eligibility; all other strategy, freshness, spread, MT5 and position gates still apply. If a position is recorded, invalid reference data produces an unverified manual-check recommendation rather than a fabricated exit price.
+
+
+## Broker-neutral Android MT5 quote adapter
+
+- `lib/broker-quote-adapter.js` validates structured observations with source exactly `mt5_android`, supported symbol, expected-symbol match, finite positive Bid/Ask, Ask greater than Bid, and a bounded timestamp age (2.5 seconds; 1 second future tolerance).
+- The adapter derives Mid and spread from Bid/Ask; it does not trust client-supplied derived values.
+- A passing observation is labelled `BROKER_QUOTE_VERIFIED`. This means only that the local MT5 observation passed structural/freshness checks. It does not guarantee that the quote remains executable, that the order was filled, or that a broker API confirmed it.
+- The adapter does not infer market-open state from an OCR price observation. Market state and quote freshness remain independent gates.
+- The server market-state and decision layers now require a broker-neutral verification object from the Android MT5 source. Biquote remains a reference feed and cannot satisfy this gate.
+- The current Biquote server engine does not yet submit an Android observation to the adapter. It therefore remains fail-closed and will continue to produce `NO_TRADE` until that authenticated observation transport is integrated.
+- No screenshot or screen recording is uploaded by this adapter. It accepts structured quote fields only.
