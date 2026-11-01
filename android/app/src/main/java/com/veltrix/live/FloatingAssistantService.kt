@@ -177,6 +177,7 @@ class FloatingAssistantService : Service() {
                 pendingSignalEventId = null
             }
             if (eventType == "POSITION_OPENED" || eventType == "POSITION_CLOSED") {
+                if (eventType == "POSITION_CLOSED") getSystemService(NotificationManager::class.java).cancel(7102)
                 criticalExitAlert = false
                 currentDecisionText = null
                 prefs.edit().remove("pending_exit_at").remove("pending_exit_reason").apply()
@@ -200,6 +201,7 @@ class FloatingAssistantService : Service() {
                 updateNotification(latestText)
                 notifyCriticalExit(latestText)
             } else if (eventType == "EXIT_RECOMMENDATION_CLEARED") {
+                getSystemService(NotificationManager::class.java).cancel(7102)
                 criticalExitAlert = false
                 currentDecisionText = "POSITION HOLD · monitoring"
                 latestText = currentDecisionText ?: latestText
