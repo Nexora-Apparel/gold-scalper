@@ -53,7 +53,7 @@ class MobileScalpingEngine(
         val tick = latestTick
         val now = System.currentTimeMillis()
         val tolerance = if (symbol == "XAUUSD") 0.15 else 0.02
-        val matched = tick != null && tick.live && now - tick.timestampMillis in 0..1500L && exnessBid > 0 && exnessAsk > exnessBid &&
+        val matched = tick != null && tick.live && tick.timestampMillis - now in -1000L..1500L && exnessBid > 0 && exnessAsk > exnessBid &&
             abs(exnessBid - tick.bid) <= tolerance && abs(exnessAsk - tick.ask) <= tolerance &&
             abs((exnessAsk - exnessBid) - tick.spread) <= max(tolerance, tick.spread * 0.20)
         exnessVerifiedUntil = if (matched) now + 300000L else 0L
