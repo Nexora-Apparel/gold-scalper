@@ -526,6 +526,8 @@ class FloatingAssistantService : Service() {
                     .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
                     .put("side", snapshot.side)
                     .put("entryPrice", snapshot.entryPrice)
+                    .put("positionOpenedAt", java.time.Instant.ofEpochMilli(openedAt).toString())
+                    .put("maximumHoldingTimeMs", 60000L)
                     .put("mt5Timeframe", snapshot.timeframe ?: JSONObject.NULL)
                     .put("volumeLots", snapshot.volumeLots ?: JSONObject.NULL)
                     .put("floatingProfit", snapshot.floatingProfit ?: JSONObject.NULL)
@@ -610,6 +612,8 @@ class FloatingAssistantService : Service() {
                         JSONObject().put("positionId", activePositionId)
                             .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
                             .put("side", side).put("entryPrice", entry)
+                            .put("positionOpenedAt", java.time.Instant.ofEpochMilli(openedAt).toString())
+                            .put("maximumHoldingTimeMs", 60000L)
                             .put("volumeLots", volume).put("source", "manual_mt5_journal_entry"), side)
                     latestText = "POSITION JOURNALED · " + side
                 } else { latestText = "POSITION NOT JOURNALED · CHECK ENGINE OR EXISTING POSITION" }
