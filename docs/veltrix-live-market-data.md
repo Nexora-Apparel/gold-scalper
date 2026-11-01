@@ -27,7 +27,7 @@ REST is best-effort bootstrap only. It does not build M1 candles and is not a su
 - `lib/biquote-live-engine.js`: composes REST bootstrap, streaming and M1 aggregation.
 - `api/biquote-quotes.js`: no-cache REST snapshot endpoint; returns 503 when fresh data cannot be verified.
 - `android/app/src/main/java/com/veltrix/live/BiquoteHubClient.kt`: persistent Android SignalR client, strict symbol/freshness checks, confirmed subscription and reconnect backoff.
-- `android/app/src/main/java/com/veltrix/live/MobileScalpingEngine.kt`: on-device tick decision, M1/M5/M15 context, fresh MT5-screen spread override and dynamic exit recommendations. Broker quote parity is an optional future gate and is disabled in the current reference-feed development mode.
+- `android/app/src/main/java/com/veltrix/live/MobileScalpingEngine.kt`: on-device tick decision, M1/M5/M15 context, fresh MT5-screen quote comparison and dynamic exit recommendations. Broker quote parity is mandatory by default; reference-only mode must be explicitly selected by development/test callers.
 - `android/app/src/main/java/com/veltrix/live/Mt5ScreenParser.kt`: local OCR extraction of MT5 bid/ask and raw price-delta spread; no pip conversion is assumed without instrument contract metadata.
 - `android/app/src/main/java/com/veltrix/live/FloatingAssistantService.kt`: foreground runtime, floating overlay, user-authorized local OCR, MT5 spread monitoring and durable journal sync.
 - Tests cover normalization, stream lifecycle, stale data, reordered ticks, M1/M5/M15 aggregation, microstructure metrics and REST endpoint failure handling.
@@ -36,12 +36,12 @@ REST is best-effort bootstrap only. It does not build M1 candles and is not a su
 
 Vercel serverless functions are request-scoped and must not be used as the permanent SignalR listener. The persistent client is implemented in the Android companion foreground service. It processes ticks on-device; the monolith receives structured journal events after owner authentication. A web page that is backgrounded or suspended by Android cannot guarantee continuous tick reception.
 
-The next integration stage is the Android companion runtime and its authenticated, compact quote/candle transport to the existing monolith. Keep the Vercel API for snapshots, history, diagnostics and dashboard requests; do not create a new backend service or repository.
+The Android companion runtime is the persistent tick and decision client. Authenticated MT5 quote observations are relayed to the existing monolith through a short-timeout serverless route and latest-value Neon state for remote diagnostics only; the serverless route is not a real-time decision engine. Keep Vercel for snapshots, history, diagnostics and dashboard requests; do not create a new backend service or repository.
 
 ## Safety invariants
 
 - No order execution is implemented.
-- The server-side data adapter does not autonomously generate or execute orders. The Android companion can issue manual-review recommendations in reference-feed development mode after market-quality gates pass. A fresh MT5 OCR spread, when available, is used as the spread input; otherwise the Biquote spread is explicitly labelled reference-only. Broker quote parity is reserved for a future broker-integration mode.
+- The server-side data adapter does not autonomously generate or execute orders. The Android companion's default production mode requires a fresh MT5 OCR quote corroborated against Biquote before issuing manual-review BUY/SELL recommendations. Reference-feed-only mode is reserved for explicit development/test use. Biquote remains an independent reference feed and never proves Exness executable price or fill quality.
 - Quotes older than five seconds, future-dated quotes, provider-stale quotes, closed-market quotes and malformed quotes are rejected.
 - A stream disconnect or stale watchdog state must invalidate live decisions.
 - Interrupted M1 candles remain marked partial and must not be passed to closed-candle strategy logic.
@@ -146,3 +146,8 @@ Example input shape:
 This is an intake validator only. No historical dataset is bundled or claimed to exist; replay results remain unavailable until a genuine provider archive is supplied and validated.
 
 The intake library also accepts standard comma-separated CSV exports through `importHistoricalTickCsv`. Required headers are `timestamp,bid,ask`; an optional `symbol` column is supported. Decimal prices must use plain dot-decimal notation. CSV rows pass through the same strict chronology, timestamp, Bid/Ask and provenance checks as JSON archives.
+
+
+## Fresh quote transport boundary
+
+`api/broker-quote-observation.js` accepts authenticated, schema-validated MT5 OCR observations and stores only the latest value per supported symbol in Neon. Its GET response is for remote diagnostics and dashboard visibility. It is not consumed by the on-device signal calculation, and the delayed journal batch is never treated as a fresh quote. Android performs signal eligibility locally against the fresh OCR quote and independent reference tick. No Vercel serverless function is treated as a persistent tick process.
