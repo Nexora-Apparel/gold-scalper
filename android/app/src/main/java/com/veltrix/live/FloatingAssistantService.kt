@@ -165,6 +165,10 @@ class FloatingAssistantService : Service() {
                 criticalExitAlert = false
                 currentDecisionText = null
                 prefs.edit().remove("pending_exit_at").remove("pending_exit_reason").apply()
+                if (eventType == "POSITION_CLOSED") {
+                    activePositionId = null
+                    lastPositionSignature = null
+                }
             }
             if (eventType == "EXIT_RECOMMENDED" && payload.optString("action") == "CLOSE_NOW" &&
                 prefs.getLong("pending_exit_at", 0L) == 0L) {
