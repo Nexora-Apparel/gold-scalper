@@ -26,18 +26,21 @@ REST is best-effort bootstrap only. It does not build M1 candles and is not a su
 - `lib/higher-timeframe-aggregator.js`: gap-aware M5/M15 context bars built only from contiguous completed M1 candles.
 - `lib/biquote-live-engine.js`: composes REST bootstrap, streaming and M1 aggregation.
 - `api/biquote-quotes.js`: no-cache REST snapshot endpoint; returns 503 when fresh data cannot be verified.
+- `android/app/src/main/java/com/veltrix/live/BiquoteHubClient.kt`: persistent Android SignalR client, strict symbol/freshness checks, confirmed subscription and reconnect backoff.
+- `android/app/src/main/java/com/veltrix/live/MobileScalpingEngine.kt`: on-device tick decision, M1/M5/M15 context, Exness quote-parity gate and dynamic exit recommendations.
+- `android/app/src/main/java/com/veltrix/live/FloatingAssistantService.kt`: foreground runtime, floating overlay, user-authorized local OCR and durable journal sync.
 - Tests cover normalization, stream lifecycle, stale data, reordered ticks, M1/M5/M15 aggregation, microstructure metrics and REST endpoint failure handling.
 
 ## Runtime constraint
 
-Vercel serverless functions are request-scoped and must not be used as the permanent SignalR listener. The persistent client belongs in the Android companion foreground service (preferred for reliable background operation) or in an explicitly running client while the dashboard is open. A web page that is backgrounded or suspended by Android cannot guarantee continuous tick reception.
+Vercel serverless functions are request-scoped and must not be used as the permanent SignalR listener. The persistent client is implemented in the Android companion foreground service. It processes ticks on-device; the monolith receives structured journal events after owner authentication. A web page that is backgrounded or suspended by Android cannot guarantee continuous tick reception.
 
 The next integration stage is the Android companion runtime and its authenticated, compact quote/candle transport to the existing monolith. Keep the Vercel API for snapshots, history, diagnostics and dashboard requests; do not create a new backend service or repository.
 
 ## Safety invariants
 
 - No order execution is implemented.
-- No trading signal generation is enabled by this data foundation.
+- The server-side data adapter does not autonomously generate or execute orders. The Android companion can issue manual-review recommendations only after its additional market-quality and Exness quote-parity gates pass.
 - Quotes older than five seconds, future-dated quotes, provider-stale quotes, closed-market quotes and malformed quotes are rejected.
 - A stream disconnect or stale watchdog state must invalidate live decisions.
 - Interrupted M1 candles remain marked partial and must not be passed to closed-candle strategy logic.
@@ -46,9 +49,9 @@ The next integration stage is the Android companion runtime and its authenticate
 
 ## Validation
 
-Run `npm run check` on Node.js 20 or later. CI is configured to run the check workflow on `veltrix-live-rebuild`. Tests have been authored but must not be considered passed until a runner reports success.
+Run `npm run check` on Node.js 20 or later. CI runs Node engine tests and Android Gradle build/unit tests on the validation branch. A successful CI run proves compilation and unit tests only; it does not prove provider availability or live Exness price parity.
 
 
 ## Single-market selection
 
-The saved dashboard preference `scalpInstrument` is either `XAUUSD` or `XAGUSD` (default `XAUUSD`). The live engine accepts this value as `selectedSymbol`, requests a REST bootstrap snapshot for that symbol only, and subscribes to that symbol only. This is an intentional one-market-at-a-time operating mode: the user switches instruments from Strategy settings before starting a session. The selector does not change Exness MT5's chart automatically and does not enable broker execution. The app must pass the saved `settings.scalpInstrument` into the persistent Android/live-engine runtime when that runtime is integrated.
+The Android companion stores one selected instrument (`XAUUSD` or `XAGUSD`, default `XAUUSD`) and subscribes to that symbol only. The user changes the selection in the companion before a session; changing markets is blocked while a position is recorded as open. The selector does not change Exness MT5's chart automatically and does not enable broker execution. The app must pass the saved `settings.scalpInstrument` into the persistent Android/live-engine runtime when that runtime is integrated.
