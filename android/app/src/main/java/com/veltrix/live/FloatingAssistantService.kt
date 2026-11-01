@@ -227,6 +227,15 @@ class FloatingAssistantService : Service() {
                 currentDecisionText = if (verification == "MATCHED") "EXNESS QUOTE MATCHED · SIGNAL GATE OPEN" else "EXNESS QUOTE " + verification + " · SIGNALS BLOCKED"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
+            } else if (eventType == "ENGINE_STATE" && payload.has("mt5ReferenceQuoteVerification") && !criticalExitAlert) {
+                val verification = payload.optString("mt5ReferenceQuoteVerification")
+                currentDecisionText = if (verification == "MATCHED") {
+                    "MT5 BID/ASK MATCHED · REFERENCE FEED CONFIRMED"
+                } else {
+                    "MT5 BID/ASK MISMATCH · SIGNALS BLOCKED"
+                }
+                latestText = currentDecisionText ?: latestText
+                updateNotification(latestText)
             }
         }
         mobileEngine = engine
