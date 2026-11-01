@@ -15,13 +15,28 @@ export default async function handler(req, res) {
       const checked = validateScalpingEventBatch(req.body);
       if (!checked.ok) return res.status(400).json({ error: checked.error });
       let inserted = 0;
+      let duplicateOutcomes = 0;
+      const outcomeIds = checked.value.filter(event => event.type === "POSITION_OUTCOME_RECORDED").map(event => event.payload.positionId);
+      const existingOutcomes = outcomeIds.length
+        ? await sql`SELECT payload->>'positionId' AS position_id FROM veltrix_scalping_events
+            WHERE event_type = 'POSITION_OUTCOME_RECORDED' AND payload->>'positionId' = ANY(${outcomeIds})`
+        : [];
+      const existingOutcomeIds = new Set(existingOutcomes.map(row => row.position_id));
       for (const event of checked.value) {
+        if (event.type === "POSITION_OUTCOME_RECORDED" && existingOutcomeIds.has(event.payload.positionId)) {
+          duplicateOutcomes += 1;
+          continue;
+        }
         const rows = await sql`INSERT INTO veltrix_scalping_events (event_id, event_type, symbol, side, occurred_at, payload)
           VALUES (${event.eventId}, ${event.type}, ${event.symbol}, ${event.side}, ${event.occurredAt}, ${JSON.stringify(event.payload)}::jsonb)
-          ON CONFLICT (event_id) DO NOTHING RETURNING event_id`;
+          ON CONFLICT DO NOTHING RETURNING event_id`;
         inserted += rows.length;
+        if (!rows.length && event.type === "POSITION_OUTCOME_RECORDED") duplicateOutcomes += 1;
       }
-      return res.status(200).json({ saved: true, received: checked.value.length, inserted, duplicates: checked.value.length - inserted });
+      return res.status(200).json({
+        saved: true, received: checked.value.length, inserted,
+        duplicates: checked.value.length - inserted, duplicateOutcomes
+      });
     }
     const limit = Math.min(200, Math.max(1, Number(req.query?.limit) || 100));
     const symbol = ["XAUUSD", "XAGUSD"].includes(String(req.query?.symbol || "").toUpperCase()) ? String(req.query.symbol).toUpperCase() : null;
