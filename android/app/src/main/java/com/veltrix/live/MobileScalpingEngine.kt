@@ -119,7 +119,7 @@ class MobileScalpingEngine(
 
     @Synchronized
     fun onTick(tick: LiveTick) {
-        checkTimeouts(tick.timestampMillis)
+        checkTimeouts()
         if (tick.symbol != symbol) return
         latestTick = tick
         if (exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
@@ -202,7 +202,7 @@ class MobileScalpingEngine(
                 action = if (direction == "UP") "BUY_NOW" else "SELL_NOW"
                 side = if (direction == "UP") "BUY" else "SELL"
                 lastSignalAt = now
-                pendingSignal = PendingSignal(side!!, now, confidence)
+                pendingSignal = PendingSignal(side!!, System.currentTimeMillis(), confidence)
             }
         } else if (confidence < 0.72) reasons.add("confidence_below_threshold")
 
@@ -227,7 +227,7 @@ class MobileScalpingEngine(
                 .put("tickTimestamp", java.time.Instant.ofEpochMilli(tick.timestampMillis).toString())
                 .put("processingLatencyMs", (System.currentTimeMillis() - tick.timestampMillis).coerceAtLeast(0L))
                 .put("validForSeconds", if (side != null) 10 else 0)
-                .put("signalAt", if (side != null) now else JSONObject.NULL)
+                .put("signalAt", if (side != null) pendingSignal?.at ?: System.currentTimeMillis() else JSONObject.NULL)
                 .put("quoteBid", tick.bid).put("quoteAsk", tick.ask)
                 .put("quoteMid", tick.mid).put("spread", tick.spread).put("spreadPercent", spreadPercent)
                 .put("volatilityRegime", volatility)
