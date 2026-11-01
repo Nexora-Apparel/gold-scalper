@@ -29,8 +29,8 @@ The journal client maintains a bounded in-memory queue, batches writes, and reta
 ## Known integration limits
 - Event schema/API and JS client are implemented, but live Android events are not yet wired to durable Android storage.
 - Decision engine is deterministic and experimental. Directional tick pressure is a proxy and requires calibration against recorded bid/ask ticks.
-- Android local OCR, position lifecycle events and dynamic emergency exit recommendations are implemented in the draft; OCR accuracy and exit behavior still require physical MT5 device validation.
-- No Exness API or order execution bridge is enabled. The Android decision engine blocks signals until the user manually compares current Exness MT5 bid/ask with the provider quote; a successful match is valid for five minutes only. This spot comparison is a guard, not proof of continuous feed identity.
+- Android foreground SignalR, local-only MediaProjection/ML Kit OCR, one-position lifecycle tracking, manual journal fallback, signal-expiry/missed-opportunity recording and dynamic exit recommendations are implemented in the validation branch. OCR accuracy, overlay behavior, reconnection and exit behavior still require physical MT5 device validation.
+- No Exness API or order execution bridge is enabled. The Android decision engine blocks new signals until a fresh Exness MT5 bid/ask/spread match is confirmed against the biquote tick. The parity check expires after ten seconds without another matching quote and is revoked immediately on stale/closed feed. This is a short-lived parity guard, not proof that the provider is the user's Exness feed.
 - biquote source is not proven to match this user's Exness account's exact symbol, spread, or executable price.
 - The two-month demo evaluation must precede real-money reliance; no accuracy or profitability level is guaranteed.
 
