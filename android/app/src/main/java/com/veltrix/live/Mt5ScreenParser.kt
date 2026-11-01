@@ -65,7 +65,8 @@ object Mt5ScreenParser {
         val bid = labelledNumber(listOf("bid"))
         val ask = labelledNumber(listOf("ask"))
         val quoteDetected = symbol != null && bid != null && ask != null && bid > 0 && ask > bid
-        val detected = tradeTab && symbol != null && side != null && entry != null && entry > 0
+        val positionEvidence = Regex("\\b(PROFIT|SWAP|COMMISSION)\\b").containsMatchIn(all)
+        val detected = tradeTab && positionEvidence && symbol != null && side != null && entry != null && entry > 0
         val noOpenPositions = tradeTab && Regex("NO\\s+(OPEN\\s+)?POSITIONS?").containsMatchIn(all)
         val confidence = when {
             detected -> 0.92
