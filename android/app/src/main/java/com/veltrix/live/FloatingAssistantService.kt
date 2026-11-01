@@ -380,11 +380,14 @@ class FloatingAssistantService : Service() {
     @Suppress("DEPRECATION")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "CHANGE_SYMBOL") {
-            hub?.stop()
-            mobileEngine?.clearPosition()
-            lastPositionSignature = null
-            connectSelectedMarket()
-            journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("marketSelectionChanged", true))
+            if (prefs.getBoolean("position_active", false)) {
+                latestText = "MARKET SWITCH BLOCKED · CLOSE MT5 POSITION FIRST"
+                journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("marketSelectionChangeBlocked", true).put("reason", "position_active"))
+            } else {
+                hub?.stop()
+                connectSelectedMarket()
+                journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("marketSelectionChanged", true))
+            }
         }
         if (intent?.action == "VERIFY_QUOTES") {
             val bid = intent.getDoubleExtra("exness_bid", 0.0)
