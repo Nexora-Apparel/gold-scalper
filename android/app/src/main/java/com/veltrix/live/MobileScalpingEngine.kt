@@ -206,6 +206,7 @@ class MobileScalpingEngine(
         val context = samples
         val reasons = mutableListOf<String>()
         if (paused) reasons.add("engine_paused_exit_monitoring_remains_active")
+        if (activePosition != null) reasons.add("position_already_open")
         val age = System.currentTimeMillis() - now
         if (!tick.live || age !in -1000..1500) reasons.add("quote_not_live_or_fresh")
         if (System.currentTimeMillis() > exnessVerifiedUntil) reasons.add("exness_quote_not_verified")
