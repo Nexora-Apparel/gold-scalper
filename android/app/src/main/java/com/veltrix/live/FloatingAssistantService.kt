@@ -467,10 +467,11 @@ class FloatingAssistantService : Service() {
                 val previous = lastJournalledMt5Spread
                 val changed = previous == null || kotlin.math.abs(spread - previous) >= kotlin.math.max(0.00001, kotlin.math.abs(previous) * 0.10)
                 if (observedAt - lastSpreadJournalAt >= 5000L || changed) {
-                    journal.record("MT5_SPREAD_OBSERVED", symbol, JSONObject()
+                    journal.record("BROKER_QUOTE_OBSERVED", symbol, JSONObject()
                         .put("bid", snapshot.bid).put("ask", snapshot.ask)
                         .put("spreadPriceDelta", spread).put("spreadUnit", "raw_price_delta")
-                        .put("source", "user_authorized_local_mt5_screen_ocr")
+                        .put("source", "mt5_android")
+                        .put("observationMethod", "user_authorized_local_mt5_screen_ocr")
                         .put("observedAt", java.time.Instant.ofEpochMilli(observedAt).toString())
                         .put("rawScreenUploaded", false))
                     lastSpreadJournalAt = observedAt
