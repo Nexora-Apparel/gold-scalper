@@ -113,22 +113,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <div style="width:100%;height:calc(100dvh - 190px);min-height:420px;border-radius:12px;overflow:hidden;background:#050506">
   <div class="tradingview-widget-container" style="height:100%;width:100%">
     <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-    <div class="tradingview-widget-copyright" style="font-size:10px;padding:4px 8px;color:#9aabc7"><a href="https://www.tradingview.com/symbols/XAUUSD/" rel="noopener nofollow" target="_blank" style="color:#9aabc7">XAUUSD chart by TradingView</a></div>
-    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-    {
-      "autosize": true,
-      "symbol": "FX_IDC:XAUUSD",
-      "interval": "15",
-      "timezone": "Etc/UTC",
-      "theme": "dark",
-      "style": "1",
-      "locale": "en",
-      "allow_symbol_change": true,
-      "studies": ["STD;EMA", "STD;RSI", "STD;ATR"],
-      "calendar": false,
-      "support_host": "https://www.tradingview.com"
-    }
-    </script>
+    <div class="tradingview-widget-copyright" id="tradingViewCopyright" style="font-size:10px;padding:4px 8px;color:#9aabc7"></div>
   </div>
 </div>
 <p class="notice">Use the symbol selector to switch between XAUUSD (Gold) and XAGUSD (Silver). EMA, RSI and ATR are visual chart indicators; the bot independently validates its own strategy inputs and market feed.</p>
@@ -243,6 +228,24 @@ async function refreshNews(){
 }
 $('refreshNews')?.addEventListener('click',async()=>{const b=$('refreshNews');b.disabled=true;try{await refreshNews()}finally{b.disabled=false}});
 function setStatus(id,text,ok=false){$(id).innerHTML='<i class="dot" style="background:'+(ok?'#4ade80':'#64748b')+'"></i>'+text}
+function renderTradingViewChart(){
+ const symbol=$('scalpInstrument')?.value==='XAGUSD'?'XAGUSD':'XAUUSD';
+ const host=document.querySelector('#marketChart .tradingview-widget-container');
+ if(!host)return;
+ const widget=host.querySelector('.tradingview-widget-container__widget');
+ if(!widget)return;
+ widget.innerHTML='';
+ host.querySelectorAll('script[data-veltrix-tradingview]').forEach(node=>node.remove());
+ const config={autosize:true,symbol:'FX_IDC:'+symbol,interval:'1',timezone:'Etc/UTC',theme:'dark',style:'1',locale:'en',allow_symbol_change:true,studies:['STD;EMA','STD;RSI','STD;ATR'],calendar:false,support_host:'https://www.tradingview.com'};
+ const script=document.createElement('script');
+ script.type='text/javascript';script.async=true;script.dataset.veltrixTradingview='true';
+ script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+ script.textContent=JSON.stringify(config);
+ host.appendChild(script);
+ const credit=$('tradingViewCopyright');
+ if(credit)credit.innerHTML='<a href="https://www.tradingview.com/symbols/'+symbol+'/" rel="noopener nofollow" target="_blank" style="color:#9aabc7">'+symbol+' chart by TradingView</a>';
+}
+$('scalpInstrument')?.addEventListener('change',renderTradingViewChart);
 function settings(){return {scalpInstrument:$('scalpInstrument').value,balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),strategyMode:$('strategyMode').value,atrTargetMultiple:Number($('atrTargetMultiple').value),timeframe:$('timeframe').value,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:true}}
 let lastAnalysisVerification=null;
 let currentTask=null;
