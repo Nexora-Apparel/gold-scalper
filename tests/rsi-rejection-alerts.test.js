@@ -28,7 +28,7 @@ test("RSI rejection journal record is clearly marked as potential and not confir
   assert.match(message, /Direction:<\/b> BUY/);
   assert.match(message, /M15 RSI:<\/b> 72\.40/);
   assert.match(message, /Status: NOT CONFIRMED/);
-  assert.match(message, /Do not enter a trade based on this dashboard record/);
+  assert.match(message, /Do not enter a trade based on this unconfirmed setup/);
   assert.doesNotMatch(message, /Entry:<\/b>|Take-profit|Stop-loss price/);
 });
 
