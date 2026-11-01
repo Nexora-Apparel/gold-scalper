@@ -94,6 +94,18 @@ class MobileScalpingEngineTest {
         assertTrue(!engine.hasFreshBrokerQuoteVerification(now))
     }
 
+    @Test fun productionQuoteStatusRequiresBrokerVerification() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        val tick = LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true)
+        engine.onTick(tick)
+        engine.updateMt5ObservedQuote("XAUUSD", tick.bid, tick.ask, now)
+        engine.onTick(tick.copy(timestampMillis = now - 5000L, live = false))
+        val status = events.last { it.first == "ENGINE_STATE" && it.second.has("signalGate") }.second
+        assertEquals("BROKER_QUOTE_REQUIRED", status.getString("signalGate"))
+    }
+
     @Test fun recommendsCloseAtSixtySecondMaximumHoldingTime() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
         val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
