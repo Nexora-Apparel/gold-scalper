@@ -17,7 +17,8 @@ Measure whether the on-device recommendations produce a repeatable, positive net
 
 - Every BUY/SELL recommendation, including confidence, provider timestamp, spread, volatility regime, M1/M5/M15 context, quote-parity status and rejection reasons.
 - Every NO_TRADE state transition and feed failure.
-- Every accepted, rejected, ignored or expired recommendation.
+- Every accepted, rejected, ignored or expired recommendation, including entry-price drift that invalidates a recommendation.
+- Every close recommendation that remains unconfirmed for five seconds, and any later event that clears that recommendation.
 - Every manually confirmed MT5 position open and close, including entry, exit, volume and realized R after commission, swap and slippage.
 - Every CLOSE_NOW/HOLD_UNVERIFIED recommendation and whether the trader acted.
 - Any missed opportunity, duplicate event, stale quote, spread expansion or app interruption.
