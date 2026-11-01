@@ -214,7 +214,7 @@ $("runReplay").addEventListener("click", async () => {
       partitions[key] = { quoteCount: quotes.length, signalCount: signals.length, latencyScenarios };
     }
     lastReport = {
-      reportType: "veltrix_chronological_tick_replay_v1",
+      reportType: "veltrix_chronological_tick_replay_v2",
       generatedAt: new Date().toISOString(),
       archive: { id: archiveSelect.value, ...manifest },
       signalSource: parsed.metadata.sourceReference,
@@ -223,6 +223,7 @@ $("runReplay").addEventListener("click", async () => {
       signalCount: parsed.signals.length,
       splitMethod: manifest.splitMethod,
       entryLatencyScenariosMs: LATENCY_SCENARIOS_MS,
+      quoteWaitPolicy: { maxEntryQuoteWaitMs: 1500, maxExitQuoteWaitMs: 1500 },
       costModel: { roundTripAdditionalCostPriceUnits, includesBidAskSpread: false },
       partitions
     };
