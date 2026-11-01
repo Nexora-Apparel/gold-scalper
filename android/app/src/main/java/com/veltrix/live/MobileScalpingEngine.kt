@@ -129,7 +129,10 @@ class MobileScalpingEngine(
 
         val baselineSpread = if (context.isNotEmpty()) context.map { it.spread }.average() else 0.0
         val spreadMultiple = if (baselineSpread > 0) tick.spread / baselineSpread else 1.0
+        val spreadPercent = if (tick.mid > 0) tick.spread / tick.mid * 100.0 else Double.POSITIVE_INFINITY
+        val maxSpreadPercent = if (symbol == "XAUUSD") 0.02 else 0.12
         if (spreadMultiple > 2.5) reasons.add("spread_anomaly")
+        if (spreadPercent > maxSpreadPercent) reasons.add("absolute_spread_cap_exceeded")
 
         val aligned = shortMove != null && contextMove != null &&
             shortMove != 0.0 && contextMove != 0.0 && sign(shortMove) == sign(contextMove)
@@ -200,7 +203,7 @@ class MobileScalpingEngine(
                 .put("action", action).put("confidence", confidence)
                 .put("validForSeconds", if (side != null) 10 else 0)
                 .put("quoteBid", tick.bid).put("quoteAsk", tick.ask)
-                .put("quoteMid", tick.mid).put("spread", tick.spread)
+                .put("quoteMid", tick.mid).put("spread", tick.spread).put("spreadPercent", spreadPercent)
                 .put("volatilityRegime", volatility)
                 .put("momentumDirection", direction ?: JSONObject.NULL)
                 .put("m5Direction", m5Direction ?: JSONObject.NULL)
