@@ -94,16 +94,20 @@ function renderReport(result) {
   meta.className = "notice";
   meta.textContent = result.archive.symbol + " · " + result.archive.provider + " · " + result.archive.tickCount.toLocaleString() + " ticks · " + result.signalCount + " imported signals · " + result.signalSource;
   report.append(meta);
+  const confidenceNote = document.createElement("p");
+  confidenceNote.className = "notice";
+  confidenceNote.textContent = "Hit-rate confidence intervals use the Wilson 95% method and exclude flat outcomes. Small samples produce wide intervals; always inspect decisive sample counts."; 
+  report.append(confidenceNote);
   for (const [name, data] of Object.entries(result.partitions)) {
     const section = document.createElement("section");
     section.className = "partition";
     const title = document.createElement("h3");
     title.textContent = name + " · " + data.quoteCount.toLocaleString() + " quotes · " + data.signalCount.toLocaleString() + " signals";
     section.append(title);
-    renderTable(section, ["Horizon", "Evaluated", "Gross wins", "Gross hit", "Mean gross", "Net evaluated", "Net wins", "Net hit", "Mean net"],
-      data.summary.map((r) => [r.horizonSeconds + "s", r.evaluated, r.wins, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.meanMovePriceUnits, r.netEvaluated, r.netWins, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.meanNetMovePriceUnits]));
-    renderTable(section, ["Side", "Horizon", "Evaluated", "Gross hit", "Mean gross", "Net evaluated", "Net hit", "Mean net"],
-      data.summaryBySide.map((r) => [r.side, r.horizonSeconds + "s", r.evaluated, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.meanMovePriceUnits, r.netEvaluated, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.meanNetMovePriceUnits]));
+    renderTable(section, ["Horizon", "Evaluated", "Gross wins", "Gross hit", "Gross 95% CI", "Mean gross", "Net evaluated", "Net wins", "Net hit", "Net 95% CI", "Mean net"],
+      data.summary.map((r) => [r.horizonSeconds + "s", r.evaluated, r.wins, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netEvaluated, r.netWins, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
+    renderTable(section, ["Side", "Horizon", "Evaluated", "Gross hit", "Gross 95% CI", "Mean gross", "Net evaluated", "Net hit", "Net 95% CI", "Mean net"],
+      data.summaryBySide.map((r) => [r.side, r.horizonSeconds + "s", r.evaluated, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netEvaluated, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
     const skipped = document.createElement("p");
     skipped.className = "notice";
     skipped.textContent = "Skipped signals/horizons: " + data.skippedSignalsOrHorizons + " · " + JSON.stringify(data.skipped);
