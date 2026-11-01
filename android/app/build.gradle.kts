@@ -6,6 +6,11 @@ android {
     buildFeatures { buildConfig = true }
     namespace = "com.veltrix.live"
     compileSdk = 35
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
     defaultConfig {
         applicationId = "com.veltrix.live"
         minSdk = 26
