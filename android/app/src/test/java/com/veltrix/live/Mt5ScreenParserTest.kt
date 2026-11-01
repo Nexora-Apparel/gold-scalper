@@ -33,4 +33,10 @@ class Mt5ScreenParserTest {
         assertTrue(result.noOpenPositions)
         assertFalse(result.positionDetected)
     }
+
+    @Test fun parsesThousandsSeparatorInMetalPrice() {
+        val result = Mt5ScreenParser.parse("Trade\\nXAUUSD\\nBUY 0.01\\nOpen Price 4,172.55")
+        assertEquals(4172.55, result.entryPrice!!, 0.0001)
+        assertTrue(result.positionDetected)
+    }
 }
