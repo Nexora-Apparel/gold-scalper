@@ -20,14 +20,18 @@ object Mt5ScreenParser {
     // Conservative local OCR parser; never uploads captured screen frames.
     private val numberPattern = Regex("-?\\d[\\d,.]*")
 
-    fun parse(text: String): Mt5ScreenSnapshot {
+    fun parse(text: String, expectedSymbol: String? = null): Mt5ScreenSnapshot {
         val normalized = text
         val lines = normalized.lines().map { it.trim() }.filter { it.isNotEmpty() }
         val all = normalized.uppercase()
         val tradeTab = all.contains("TRADE") || all.contains("POSITIONS")
+        val hasGold = Regex("\\bXAUUSD\\b|\\bGOLD\\b").containsMatchIn(all)
+        val hasSilver = Regex("\\bXAGUSD\\b|\\bSILVER\\b").containsMatchIn(all)
         val symbol = when {
-            Regex("\\bXAUUSD\\b|\\bGOLD\\b").containsMatchIn(all) -> "XAUUSD"
-            Regex("\\bXAGUSD\\b|\\bSILVER\\b").containsMatchIn(all) -> "XAGUSD"
+            expectedSymbol == "XAUUSD" && hasGold -> "XAUUSD"
+            expectedSymbol == "XAGUSD" && hasSilver -> "XAGUSD"
+            hasGold -> "XAUUSD"
+            hasSilver -> "XAGUSD"
             else -> null
         }
         val timeframe = Regex("\\b(M1|M5|M15|M30|H1|H4|D1|W1|MN1)\\b").find(all)?.groupValues?.get(1)
