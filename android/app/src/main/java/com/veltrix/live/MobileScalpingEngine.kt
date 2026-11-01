@@ -35,8 +35,8 @@ class MobileScalpingEngine(
     private var latestMt5Quote: Mt5Quote? = null
     private var mt5ReferenceQuoteMatch: Boolean? = null
     private var lastAcceptedTickAt = 0L
-    private var exnessVerifiedUntil = 0L
-    private var lastExnessMatch: Boolean? = null
+    private var brokerQuoteVerifiedUntil = 0L
+    private var lastBrokerQuoteMatch: Boolean? = null
     private var feedRevoked = false
     private var lastQuoteValidationFingerprint = ""
     @Volatile private var paused = false
@@ -88,8 +88,8 @@ class MobileScalpingEngine(
     private fun refreshMt5ReferenceQuoteVerification(now: Long = System.currentTimeMillis()) {
         val quote = latestMt5Quote
         if (quote == null || now - quote.observedAt !in -1000L..2500L) {
-            exnessVerifiedUntil = 0L
-            lastExnessMatch = null
+            brokerQuoteVerifiedUntil = 0L
+            lastBrokerQuoteMatch = null
             if (mt5ReferenceQuoteMatch != null) {
                 mt5ReferenceQuoteMatch = null
                 onEvent("ENGINE_STATE", null, JSONObject()
@@ -117,8 +117,8 @@ class MobileScalpingEngine(
         val nextMatch = if (referenceFresh) matched else null
         // A fresh OCR observation only opens the production signal gate while
         // both Bid and Ask remain corroborated by the independent reference.
-        exnessVerifiedUntil = if (matched) quote.observedAt + 2500L else 0L
-        lastExnessMatch = matched
+        brokerQuoteVerifiedUntil = if (matched) quote.observedAt + 2500L else 0L
+        lastBrokerQuoteMatch = matched
         if (mt5ReferenceQuoteMatch != nextMatch) {
             mt5ReferenceQuoteMatch = nextMatch
             onEvent("ENGINE_STATE", null, JSONObject()
@@ -134,7 +134,7 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
-    fun verifyExnessQuote(exnessBid: Double, exnessAsk: Double, validForMs: Long = 10000L): Boolean {
+    fun verifyBrokerQuote(exnessBid: Double, exnessAsk: Double, validForMs: Long = 10000L): Boolean {
         val tick = latestTick
         val now = System.currentTimeMillis()
         val tolerance = if (symbol == "XAUUSD") 0.05 else 0.01
@@ -142,11 +142,11 @@ class MobileScalpingEngine(
             abs(exnessBid - tick.bid) <= tolerance && abs(exnessAsk - tick.ask) <= tolerance &&
             abs((exnessAsk - exnessBid) - tick.spread) <= max(tolerance, tick.spread * 0.20)
         val verificationWindow = validForMs.coerceIn(1000L, 10000L)
-        exnessVerifiedUntil = if (matched) now + verificationWindow else 0L
-        if (lastExnessMatch != matched) {
-            lastExnessMatch = matched
+        brokerQuoteVerifiedUntil = if (matched) now + verificationWindow else 0L
+        if (lastBrokerQuoteMatch != matched) {
+            lastBrokerQuoteMatch = matched
             onEvent("ENGINE_STATE", null, JSONObject()
-                .put("exnessQuoteVerification", if (matched) "MATCHED" else "NOT_MATCHED")
+                .put("brokerQuoteVerification", if (matched) "MATCHED" else "NOT_MATCHED")
                 .put("tolerance", tolerance).put("validForMs", if (matched) verificationWindow else 0L)
                 .put("rawScreenUploaded", false))
         }
@@ -193,11 +193,11 @@ class MobileScalpingEngine(
 
     @Synchronized
     fun onFeedStale() {
-        exnessVerifiedUntil = 0L
-        lastExnessMatch = null
+        brokerQuoteVerifiedUntil = 0L
+        lastBrokerQuoteMatch = null
         if (!feedRevoked) {
             feedRevoked = true
-            onEvent("ENGINE_STATE", null, JSONObject().put("exnessQuoteVerification", "REVOKED_FEED_STALE").put("signalGenerationEnabled", false))
+            onEvent("ENGINE_STATE", null, JSONObject().put("brokerQuoteVerification", "REVOKED_FEED_STALE").put("signalGenerationEnabled", false))
         }
         val position = activePosition ?: return
         val fingerprint = "HOLD_UNVERIFIED|feed_stale"
@@ -263,8 +263,8 @@ class MobileScalpingEngine(
         val validationError = quoteValidationError(tick)
         if (validationError != null) {
             latestTick = tick.copy(live = false)
-            exnessVerifiedUntil = 0L
-            lastExnessMatch = null
+            brokerQuoteVerifiedUntil = 0L
+            lastBrokerQuoteMatch = null
             feedRevoked = true
             val validationFingerprint = "REJECTED|$validationError"
             if (lastQuoteValidationFingerprint != validationFingerprint) {
@@ -338,10 +338,10 @@ class MobileScalpingEngine(
         feedRevoked = false
         latestTick = tick
         refreshMt5ReferenceQuoteVerification()
-        if (requireBrokerQuoteParity && exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
-            exnessVerifiedUntil = 0L
-            lastExnessMatch = false
-            onEvent("ENGINE_STATE", null, JSONObject().put("exnessQuoteVerification", "EXPIRED").put("signalGenerationEnabled", false))
+        if (requireBrokerQuoteParity && brokerQuoteVerifiedUntil > 0 && System.currentTimeMillis() > brokerQuoteVerifiedUntil) {
+            brokerQuoteVerifiedUntil = 0L
+            lastBrokerQuoteMatch = false
+            onEvent("ENGINE_STATE", null, JSONObject().put("brokerQuoteVerification", "EXPIRED").put("signalGenerationEnabled", false))
         }
         val now = tick.timestampMillis
         val observedMt5Quote = latestMt5Quote?.takeIf {
@@ -361,7 +361,7 @@ class MobileScalpingEngine(
         if (activePosition != null) reasons.add("position_already_open")
         val age = System.currentTimeMillis() - now
         if (!tick.live || age !in -1000..1500) reasons.add("quote_not_live_or_fresh")
-        if (requireBrokerQuoteParity && System.currentTimeMillis() > exnessVerifiedUntil) reasons.add("broker_quote_parity_not_verified")
+        if (requireBrokerQuoteParity && System.currentTimeMillis() > brokerQuoteVerifiedUntil) reasons.add("broker_quote_parity_not_verified")
         val freshMt5Quote = latestMt5Quote?.takeIf { System.currentTimeMillis() - it.observedAt in -1000L..2500L }
         if (freshMt5Quote != null && mt5ReferenceQuoteMatch != true) reasons.add("mt5_reference_quote_mismatch")
         if (short.size < 3) reasons.add("short_window_not_ready")
@@ -513,7 +513,7 @@ class MobileScalpingEngine(
         val reason: String
         when {
             !tick.live -> { action = "HOLD_UNVERIFIED"; reason = "Live quote unavailable; refresh MT5 manually." }
-            requireBrokerQuoteParity && System.currentTimeMillis() > exnessVerifiedUntil -> { action = "HOLD_UNVERIFIED"; reason = "Broker quote parity expired; verify MT5 before acting." }
+            requireBrokerQuoteParity && System.currentTimeMillis() > brokerQuoteVerifiedUntil -> { action = "HOLD_UNVERIFIED"; reason = "Broker quote parity expired; verify MT5 before acting." }
             heldMs >= 60000L -> { action = "CLOSE_NOW"; reason = "Maximum 60-second scalping holding time reached." }
             volatility == "SPIKE" -> { action = "CLOSE_NOW"; reason = "Short-window volatility spike detected." }
             spreadMultiple >= 3.0 -> { action = "CLOSE_NOW"; reason = "Spread expanded to at least three times its recent baseline." }
