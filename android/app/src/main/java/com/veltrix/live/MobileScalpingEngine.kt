@@ -29,6 +29,7 @@ class MobileScalpingEngine(
     private var lastAcceptedTickAt = 0L
     private var exnessVerifiedUntil = 0L
     private var lastExnessMatch: Boolean? = null
+    private var feedRevoked = false
     @Volatile private var paused = false
 
     @Synchronized
@@ -94,7 +95,10 @@ class MobileScalpingEngine(
     fun onFeedStale() {
         exnessVerifiedUntil = 0L
         lastExnessMatch = null
-        onEvent("ENGINE_STATE", null, JSONObject().put("exnessQuoteVerification", "REVOKED_FEED_STALE").put("signalGenerationEnabled", false))
+        if (!feedRevoked) {
+            feedRevoked = true
+            onEvent("ENGINE_STATE", null, JSONObject().put("exnessQuoteVerification", "REVOKED_FEED_STALE").put("signalGenerationEnabled", false))
+        }
         val position = activePosition ?: return
         val fingerprint = "HOLD_UNVERIFIED|feed_stale"
         if (lastExitFingerprint == fingerprint) return
@@ -150,6 +154,7 @@ class MobileScalpingEngine(
                 .put("gapMs", gap).put("reason", "M1_M5_M15_context_must_rebuild"))
         }
         lastAcceptedTickAt = tick.timestampMillis
+        feedRevoked = false
         latestTick = tick
         if (exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
             exnessVerifiedUntil = 0L
