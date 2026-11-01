@@ -93,6 +93,13 @@ class MobileScalpingEngine(
         val pressureDirection = if (pressure > 0) "UP" else if (pressure < 0) "DOWN" else null
         if (direction != null && pressureDirection != direction) reasons.add("directional_tick_pressure_conflict")
 
+        val m5Direction = timeframeDirection(5)
+        val m15Direction = timeframeDirection(15)
+        if (m5Direction == null) reasons.add("m5_context_not_ready")
+        if (m15Direction == null) reasons.add("m15_context_not_ready")
+        if (direction != null && m5Direction != null && m5Direction != direction) reasons.add("m5_context_conflict")
+        if (direction != null && m15Direction != null && m15Direction != direction) reasons.add("m15_context_conflict")
+
         val structure = structure()
         if (structure.first == null) reasons.add("short_term_structure_unconfirmed")
         if (direction != null && structure.first != direction) reasons.add("structure_momentum_conflict")
@@ -135,6 +142,8 @@ class MobileScalpingEngine(
                 .put("quoteMid", tick.mid).put("spread", tick.spread)
                 .put("volatilityRegime", volatility)
                 .put("momentumDirection", direction ?: JSONObject.NULL)
+                .put("m5Direction", m5Direction ?: JSONObject.NULL)
+                .put("m15Direction", m15Direction ?: JSONObject.NULL)
                 .put("structureDirection", structure.first ?: JSONObject.NULL)
                 .put("structureStrength", structure.second)
                 .put("directionalTickPressure", pressure)
@@ -198,6 +207,17 @@ class MobileScalpingEngine(
             current.high = max(current.high, tick.mid)
             current.low = min(current.low, tick.mid)
             current.close = tick.mid
+        }
+    }
+
+    private fun timeframeDirection(count: Int): String? {
+        if (bars.size < count) return null
+        val window = bars.takeLast(count)
+        val displacement = window.last().close - window.first().open
+        return when {
+            displacement > 0 -> "UP"
+            displacement < 0 -> "DOWN"
+            else -> null
         }
     }
 
