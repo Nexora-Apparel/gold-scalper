@@ -126,6 +126,10 @@ class FloatingAssistantService : Service() {
         criticalExitAlert = false
         lastScreenTimeframe = null
         lastScreenMismatch = null
+        if (prefs.getBoolean("position_active", false)) {
+            val lockedSymbol = prefs.getString("active_position_symbol", null)
+            if (lockedSymbol == "XAUUSD" || lockedSymbol == "XAGUSD") prefs.edit().putString("symbol", lockedSymbol).apply()
+        }
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
         pendingSignalEventId = prefs.getString("pending_signal_event_id", null)
         val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
@@ -494,6 +498,8 @@ class FloatingAssistantService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "CHANGE_SYMBOL") {
             if (prefs.getBoolean("position_active", false)) {
+                val lockedSymbol = prefs.getString("active_position_symbol", null)
+                if (lockedSymbol == "XAUUSD" || lockedSymbol == "XAGUSD") prefs.edit().putString("symbol", lockedSymbol).apply()
                 latestText = "MARKET SWITCH BLOCKED · CLOSE MT5 POSITION FIRST"
                 journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("marketSelectionChangeBlocked", true).put("reason", "position_active"))
             } else {
