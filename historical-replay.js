@@ -9,6 +9,7 @@ const signalFile = $("signalFile");
 const runButton = $("runReplay");
 const report = $("replayReport");
 const HORIZONS = [5, 15, 30, 60];
+const LATENCY_SCENARIOS_MS = [0, 250, 500, 1000, 2000, 3000];
 let selectedArchive = null;
 let lastReport = null;
 let lastReportId = null;
@@ -57,14 +58,19 @@ function renderReport(result) {
     const title = document.createElement("h3");
     title.textContent = name + " · " + data.quoteCount.toLocaleString() + " quotes · " + data.signalCount.toLocaleString() + " signals";
     section.append(title);
-    renderTable(section, ["Horizon", "Evaluated", "Decisive", "Gross W/L/F", "Gross hit", "Gross 95% CI", "Mean gross", "Net decisive", "Net W/L/F", "Net hit", "Net 95% CI", "Mean net"],
-      data.summary.map((r) => [r.horizonSeconds + "s", r.evaluated, r.decisive, r.wins + "/" + r.losses + "/" + r.flats, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netDecisive, r.netWins + "/" + r.netLosses + "/" + r.netFlats, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
-    renderTable(section, ["Side", "Horizon", "Evaluated", "Decisive", "Gross W/L/F", "Gross hit", "Gross CI", "Mean gross", "Net decisive", "Net W/L/F", "Net hit", "Net CI", "Mean net"],
-      data.summaryBySide.map((r) => [r.side, r.horizonSeconds + "s", r.evaluated, r.decisive, r.wins + "/" + r.losses + "/" + r.flats, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netDecisive, r.netWins + "/" + r.netLosses + "/" + r.netFlats, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
-    const skipped = document.createElement("p");
-    skipped.className = "notice";
-    skipped.textContent = "Skipped signals/horizons: " + data.skippedSignalsOrHorizons + " · " + JSON.stringify(data.skipped);
-    section.append(skipped);
+    for (const [latency, scenario] of Object.entries(data.latencyScenarios)) {
+      const latencyTitle = document.createElement("h3");
+      latencyTitle.textContent = "Assumed signal-to-entry delay: " + latency + " ms";
+      section.append(latencyTitle);
+      renderTable(section, ["Horizon", "Evaluated", "Decisive", "Gross W/L/F", "Gross hit", "Gross 95% CI", "Mean gross", "Net decisive", "Net W/L/F", "Net hit", "Net 95% CI", "Mean net"],
+        scenario.summary.map((r) => [r.horizonSeconds + "s", r.evaluated, r.decisive, r.wins + "/" + r.losses + "/" + r.flats, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netDecisive, r.netWins + "/" + r.netLosses + "/" + r.netFlats, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
+      renderTable(section, ["Side", "Horizon", "Evaluated", "Decisive", "Gross W/L/F", "Gross hit", "Gross CI", "Mean gross", "Net decisive", "Net W/L/F", "Net hit", "Net CI", "Mean net"],
+        scenario.summaryBySide.map((r) => [r.side, r.horizonSeconds + "s", r.evaluated, r.decisive, r.wins + "/" + r.losses + "/" + r.flats, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.hitRate95CI ? r.hitRate95CI.lowerPercent + "–" + r.hitRate95CI.upperPercent + "%" : "—", r.meanMovePriceUnits, r.netDecisive, r.netWins + "/" + r.netLosses + "/" + r.netFlats, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.netHitRate95CI ? r.netHitRate95CI.lowerPercent + "–" + r.netHitRate95CI.upperPercent + "%" : "—", r.meanNetMovePriceUnits]));
+      const skipped = document.createElement("p");
+      skipped.className = "notice";
+      skipped.textContent = "Skipped signals/horizons: " + scenario.skippedSignalsOrHorizons + " · " + JSON.stringify(scenario.skipped);
+      section.append(skipped);
+    }
     report.append(section);
   }
   const boundary = document.createElement("p");
