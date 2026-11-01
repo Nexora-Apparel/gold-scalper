@@ -151,3 +151,15 @@ The intake library also accepts standard comma-separated CSV exports through `im
 ## Fresh quote transport boundary
 
 `api/broker-quote-observation.js` accepts authenticated, schema-validated MT5 OCR observations and stores only the latest value per supported symbol in Neon. Its GET response is for remote diagnostics and dashboard visibility. It is not consumed by the on-device signal calculation, and the delayed journal batch is never treated as a fresh quote. Android performs signal eligibility locally against the fresh OCR quote and independent reference tick. No Vercel serverless function is treated as a persistent tick process.
+
+
+## Browser tick archive registry and replay console
+
+- `tick-archive.html` and `tick-archive.js` provide a mobile-friendly CSV/JSON archive intake page linked from the dashboard.
+- The browser validator enforces symbol, provider/source provenance, timezone-explicit chronology, Bid/Ask integrity and a 250,000-tick / 25 MB intake ceiling. It creates a SHA-256 content identifier and a fixed chronological 60/20/20 train/validation/held-out-test split.
+- Raw ticks remain in the user's browser IndexedDB. They are not uploaded to Neon or Vercel. Users can export a local archive backup. Browser storage can be cleared by the operating system or browser; this is not a cloud backup.
+- `historical-replay.html` and `historical-replay.js` load the selected local archive and replay genuine timestamped BUY/SELL signal logs over 5, 15, 30 and 60 seconds. Signal logs may be imported as JSON/CSV or loaded from the authenticated journal.
+- Journal export is date-bounded and limited to 1,000 rows. The replay console accepts only recorded SIGNAL events with `provider=biquote`, `signalQuoteSource=mt5_screen_ocr` and `mt5ReferenceQuoteVerification=MATCHED`. Reference-only and unverified signal events are excluded. Biquote-generated journal signals are blocked from replay against an archive whose provider label does not identify Biquote.
+- Each partition is replayed independently. Entry and exit quotes cannot cross partition boundaries. Signal source and archive identifiers are included in the exported report; the imported signal file receives its own SHA-256 digest.
+- MFE/MAE include the entry-side spread impact. The replay uses BUY Ask-entry/Bid-exit and SELL Bid-entry/Ask-exit. It still does not model commissions, unobserved slippage, network/execution latency, partial fills or exact Exness fills.
+- The UI and CI wiring are implemented, but browser/device verification and a genuine historical archive import remain outstanding. Synthetic unit tests are not a substitute for a real out-of-sample market replay.
