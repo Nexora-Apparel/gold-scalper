@@ -97,3 +97,8 @@ The Android foreground service now sends structured MT5 OCR Bid/Ask observations
 ## Historical replay
 
 lib/scalping-historical-replay.js evaluates timestamped signals against chronological tick tapes only. BUY entry/exit use Ask/Bid; SELL entry/exit use Bid/Ask. It evaluates 5/15/30/60-second horizons, reports favourable/adverse excursion, and skips missing entry/exit quotes rather than fabricating results. It rejects OHLC input, malformed quotes, mixed providers and unordered tapes. Commission, slippage and latency beyond the recorded quote timestamps are not modelled; results are research estimates, not proof of future performance.
+
+
+## Production signal eligibility
+
+The Android production foreground service now instantiates the mobile engine with broker-quote parity required. BUY/SELL generation is blocked unless a fresh user-authorised MT5 OCR Bid/Ask observation is corroborated against the independent Biquote reference within the instrument tolerance. Missing, expired, or mismatched observations fail closed. The signal's indicative entry reference uses Ask for BUY and Bid for SELL; reference-feed-only development mode remains separate and is not enabled by the production service. This corroboration is not proof of an executable fill, so execution remains manual.
