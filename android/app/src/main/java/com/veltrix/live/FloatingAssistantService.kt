@@ -43,6 +43,7 @@ class FloatingAssistantService : Service() {
     @Volatile private var feedHealthy = false
     @Volatile private var lastTickAt = 0L
     @Volatile private var latestText = "Connecting to market feed…"
+    @Volatile private var currentDecisionText: String? = null
     private val prefs by lazy { getSharedPreferences("veltrix_live", MODE_PRIVATE) }
     private val journal by lazy { EventJournalDb(this) }
     private val ownerSession by lazy { OwnerSessionStore(this) }
@@ -94,13 +95,20 @@ class FloatingAssistantService : Service() {
         val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
             journal.record(eventType, symbol, payload, side)
             if (eventType == "SIGNAL" || eventType == "EXIT_RECOMMENDED") {
-                latestText = payload.optString("action") + " · manual MT5 only"
+                currentDecisionText = payload.optString("action") + " · manual MT5 only"
+                latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             } else if (eventType == "NO_TRADE") {
-                latestText = "NO TRADE · " + (payload.optJSONArray("reasons")?.toString() ?: "quality gate blocked")
+                currentDecisionText = "NO TRADE · " + (payload.optJSONArray("reasons")?.toString() ?: "quality gate blocked")
+                latestText = currentDecisionText ?: latestText
+                updateNotification(latestText)
+            } else if (eventType == "MISSED_OPPORTUNITY") {
+                currentDecisionText = "MISSED OPPORTUNITY · signal expired"
+                latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             } else if (eventType == "ENGINE_STATE" && payload.has("exnessQuoteVerification")) {
-                latestText = "EXNESS QUOTE " + payload.optString("exnessQuoteVerification") + " · SIGNALS BLOCKED UNTIL VERIFIED"
+                currentDecisionText = "EXNESS QUOTE " + payload.optString("exnessQuoteVerification") + " · SIGNALS BLOCKED UNTIL VERIFIED"
+                latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             }
         }
@@ -109,7 +117,7 @@ class FloatingAssistantService : Service() {
             engine.onTick(tick)
             lastTickAt = System.currentTimeMillis()
             feedHealthy = tick.live
-            latestText = if (tick.live) "Bid " + tick.bid + " · Ask " + tick.ask else "Market closed or quote stale"
+            latestText = if (!tick.live) "Market closed or quote stale" else currentDecisionText ?: ("Bid " + tick.bid + " · Ask " + tick.ask)
             if (lastQuoteState != tick.live) {
                 lastQuoteState = tick.live
                 journal.record("QUOTE_STATE", symbol, JSONObject().put("live", tick.live).put("bid", tick.bid).put("ask", tick.ask))
@@ -117,6 +125,7 @@ class FloatingAssistantService : Service() {
             updateNotification(if (tick.live) "Live " + symbol + " tick stream" else symbol + " quote is not live")
         }, { state ->
             feedHealthy = false
+            currentDecisionText = null
             latestText = state
             val type = if (state.contains("failed", true) || state.contains("disconnected", true) || state.contains("invalid", true)) "FEED_ERROR" else "ENGINE_STATE"
             journal.record(type, symbol, JSONObject().put("state", state))
