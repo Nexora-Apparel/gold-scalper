@@ -173,7 +173,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <div class="actions"><button class="btn" id="loadOutcomes">LOAD SIGNAL HISTORY</button><button class="btn primary" id="saveOutcome">SAVE OUTCOME</button></div>
 <div class="log" id="outcomeStats">No forward-test outcome statistics loaded.</div>
 </section>
-<section class="card" id="activityResults" data-view="activity"><h2>Activity / results</h2><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
+<section class="card" id="activityResults" data-view="activity"><h2>Activity / results</h2><div class="actions" style="margin-bottom:10px"><button class="btn" id="refreshScalpingEvents" type="button">↻ REFRESH LIVE EVENT JOURNAL</button></div><div class="log" id="scalpingEventSummary">Live scalping event journal has not been loaded.</div><div id="scalpingEventList" class="news-events"><div class="news-empty">No journal events loaded.</div></div><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
@@ -272,6 +272,23 @@ async function loadSettings(){try{const r=await api('/api/settings');const s=r.s
 function updateSessionFields(){const allDay=$('scanMode').value==='24h';$('sessionStart').disabled=allDay;$('sessionEnd').disabled=allDay;$('sessionStart').style.opacity=allDay?'.5':'1';$('sessionEnd').style.opacity=allDay?'.5':'1'}
 $('scanMode').addEventListener('change',updateSessionFields);
 
+async function refreshScalpingEvents(){
+ const summary=$('scalpingEventSummary'),list=$('scalpingEventList');
+ if(!summary||!list)return;
+ try{
+  const result=await api('/api/scalping-events?limit=50');
+  const events=Array.isArray(result.events)?result.events:[];
+  const counts={};events.forEach(event=>counts[event.type]=(counts[event.type]||0)+1);
+  summary.textContent='Recorded events: '+events.length+' · '+Object.entries(counts).map(([type,count])=>type+': '+count).join(' · ');
+  if(!events.length){list.innerHTML='<div class="news-empty">No live scalping events recorded yet. The Android stream runtime must be connected before live events appear.</div>';return}
+  list.innerHTML=events.map(event=>{
+   const detail=event.payload&&typeof event.payload==='object'?JSON.stringify(event.payload):'';
+   const time=event.occurredAt?new Date(event.occurredAt).toLocaleString('en-GB',{timeZone:'Africa/Lagos'}):'Time unavailable';
+   return '<article class="news-event"><div class="news-event-top"><div class="news-event-title">'+escapeHtml(event.type)+' · '+escapeHtml(event.symbol)+(event.side?' · '+escapeHtml(event.side):'')+'</div><span class="news-impact">'+escapeHtml(event.type.replaceAll('_',' '))+'</span></div><div class="news-event-time">'+escapeHtml(time)+' WAT</div><div class="news-event-data">'+escapeHtml(detail.slice(0,900))+'</div></article>';
+  }).join('');
+ }catch(error){summary.textContent='Event journal unavailable: '+error.message;list.innerHTML='<div class="news-empty">No journal data was assumed. Verify owner session and database connection.</div>'}
+}
+$('refreshScalpingEvents')?.addEventListener('click',async()=>{const button=$('refreshScalpingEvents');button.disabled=true;try{await refreshScalpingEvents()}finally{button.disabled=false}});
 let deferredInstallPrompt=null;
 const installButton=$('installApp');
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;installButton.textContent='＋ INSTALL APP';});
