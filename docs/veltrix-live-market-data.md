@@ -22,9 +22,11 @@ REST is best-effort bootstrap only. It does not build M1 candles and is not a su
 - `lib/biquote-signalr-connection.js`: HTTPS SignalR connection factory with automatic reconnect backoff.
 - `lib/biquote-tick-stream.js`: subscription lifecycle, re-subscription, tick validation, watchdog and stale-feed state.
 - `lib/tick-candle-aggregator.js`: event-driven M1 OHLC aggregation from actual ticks; no synthetic bars for empty minutes.
+- `lib/microstructure-window.js`: rolling 5-second and 15-second price-velocity and spread statistics.
+- `lib/higher-timeframe-aggregator.js`: gap-aware M5/M15 context bars built only from contiguous completed M1 candles.
 - `lib/biquote-live-engine.js`: composes REST bootstrap, streaming and M1 aggregation.
 - `api/biquote-quotes.js`: no-cache REST snapshot endpoint; returns 503 when fresh data cannot be verified.
-- Tests cover normalization, stream lifecycle, stale data, aggregation and REST endpoint failure handling.
+- Tests cover normalization, stream lifecycle, stale data, reordered ticks, M1/M5/M15 aggregation, microstructure metrics and REST endpoint failure handling.
 
 ## Runtime constraint
 
