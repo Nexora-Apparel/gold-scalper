@@ -305,7 +305,7 @@ async function saveScalpingOutcome(){
  try{
   const symbol=$('outcomeSymbol')?.value||'XAUUSD';
   const eventId='manual-outcome-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
-  await api('/api/scalping-events',{eventId,type:'POSITION_OUTCOME_RECORDED',symbol,side:null,payload:{realizedR,outcomeSource:'manual_after_fees_and_slippage'}});
+  await api('/api/scalping-events',[{eventId,type:'POSITION_OUTCOME_RECORDED',symbol,side:null,payload:{realizedR,outcomeSource:'manual_after_fees_and_slippage'}}]);
   input.value='';
   status.textContent='Closed-trade result saved. Win rate and net R have been updated.';
   await refreshScalpingEvents();
