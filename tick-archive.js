@@ -57,7 +57,7 @@ export function validateArchive({ metadata, quotes } = {}) {
   if (!provider || provider.length > 120) errors.push("Provider name is required (maximum 120 characters).");
   if (!sourceReference || sourceReference.length > 500) errors.push("Source reference is required (maximum 500 characters).");
   if (metadata.dataKind !== "tick") errors.push("Tick data is required; OHLC candles are not accepted.");
-  if (!Array.isArray(quotes) || quotes.length < 2) errors.push("At least two tick quotes are required.");
+  if (!Array.isArray(quotes) || quotes.length < 5) errors.push("At least five tick quotes are required to create non-empty chronological partitions.");
   if (Array.isArray(quotes) && quotes.length > MAX_TICKS) errors.push("Browser import is limited to 250,000 ticks per archive.");
   if (errors.length) return { ok:false, errors };
 
