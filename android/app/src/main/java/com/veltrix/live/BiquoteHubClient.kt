@@ -35,8 +35,8 @@ class BiquoteHubClient(
                         scheduleReconnect()
                     }
                 }
-                hub.start().get(15, TimeUnit.SECONDS)
-                hub.send("Subscribe", listOf(symbol)).get(10, TimeUnit.SECONDS)
+                hub.start().timeout(15, TimeUnit.SECONDS).blockingAwait()
+                hub.send("Subscribe", listOf(symbol))
                 retrySeconds = 1L
                 onState("Subscribed to " + symbol)
             } catch (error: Exception) {
@@ -73,7 +73,7 @@ class BiquoteHubClient(
 
     fun stop() {
         stopped = true
-        try { connection?.stop()?.get(3, TimeUnit.SECONDS) } catch (_: Exception) {}
+        try { connection?.stop()?.timeout(3, TimeUnit.SECONDS)?.blockingAwait() } catch (_: Exception) {}
         executor.shutdownNow()
     }
 }
