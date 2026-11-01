@@ -147,9 +147,15 @@ $("loadJournalSignals").addEventListener("click", async () => {
     const body = await response.json();
     if (!response.ok) throw new Error(body.error || "Signal journal request failed (HTTP " + response.status + "). Sign in to the dashboard first.");
     if (body.truncated) throw new Error("The journal returned more than 1,000 signals for this archive. Narrow the archive period before replay; partial signal histories are not accepted.");
-    const signals = (body.events || []).filter((event) => event.side === "BUY" || event.side === "SELL").map((event) => ({ id: event.eventId, timestamp: event.occurredAt, symbol: event.symbol, side: event.side }));
-    if (!signals.length) throw new Error("No recorded BUY/SELL SIGNAL events were found inside this archive period.");
-    journalSignalBundle = { metadata: { sourceReference: "authenticated_veltrix_scalping_events:" + m.symbol + ":" + m.startAt + ":" + m.endAt, strategy: "mobile_scalping_engine" }, signals };
+    const candidateEvents = body.events || [];
+    const signals = candidateEvents.filter((event) =>
+      (event.side === "BUY" || event.side === "SELL") &&
+      event.payload?.provider === "biquote" &&
+      event.payload?.signalQuoteSource === "mt5_screen_ocr" &&
+      event.payload?.mt5ReferenceQuoteVerification === "MATCHED"
+    ).map((event) => ({ id: event.eventId, timestamp: event.occurredAt, symbol: event.symbol, side: event.side }));
+    if (!signals.length) throw new Error("No broker-matched BUY/SELL SIGNAL events were found in this period. Unverified or reference-only signals are excluded.");
+    journalSignalBundle = { metadata: { sourceReference: "authenticated_veltrix_scalping_events:" + m.symbol + ":" + m.startAt + ":" + m.endAt, strategy: "mobile_scalping_engine", provider: "biquote" }, signals };
     signalFile.value = "";
     message("Loaded " + signals.length + " recorded signals from the authenticated journal. These are original engine events, not generated replay inputs.");
   } catch (error) { journalSignalBundle = null; message(error.message || "Signal journal load failed.", true); }
@@ -164,6 +170,9 @@ $("runReplay").addEventListener("click", async () => {
     message("Validating signal provenance and running isolated chronological replays…");
     const signalText = file ? await file.text() : JSON.stringify(journalSignalBundle);
     const parsed = file ? parseSignals(signalText, file.name, selectedArchive.manifest.symbol) : parseSignals(signalText, "journal.json", selectedArchive.manifest.symbol);
+    if (journalSignalBundle && !selectedArchive.manifest.provider.toLowerCase().includes("biquote")) {
+      throw new Error("These journal signals were generated from Biquote reference ticks. The selected archive provider does not match; cross-provider replay is blocked.");
+    }
     const signalDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signalText));
     const signalFileSha256 = [...new Uint8Array(signalDigest)].map((value) => value.toString(16).padStart(2, "0")).join("");
     const manifest = selectedArchive.manifest;
