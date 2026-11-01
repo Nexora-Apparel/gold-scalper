@@ -365,13 +365,15 @@ class FloatingAssistantService : Service() {
                     .put("selectedSymbol", symbol).put("detectedSymbol", snapshot.symbol)
                     .put("screenTimeframe", snapshot.timeframe ?: JSONObject.NULL))
             }
-            latestText = "MT5 SCREEN SYMBOL MISMATCH · SELECT " + symbol
+            if (!criticalExitAlert) currentDecisionText = "MT5 SCREEN SYMBOL MISMATCH · SELECT " + symbol
+            latestText = currentDecisionText ?: latestText
             return
         }
         if (snapshot.symbol == symbol && lastScreenMismatch != null) {
             journal.record("ENGINE_STATE", symbol, JSONObject().put("screenSymbolMismatch", false)
                 .put("selectedSymbol", symbol).put("screenTimeframe", snapshot.timeframe ?: JSONObject.NULL))
             lastScreenMismatch = null
+            if (currentDecisionText?.startsWith("MT5 SCREEN SYMBOL MISMATCH") == true) currentDecisionText = null
         }
         if (snapshot.timeframe != null && snapshot.timeframe != lastScreenTimeframe) {
             lastScreenTimeframe = snapshot.timeframe
