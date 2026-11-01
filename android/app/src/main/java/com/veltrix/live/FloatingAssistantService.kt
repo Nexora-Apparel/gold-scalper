@@ -399,7 +399,7 @@ class FloatingAssistantService : Service() {
                 }
                 lastOcrAt = now
                 val frame = source.acquireLatestImage() ?: return@setOnImageAvailableListener
-                val frameAgeMs = ((SystemClock.elapsedRealtimeNanos() - frame.timestamp) / 1_000_000L).coerceAtLeast(0L)
+                val frameAgeMs = if (frame.timestamp > 0L) ((SystemClock.elapsedRealtimeNanos() - frame.timestamp) / 1_000_000L).coerceAtLeast(0L) else 0L
                 val frameObservedAt = System.currentTimeMillis() - frameAgeMs
                 var paddedBitmap: Bitmap? = null
                 var croppedBitmap: Bitmap? = null
