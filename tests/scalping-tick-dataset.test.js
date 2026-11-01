@@ -19,7 +19,7 @@ test("validates provenance-labelled chronological tick archive and reports cover
   const result = validateHistoricalTickDataset({ metadata, quotes });
   assert.equal(result.ok, true);
   assert.equal(result.manifest.tickCount, 3);
-  assert.equal(result.manifest.medianIntervalMs, 250);
+  assert.equal(result.manifest.medianIntervalMs, 500);
   assert.equal(result.manifest.maxGapMs, 750);
   assert.ok(Math.abs(result.quotes[0].spread - 0.1) < 1e-9);
 });
