@@ -69,7 +69,7 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
-    fun verifyExnessQuote(exnessBid: Double, exnessAsk: Double): Boolean {
+    fun verifyExnessQuote(exnessBid: Double, exnessAsk: Double, validForMs: Long = 2500L): Boolean {
         val tick = latestTick
         val now = System.currentTimeMillis()
         val tolerance = if (symbol == "XAUUSD") 0.05 else 0.01
