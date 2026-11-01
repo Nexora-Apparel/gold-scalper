@@ -109,7 +109,7 @@ class MobileScalpingEngine(
     @Synchronized
     fun onTick(tick: LiveTick) {
         checkTimeouts(tick.timestampMillis)
-        if (tick.symbol != symbol || paused) return
+        if (tick.symbol != symbol) return
         latestTick = tick
         if (exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
             exnessVerifiedUntil = 0L
@@ -123,6 +123,7 @@ class MobileScalpingEngine(
         val short = samples.filter { it.time >= now - 5000L }
         val context = samples
         val reasons = mutableListOf<String>()
+        if (paused) reasons.add("engine_paused_exit_monitoring_remains_active")
         val age = System.currentTimeMillis() - now
         if (!tick.live || age !in -1000..1500) reasons.add("quote_not_live_or_fresh")
         if (System.currentTimeMillis() > exnessVerifiedUntil) reasons.add("exness_quote_not_verified")
