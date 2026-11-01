@@ -684,6 +684,7 @@ class FloatingAssistantService : Service() {
         try { textRecognizer.close() } catch (_: Exception) {}
         worker.shutdownNow()
         syncWorker.shutdownNow()
+        try { journal.close() } catch (_: Exception) {}
         try { panel?.let { windowManager.removeView(it) } } catch (_: Exception) {}
         try { dot?.let { windowManager.removeView(it) } } catch (_: Exception) {}
         super.onDestroy()
