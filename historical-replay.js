@@ -100,10 +100,10 @@ function renderReport(result) {
     const title = document.createElement("h3");
     title.textContent = name + " · " + data.quoteCount.toLocaleString() + " quotes · " + data.signalCount.toLocaleString() + " signals";
     section.append(title);
-    renderTable(section, ["Horizon", "Evaluated", "Wins", "Losses", "Flats", "Hit rate", "Mean move (price units)"],
-      data.summary.map((r) => [r.horizonSeconds + "s", r.evaluated, r.wins, r.losses, r.flats, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.meanMovePriceUnits]));
-    renderTable(section, ["Side", "Horizon", "Evaluated", "Wins", "Losses", "Hit rate", "Mean move"],
-      data.summaryBySide.map((r) => [r.side, r.horizonSeconds + "s", r.evaluated, r.wins, r.losses, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.meanMovePriceUnits]));
+    renderTable(section, ["Horizon", "Evaluated", "Gross wins", "Gross hit", "Mean gross", "Net evaluated", "Net wins", "Net hit", "Mean net"],
+      data.summary.map((r) => [r.horizonSeconds + "s", r.evaluated, r.wins, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.meanMovePriceUnits, r.netEvaluated, r.netWins, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.meanNetMovePriceUnits]));
+    renderTable(section, ["Side", "Horizon", "Evaluated", "Gross hit", "Mean gross", "Net evaluated", "Net hit", "Mean net"],
+      data.summaryBySide.map((r) => [r.side, r.horizonSeconds + "s", r.evaluated, r.hitRatePercent == null ? "—" : r.hitRatePercent + "%", r.meanMovePriceUnits, r.netEvaluated, r.netHitRatePercent == null ? "—" : r.netHitRatePercent + "%", r.meanNetMovePriceUnits]));
     const skipped = document.createElement("p");
     skipped.className = "notice";
     skipped.textContent = "Skipped signals/horizons: " + data.skippedSignalsOrHorizons + " · " + JSON.stringify(data.skipped);
@@ -112,7 +112,7 @@ function renderReport(result) {
   }
   const boundary = document.createElement("p");
   boundary.className = "warning";
-  boundary.textContent = "Research estimate only. Bid/Ask spread is embedded in executable-side entry/exit prices. Commission, slippage beyond observed ticks, execution latency, partial fills and Exness fill parity are not modelled. Do not treat hit rate as profitability or validated live accuracy.";
+  boundary.textContent = "Research estimate only. Bid/Ask spread is embedded in executable-side entry/exit prices. " + (result.costModel.roundTripAdditionalCostPriceUnits === null ? "Additional commission/slippage costs were not supplied, so net results are unavailable. " : "The manually supplied additional round-trip cost of " + result.costModel.roundTripAdditionalCostPriceUnits + " price units was deducted; this is an estimate, not a broker-verified cost. ") + "Execution latency, partial fills and Exness fill parity are not modelled. Do not treat hit rate as validated live accuracy or profitability.";
   report.append(boundary);
 }
 async function loadArchives() {
@@ -175,6 +175,11 @@ $("runReplay").addEventListener("click", async () => {
     }
     const signalDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signalText));
     const signalFileSha256 = [...new Uint8Array(signalDigest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+    const costText = $("roundTripCost").value.trim();
+    const roundTripAdditionalCostPriceUnits = costText === "" ? null : Number(costText);
+    if (roundTripAdditionalCostPriceUnits !== null && (!Number.isFinite(roundTripAdditionalCostPriceUnits) || roundTripAdditionalCostPriceUnits < 0)) {
+      throw new Error("Additional round-trip cost must be a finite non-negative quote price-unit value.");
+    }
     const manifest = selectedArchive.manifest;
     const partitions = {};
     for (const key of ["train", "validation", "heldOutTest"]) {
@@ -187,7 +192,8 @@ $("runReplay").addEventListener("click", async () => {
         signals,
         horizonsSeconds: HORIZONS,
         maxEntryDelayMs: 1500,
-        maxExitWaitMs: 1500
+        maxExitWaitMs: 1500,
+        roundTripAdditionalCostPriceUnits
       });
       partitions[key] = { quoteCount: quotes.length, signalCount: signals.length, summary: result.summary, summaryBySide: result.summaryBySide, skippedSignalsOrHorizons: result.skippedSignalsOrHorizons, skipped: result.skipped, results: result.results };
     }
@@ -200,6 +206,7 @@ $("runReplay").addEventListener("click", async () => {
       strategy: parsed.metadata.strategy,
       signalCount: parsed.signals.length,
       splitMethod: manifest.splitMethod,
+      costModel: { roundTripAdditionalCostPriceUnits, includesBidAskSpread: false },
       partitions
     };
     renderReport(lastReport);
