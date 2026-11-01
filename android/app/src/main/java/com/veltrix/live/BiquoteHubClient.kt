@@ -35,10 +35,19 @@ class BiquoteHubClient(
                         scheduleReconnect()
                     }
                 }
-                hub.start().timeout(15, TimeUnit.SECONDS).blockingAwait()
-                hub.send("Subscribe", listOf(symbol))
-                retrySeconds = 1L
-                onState("Subscribed to " + symbol)
+                hub.start().timeout(15, TimeUnit.SECONDS).subscribe({
+                    try {
+                        hub.send("Subscribe", listOf(symbol))
+                        retrySeconds = 1L
+                        onState("Subscribed to " + symbol)
+                    } catch (error: Exception) {
+                        onState("Feed subscription failed: " + (error.message ?: "unknown"))
+                        scheduleReconnect()
+                    }
+                }, { error ->
+                    onState("Feed start failed: " + (error.message ?: "unknown"))
+                    scheduleReconnect()
+                })
             } catch (error: Exception) {
                 onState("Feed connection failed: " + (error.message ?: "unknown"))
                 scheduleReconnect()
@@ -73,7 +82,7 @@ class BiquoteHubClient(
 
     fun stop() {
         stopped = true
-        try { connection?.stop()?.timeout(3, TimeUnit.SECONDS)?.blockingAwait() } catch (_: Exception) {}
+        try { connection?.stop()?.timeout(3, TimeUnit.SECONDS)?.subscribe({}, {}) } catch (_: Exception) {}
         executor.shutdownNow()
     }
 }
