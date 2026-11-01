@@ -36,13 +36,14 @@ class MobileScalpingEngine(
         val pending = pendingSignal
         if (pending != null) {
             val age = System.currentTimeMillis() - pending.at
-            if (side == pending.side && age <= 15000L) {
+            if (side == pending.side && age in 0L..10000L) {
                 onEvent("ENGINE_STATE", side, JSONObject().put("signalAccepted", true).put("signalAgeMs", age))
-                pendingSignal = null
-            } else if (age <= 15000L) {
-                onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject().put("reason", "different_side_position_detected").put("signalAgeMs", age))
-                pendingSignal = null
+            } else {
+                onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject()
+                    .put("reason", if (age > 10000L) "signal_expired_before_position_confirmation" else "different_side_position_detected")
+                    .put("signalAgeMs", age))
             }
+            pendingSignal = null
         }
         activePosition = Pair(side, entryPrice)
         lastExitFingerprint = ""
