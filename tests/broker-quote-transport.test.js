@@ -23,7 +23,7 @@ test("accepts fresh sequenced local MT5 observation", () => {
 });
 
 test("rejects replay sequence values and unsupported observation method", () => {
-  assert.equal(validateBrokerQuoteTransport({ ...valid, sequence: 0 }, { now }).ok, false);
+  assert.equal(validateBrokerQuoteTransport({ ...valid, sequence: 0 }, { now }).ok, false);\n  assert.equal(validateBrokerQuoteTransport({ ...valid, sequence: "1" }, { now }).ok, false);\n  assert.equal(validateBrokerQuoteTransport({ ...valid, unexpected: "field" }, { now }).ok, false);
   assert.equal(validateBrokerQuoteTransport({ ...valid, observationMethod: "manual_entry" }, { now }).ok, false);
 });
 
