@@ -32,4 +32,11 @@ class MobileScalpingEngineTest {
         assertTrue(engine.verifyExnessQuote(4172.50, 4172.65))
         assertTrue(!engine.verifyExnessQuote(4172.80, 4172.95))
     }
+    @Test fun feedFailureEventsAreDeduplicated() {
+        val events = mutableListOf<String>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, _ -> events.add(type) }
+        engine.onFeedStale()
+        engine.onFeedStale()
+        assertEquals(1, events.count { it == "ENGINE_STATE" })
+    }
 }
