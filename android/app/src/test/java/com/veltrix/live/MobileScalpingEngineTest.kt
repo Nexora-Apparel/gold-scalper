@@ -12,7 +12,7 @@ import org.robolectric.annotation.Config
 class MobileScalpingEngineTest {
     @Test fun restoredUnconfirmedSignalExpiresIntoMissedOpportunity() {
         val events = mutableListOf<String>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, _ -> events.add(type) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, _ -> events.add(type) }
         engine.restorePendingSignal("BUY", 1000L, 0.82)
         engine.checkTimeouts(11000L)
         assertTrue(events.contains("MISSED_OPPORTUNITY"))
@@ -20,20 +20,20 @@ class MobileScalpingEngineTest {
 
     @Test fun invalidRestoredSignalIsIgnored() {
         val events = mutableListOf<String>()
-        val engine = MobileScalpingEngine("XAGUSD") { type, _, _ -> events.add(type) }
+        val engine = MobileScalpingEngine("XAGUSD", requireBrokerQuoteParity = false) { type, _, _ -> events.add(type) }
         engine.restorePendingSignal("HOLD", 1000L, 0.82)
         engine.checkTimeouts(11000L)
         assertEquals(0, events.size)
     }
     @Test fun acceptsFreshObservedMt5SpreadOnlyForSelectedInstrument() {
-        val engine = MobileScalpingEngine("XAUUSD") { _, _, _ -> }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { _, _, _ -> }
         val now = System.currentTimeMillis()
         assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.50, 4172.70, now))
         assertTrue(!engine.updateMt5ObservedQuote("XAGUSD", 31.40, 31.60, now))
         assertTrue(!engine.updateMt5ObservedQuote("XAUUSD", 4172.70, 4172.50, now))
     }
     @Test fun requiresFreshBrokerQuoteToMatchBothSidesAndSpread() {
-        val engine = MobileScalpingEngine("XAUUSD") { _, _, _ -> }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { _, _, _ -> }
         val now = System.currentTimeMillis()
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
         assertTrue(engine.verifyBrokerQuote(4172.50, 4172.65))
@@ -83,7 +83,7 @@ class MobileScalpingEngineTest {
 
     @Test fun recommendsCloseAtSixtySecondMaximumHoldingTime() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         val openedAt = System.currentTimeMillis() - 61000L
         engine.setPosition("BUY", 4172.50, openedAt)
         val now = System.currentTimeMillis()
@@ -97,14 +97,14 @@ class MobileScalpingEngineTest {
 
     @Test fun feedFailureEventsAreDeduplicated() {
         val events = mutableListOf<String>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, _ -> events.add(type) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, _ -> events.add(type) }
         engine.onFeedStale()
         engine.onFeedStale()
         assertEquals(1, events.count { it == "ENGINE_STATE" })
     }
     @Test fun delayedAcknowledgementIsLogged() {
         val events = mutableListOf<String>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, _ -> events.add(type) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, _ -> events.add(type) }
         engine.setPosition("BUY", 4172.50)
         repeat(3) {
             val now = System.currentTimeMillis()
@@ -120,7 +120,7 @@ class MobileScalpingEngineTest {
     }
     @Test fun recordsEntryThatDriftedAwayFromTheRecommendationAsMissed() {
         val events = mutableListOf<String>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, _ -> events.add(type) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, _ -> events.add(type) }
         engine.restorePendingSignal("BUY", System.currentTimeMillis(), 0.82, 4172.50, 0.10)
         engine.setPosition("BUY", 4175.00)
         assertTrue(events.contains("MISSED_OPPORTUNITY"))
@@ -129,7 +129,7 @@ class MobileScalpingEngineTest {
 
     @Test fun buyExitUsesFreshMt5BidWithoutSubtractingSpreadTwice() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         val now = System.currentTimeMillis()
         engine.setPosition("BUY", 4172.50, now - 2000L)
         assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.62, 4172.82, now))
@@ -144,7 +144,7 @@ class MobileScalpingEngineTest {
 
     @Test fun sellExitUsesFreshMt5AskAsExecutableClosePrice() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         val now = System.currentTimeMillis()
         engine.setPosition("SELL", 4172.50, now - 2000L)
         assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.62, 4172.82, now))
@@ -158,7 +158,7 @@ class MobileScalpingEngineTest {
 
     @Test fun mt5QuoteMismatchIsExplicitlyReportedAgainstReferenceFeed() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         val now = System.currentTimeMillis()
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
         assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4173.10, 4173.30, System.currentTimeMillis()))
@@ -168,7 +168,7 @@ class MobileScalpingEngineTest {
 
     @Test fun matchingMt5QuoteIsExplicitlyVerifiedAgainstReferenceFeed() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         val now = System.currentTimeMillis()
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
         assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.51, 4172.66, System.currentTimeMillis()))
@@ -178,7 +178,7 @@ class MobileScalpingEngineTest {
 
     @Test fun staleReferenceFeedCannotLeaveMt5QuoteMarkedMatched() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         val now = System.currentTimeMillis()
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
         engine.updateMt5ObservedQuote("XAUUSD", 4172.51, 4172.66, now)
@@ -189,7 +189,7 @@ class MobileScalpingEngineTest {
 
     @Test fun expiredMt5QuoteReturnsVerificationToReferenceFeedMode() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         val now = System.currentTimeMillis()
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
         engine.updateMt5ObservedQuote("XAUUSD", 4172.51, 4172.66, now)
@@ -202,7 +202,7 @@ class MobileScalpingEngineTest {
 
     @Test fun malformedMarketQuotesAreRejectedBeforeSignalAnalysis() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         val now = System.currentTimeMillis()
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4173.00, 0.15, now, true))
         val noTrade = events.last { it.first == "NO_TRADE" }.second
@@ -215,7 +215,7 @@ class MobileScalpingEngineTest {
 
     @Test fun nonFiniteQuoteValuesAreRejectedBeforeSignalAnalysis() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAGUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAGUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         val now = System.currentTimeMillis()
         engine.onTick(LiveTick("XAGUSD", 31.40, 31.60, Double.NaN, 0.20, now, true))
         val noTrade = events.last { it.first == "NO_TRADE" }.second
@@ -227,7 +227,7 @@ class MobileScalpingEngineTest {
 
     @Test fun repeatedMalformedQuotesDoNotSpamValidationState() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         repeat(3) {
             engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4173.00, 0.15, System.currentTimeMillis(), true))
         }
@@ -239,7 +239,7 @@ class MobileScalpingEngineTest {
 
     @Test fun validQuoteClearsPreviousQuoteValidationFailure() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
-        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4173.00, 0.15, System.currentTimeMillis(), true))
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, System.currentTimeMillis(), true))
         val accepted = events.last { it.first == "ENGINE_STATE" && it.second.has("quoteValidation") }.second
