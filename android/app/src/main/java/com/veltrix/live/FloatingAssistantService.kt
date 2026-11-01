@@ -271,6 +271,7 @@ class FloatingAssistantService : Service() {
                 .put("confidence", 0.9).put("rawScreenUploaded", false)
             journal.record("POSITION_CLOSED", symbol, payload, if (closedSide == "BUY" || closedSide == "SELL") closedSide else null)
             mobileEngine?.clearPosition()
+            prefs.edit().putBoolean("position_active", false).apply()
             lastPositionSignature = null
             missingPositionFrames = 0
             latestText = "MT5 shows no open positions"
@@ -279,6 +280,7 @@ class FloatingAssistantService : Service() {
         if (snapshot.positionDetected && snapshot.side != null && snapshot.entryPrice != null) {
             val signature = listOf(symbol, snapshot.side, snapshot.entryPrice.toString(), snapshot.volumeLots?.toString() ?: "").joinToString("|")
             missingPositionFrames = 0
+            prefs.edit().putBoolean("position_active", true).apply()
             mobileEngine?.setPosition(snapshot.side, snapshot.entryPrice)
             if (signature != lastPositionSignature) {
                 lastPositionSignature = signature
