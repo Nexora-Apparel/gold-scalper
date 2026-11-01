@@ -41,3 +41,17 @@ test("blocks signals until the Exness quote has been explicitly verified",()=>{
  assert.equal(unverified.action,"NO_TRADE");
  assert.ok(unverified.reasons.includes("exness_quote_not_verified"));
 });
+
+
+test("decision gate independently rejects malformed stale and wrong-symbol executable quotes",()=>{
+ const now=Date.parse(quote.timestamp);
+ const malformed=evaluateScalpingDecision({marketState,quote:{...quote,ask:Infinity},microstructure,structure,now});
+ assert.equal(malformed.action,"NO_TRADE");
+ assert.ok(malformed.reasons.includes("invalid_execution_quote"));
+ const stale=evaluateScalpingDecision({marketState,quote:{...quote,timestamp:new Date(now-2000).toISOString()},microstructure,structure,now});
+ assert.equal(stale.action,"NO_TRADE");
+ assert.ok(stale.reasons.includes("execution_quote_not_fresh"));
+ const mismatch=evaluateScalpingDecision({marketState,quote:{...quote,symbol:"XAGUSD"},microstructure,structure,now});
+ assert.equal(mismatch.action,"NO_TRADE");
+ assert.ok(mismatch.reasons.includes("quote_symbol_mismatch"));
+});
