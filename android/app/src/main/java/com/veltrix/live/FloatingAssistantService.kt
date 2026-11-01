@@ -223,9 +223,9 @@ class FloatingAssistantService : Service() {
                 currentDecisionText = "MISSED OPPORTUNITY · signal expired"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
-            } else if (eventType == "ENGINE_STATE" && payload.has("exnessQuoteVerification") && !criticalExitAlert) {
-                val verification = payload.optString("exnessQuoteVerification")
-                currentDecisionText = if (verification == "MATCHED") "EXNESS QUOTE MATCHED · SIGNAL GATE OPEN" else "EXNESS QUOTE " + verification + " · SIGNALS BLOCKED"
+            } else if (eventType == "ENGINE_STATE" && payload.has("brokerQuoteVerification") && !criticalExitAlert) {
+                val verification = payload.optString("brokerQuoteVerification")
+                currentDecisionText = if (verification == "MATCHED") "BROKER QUOTE MATCHED · SIGNAL GATE OPEN" else "BROKER QUOTE " + verification + " · SIGNALS BLOCKED"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             } else if (eventType == "ENGINE_STATE" && payload.has("mt5ReferenceQuoteVerification") && !criticalExitAlert) {
@@ -681,7 +681,7 @@ class FloatingAssistantService : Service() {
             val bid = intent.getDoubleExtra("exness_bid", 0.0)
             val ask = intent.getDoubleExtra("exness_ask", 0.0)
             val matched = mobileEngine?.verifyExnessQuote(bid, ask) == true
-            latestText = if (matched) "EXNESS QUOTE VERIFIED · 5 MIN" else "EXNESS QUOTE MISMATCH · NO SIGNAL"
+            latestText = if (matched) "BROKER QUOTE VERIFIED · 5 MIN" else "BROKER QUOTE MISMATCH · NO SIGNAL"
             updateNotification(latestText)
         }
         val resultCode = intent?.getIntExtra("projection_result_code", Activity.RESULT_CANCELED) ?: Activity.RESULT_CANCELED
