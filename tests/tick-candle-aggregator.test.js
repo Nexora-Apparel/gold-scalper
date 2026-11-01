@@ -25,6 +25,18 @@ test("builds M1 OHLC from ticks and finalizes on next minute",()=>{
   assert.equal(emitted[0].complete,true);
 });
 
+test("keeps OHLC chronological when ticks arrive slightly out of order",()=>{
+  const agg=new TickCandleAggregator();
+  const t=Date.parse("2026-11-01T08:01:02Z");
+  agg.ingest(q("XAUUSD",t+1000,2652));
+  agg.ingest(q("XAUUSD",t,2650));
+  agg.ingest(q("XAUUSD",t+2000,2651));
+  const candle=agg.snapshot("XAUUSD");
+  assert.equal(candle.open,2650);
+  assert.equal(candle.close,2651);
+  assert.equal(candle.high,2652);
+});
+
 test("isolates symbols and rejects old-minute ticks",()=>{
   const agg=new TickCandleAggregator();
   const t=Date.parse("2026-11-01T08:01:02Z");
