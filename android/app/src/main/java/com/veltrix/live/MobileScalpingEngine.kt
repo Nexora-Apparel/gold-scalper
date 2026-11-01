@@ -68,6 +68,13 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
+    fun restorePendingSignal(side: String?, at: Long, confidence: Double) {
+        if ((side == "BUY" || side == "SELL") && at > 0 && confidence.isFinite() && confidence in 0.0..1.0) {
+            pendingSignal = PendingSignal(side, at, confidence)
+        }
+    }
+
+    @Synchronized
     fun checkTimeouts(now: Long = System.currentTimeMillis()) {
         val pending = pendingSignal ?: return
         if (now - pending.at >= 10000L) {
@@ -214,6 +221,7 @@ class MobileScalpingEngine(
             val payload = JSONObject()
                 .put("action", action).put("confidence", confidence)
                 .put("validForSeconds", if (side != null) 10 else 0)
+                .put("signalAt", if (side != null) now else JSONObject.NULL)
                 .put("quoteBid", tick.bid).put("quoteAsk", tick.ask)
                 .put("quoteMid", tick.mid).put("spread", tick.spread).put("spreadPercent", spreadPercent)
                 .put("volatilityRegime", volatility)
