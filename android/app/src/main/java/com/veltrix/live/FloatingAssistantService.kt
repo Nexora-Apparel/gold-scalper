@@ -434,7 +434,7 @@ class FloatingAssistantService : Service() {
             missingPositionFrames = 0
             activePositionId = activePositionId ?: prefs.getString("active_position_id", null) ?: UUID.randomUUID().toString()
             prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId)
-                .putString("active_position_side", snapshot.side).putString("active_position_entry", snapshot.entryPrice.toString())
+                .putString("active_position_side", snapshot.side).putString("active_market_lock", symbol).putString("active_position_entry", snapshot.entryPrice.toString())
                 .putString("active_position_volume", snapshot.volumeLots?.toString() ?: "0").apply()
             mobileEngine?.setPosition(snapshot.side, snapshot.entryPrice)
             if (signature != lastPositionSignature) {
