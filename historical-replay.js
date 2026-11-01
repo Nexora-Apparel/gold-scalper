@@ -19,6 +19,11 @@ function strictTime(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return NaN;
   const time = Date.parse(value);
   if (!Number.isFinite(time)) return NaN;
+  const zone = value.slice(-6);
+  if (zone !== "Z") {
+    const [offsetHours, offsetMinutes] = zone.slice(1).split(":").map(Number);
+    if (offsetHours > 14 || offsetMinutes > 59 || (offsetHours === 14 && offsetMinutes !== 0)) return NaN;
+  }
   const datePart = value.slice(0, 10);
   const [year, month, day] = datePart.split("-").map(Number);
   if (month < 1 || month > 12 || day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate()) return NaN;
@@ -44,7 +49,7 @@ function parseSignals(text, filename, symbol) {
     metadata = { sourceReference: filename, strategy: "imported_signal_log" };
   } else throw new Error("Import a .json or .csv signal log.");
   if (!metadata || typeof metadata.sourceReference !== "string" || !metadata.sourceReference.trim()) throw new Error("Signal-log provenance is required in metadata.sourceReference.");
-  if (!Array.isArray(signals) || !signals.length || signals.length > 50000) throw new Error("Signal log must contain 1–50,000 signals.");
+  if (!Array.isArray(signals) || !signals.length || signals.length > 5000) throw new Error("Signal log must contain 1–5,000 signals.");
   const clean = [];
   for (let i = 0; i < signals.length; i++) {
     const item = signals[i];
@@ -138,7 +143,10 @@ $("runReplay").addEventListener("click", async () => {
     if (file.size > 5 * 1024 * 1024) throw new Error("Signal log exceeds the 5 MB limit.");
     runButton.disabled = true;
     message("Validating signal provenance and running isolated chronological replays…");
-    const parsed = parseSignals(await file.text(), file.name, selectedArchive.manifest.symbol);
+    const signalText = await file.text();
+    const parsed = parseSignals(signalText, file.name, selectedArchive.manifest.symbol);
+    const signalDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signalText));
+    const signalFileSha256 = [...new Uint8Array(signalDigest)].map((value) => value.toString(16).padStart(2, "0")).join("");
     const manifest = selectedArchive.manifest;
     const partitions = {};
     for (const key of ["train", "validation", "heldOutTest"]) {
@@ -160,6 +168,7 @@ $("runReplay").addEventListener("click", async () => {
       generatedAt: new Date().toISOString(),
       archive: { id: archiveSelect.value, ...manifest },
       signalSource: parsed.metadata.sourceReference,
+      signalFileSha256,
       strategy: parsed.metadata.strategy,
       signalCount: parsed.signals.length,
       splitMethod: manifest.splitMethod,
