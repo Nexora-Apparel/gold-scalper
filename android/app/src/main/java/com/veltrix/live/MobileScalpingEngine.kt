@@ -9,12 +9,14 @@ import kotlin.math.sign
 
 class MobileScalpingEngine(
     private val symbol: String,
-    private val onEvent: (String, String?, JSONObject) -> Unit
+    private val onEvent: (String, String?, JSONObject) -> Unit,
+    private val requireBrokerQuoteParity: Boolean = false
 ) {
     private data class Sample(val time: Long, val mid: Double, val spread: Double)
     private data class Bar(val time: Long, val open: Double, val high: Double, val low: Double, val close: Double)
     private data class ActiveBar(val time: Long, val open: Double, var high: Double, var low: Double, var close: Double)
     private data class PendingSignal(val side: String, val at: Long, val confidence: Double, val referencePrice: Double, val spread: Double)
+    private data class Mt5Quote(val bid: Double, val ask: Double, val spread: Double, val observedAt: Long)
 
     private val samples = mutableListOf<Sample>()
     private val bars = mutableListOf<Bar>()
@@ -29,6 +31,7 @@ class MobileScalpingEngine(
     private var pendingExitLogged = false
     private var pendingExitReason = ""
     private var latestTick: LiveTick? = null
+    private var latestMt5Quote: Mt5Quote? = null
     private var lastAcceptedTickAt = 0L
     private var exnessVerifiedUntil = 0L
     private var lastExnessMatch: Boolean? = null
@@ -66,6 +69,15 @@ class MobileScalpingEngine(
             pendingExitReason = ""
         }
         activePosition = Pair(side, entryPrice)
+    }
+
+    @Synchronized
+    fun updateMt5ObservedQuote(observedSymbol: String, bid: Double, ask: Double, observedAt: Long = System.currentTimeMillis()): Boolean {
+        if (observedSymbol != symbol || !bid.isFinite() || !ask.isFinite() || bid <= 0.0 || ask <= bid || observedAt <= 0L) return false
+        val age = System.currentTimeMillis() - observedAt
+        if (age !in -1000L..2500L) return false
+        latestMt5Quote = Mt5Quote(bid, ask, ask - bid, observedAt)
+        return true
     }
 
     @Synchronized
@@ -214,13 +226,19 @@ class MobileScalpingEngine(
         lastAcceptedTickAt = tick.timestampMillis
         feedRevoked = false
         latestTick = tick
-        if (exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
+        if (requireBrokerQuoteParity && exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
             exnessVerifiedUntil = 0L
             lastExnessMatch = false
             onEvent("ENGINE_STATE", null, JSONObject().put("exnessQuoteVerification", "EXPIRED").put("signalGenerationEnabled", false))
         }
         val now = tick.timestampMillis
-        samples.add(Sample(now, tick.mid, tick.spread))
+        val observedMt5Quote = latestMt5Quote?.takeIf {
+            val observedAge = System.currentTimeMillis() - it.observedAt
+            observedAge in -1000L..2500L
+        }
+        val effectiveSpread = observedMt5Quote?.spread ?: tick.spread
+        val spreadSource = if (observedMt5Quote != null) "mt5_screen_ocr" else "biquote_reference"
+        samples.add(Sample(now, tick.mid, effectiveSpread))
         samples.removeAll { it.time < now - 15000L }
         updateBars(tick)
 
@@ -231,7 +249,7 @@ class MobileScalpingEngine(
         if (activePosition != null) reasons.add("position_already_open")
         val age = System.currentTimeMillis() - now
         if (!tick.live || age !in -1000..1500) reasons.add("quote_not_live_or_fresh")
-        if (System.currentTimeMillis() > exnessVerifiedUntil) reasons.add("exness_quote_not_verified")
+        if (requireBrokerQuoteParity && System.currentTimeMillis() > exnessVerifiedUntil) reasons.add("broker_quote_parity_not_verified")
         if (short.size < 3) reasons.add("short_window_not_ready")
         if (context.size < 3) reasons.add("context_window_not_ready")
 
@@ -243,7 +261,7 @@ class MobileScalpingEngine(
 
         val baselineSpread = if (context.isNotEmpty()) context.map { it.spread }.average() else 0.0
         val spreadMultiple = if (baselineSpread > 0) tick.spread / baselineSpread else 1.0
-        val spreadPercent = if (tick.mid > 0) tick.spread / tick.mid * 100.0 else Double.POSITIVE_INFINITY
+        val spreadPercent = if (tick.mid > 0) effectiveSpread / tick.mid * 100.0 else Double.POSITIVE_INFINITY
         val maxSpreadPercent = if (symbol == "XAUUSD") 0.02 else 0.12
         if (spreadMultiple > 2.5) reasons.add("spread_anomaly")
         if (spreadPercent > maxSpreadPercent) reasons.add("absolute_spread_cap_exceeded")
@@ -305,7 +323,10 @@ class MobileScalpingEngine(
         if (marketFingerprint != lastMarketFingerprint) {
             lastMarketFingerprint = marketFingerprint
             onEvent("MARKET_STATE", null, JSONObject()
-                .put("live", tick.live).put("quoteAgeMs", age).put("spread", tick.spread)
+                .put("live", tick.live).put("quoteAgeMs", age).put("spread", effectiveSpread)
+                .put("biquoteReferenceSpread", tick.spread)
+                .put("mt5ObservedSpread", observedMt5Quote?.spread ?: JSONObject.NULL)
+                .put("spreadSource", spreadSource)
                 .put("provider", "biquote").put("providerSource", tick.source)
                 .put("spreadMultiple", spreadMultiple).put("volatilityRegime", volatility)
                 .put("momentumDirection", direction ?: JSONObject.NULL).put("reasons", JSONArray(reasons)))
@@ -322,9 +343,14 @@ class MobileScalpingEngine(
                 .put("validForSeconds", if (side != null) 10 else 0)
                 .put("signalAt", if (side != null) pendingSignal?.at ?: System.currentTimeMillis() else JSONObject.NULL)
                 .put("signalMid", if (side != null) tick.mid else JSONObject.NULL)
-                .put("signalSpread", if (side != null) tick.spread else JSONObject.NULL)
+                .put("signalSpread", if (side != null) effectiveSpread else JSONObject.NULL)
                 .put("quoteBid", tick.bid).put("quoteAsk", tick.ask)
-                .put("quoteMid", tick.mid).put("spread", tick.spread).put("spreadPercent", spreadPercent)
+                .put("quoteMid", tick.mid).put("spread", effectiveSpread)
+                .put("biquoteReferenceSpread", tick.spread)
+                .put("mt5ObservedBid", observedMt5Quote?.bid ?: JSONObject.NULL)
+                .put("mt5ObservedAsk", observedMt5Quote?.ask ?: JSONObject.NULL)
+                .put("mt5ObservedSpread", observedMt5Quote?.spread ?: JSONObject.NULL)
+                .put("spreadSource", spreadSource).put("spreadPercent", spreadPercent)
                 .put("volatilityRegime", volatility)
                 .put("momentumDirection", direction ?: JSONObject.NULL)
                 .put("m5Direction", m5Direction ?: JSONObject.NULL)
@@ -352,7 +378,7 @@ class MobileScalpingEngine(
         val reason: String
         when {
             !tick.live -> { action = "HOLD_UNVERIFIED"; reason = "Live quote unavailable; refresh MT5 manually." }
-            System.currentTimeMillis() > exnessVerifiedUntil -> { action = "HOLD_UNVERIFIED"; reason = "Exness quote parity expired; verify MT5 before acting." }
+            requireBrokerQuoteParity && System.currentTimeMillis() > exnessVerifiedUntil -> { action = "HOLD_UNVERIFIED"; reason = "Broker quote parity expired; verify MT5 before acting." }
             volatility == "SPIKE" -> { action = "CLOSE_NOW"; reason = "Short-window volatility spike detected." }
             spreadMultiple >= 3.0 -> { action = "CLOSE_NOW"; reason = "Spread expanded to at least three times its recent baseline." }
             direction == opposite && abs(pressure) >= 0.35 && ((side == "BUY" && pressure < 0) || (side == "SELL" && pressure > 0)) -> {
