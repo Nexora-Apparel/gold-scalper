@@ -39,6 +39,28 @@ class MobileScalpingEngineTest {
         assertTrue(engine.verifyExnessQuote(4172.50, 4172.65))
         assertTrue(!engine.verifyExnessQuote(4172.80, 4172.95))
     }
+
+    @Test fun productionSignalModeBlocksWhenFreshMt5QuoteIsUnavailable() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
+        val noTrade = events.last { it.first == "NO_TRADE" }.second
+        assertTrue(noTrade.getJSONArray("reasons").toString().contains("broker_quote_parity_not_verified"))
+    }
+
+    @Test fun productionSignalModeAcceptsOnlyFreshMt5QuoteCorroboratedByReference() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        val tick = LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true)
+        engine.onTick(tick)
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", tick.bid, tick.ask, now))
+        engine.onTick(tick.copy(timestampMillis = now + 1L))
+        val noTrade = events.last { it.first == "NO_TRADE" }.second
+        assertTrue(!noTrade.getJSONArray("reasons").toString().contains("broker_quote_parity_not_verified"))
+    }
+
     @Test fun recommendsCloseAtSixtySecondMaximumHoldingTime() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
         val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
