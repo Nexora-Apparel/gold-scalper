@@ -23,6 +23,7 @@ class MobileScalpingEngine(
     private var lastMarketFingerprint = ""
     private var activePosition: Pair<String, Double>? = null
     private var lastExitFingerprint = ""
+    @Volatile private var paused = false
 
     @Synchronized
     fun setPosition(side: String, entryPrice: Double) {
@@ -38,8 +39,15 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
+    fun setPaused(value: Boolean) {
+        if (paused == value) return
+        paused = value
+        onEvent("ENGINE_STATE", null, JSONObject().put("paused", value).put("signalGenerationEnabled", !value))
+    }
+
+    @Synchronized
     fun onTick(tick: LiveTick) {
-        if (tick.symbol != symbol) return
+        if (tick.symbol != symbol || paused) return
         val now = tick.timestampMillis
         samples.add(Sample(now, tick.mid, tick.spread))
         samples.removeAll { it.time < now - 15000L }
