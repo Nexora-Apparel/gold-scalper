@@ -20,4 +20,11 @@ class MobileScalpingEngineTest {
         engine.checkTimeouts(11000L)
         assertEquals(0, events.size)
     }
+    @Test fun requiresFreshBrokerQuoteToMatchBothSidesAndSpread() {
+        val engine = MobileScalpingEngine("XAUUSD") { _, _, _ -> }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
+        assertTrue(engine.verifyExnessQuote(4172.50, 4172.65))
+        assertTrue(!engine.verifyExnessQuote(4172.80, 4172.95))
+    }
 }
