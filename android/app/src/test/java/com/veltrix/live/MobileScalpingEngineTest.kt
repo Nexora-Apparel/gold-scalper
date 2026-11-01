@@ -33,11 +33,14 @@ class MobileScalpingEngineTest {
         assertTrue(!engine.updateMt5ObservedQuote("XAUUSD", 4172.70, 4172.50, now))
     }
     @Test fun requiresFreshBrokerQuoteToMatchBothSidesAndSpread() {
-        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { _, _, _ -> }
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { _, _, _ -> }
         val now = System.currentTimeMillis()
-        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
-        assertTrue(engine.verifyBrokerQuote(4172.50, 4172.65))
-        assertTrue(!engine.verifyBrokerQuote(4172.80, 4172.95))
+        val tick = LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true)
+        engine.onTick(tick)
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", tick.bid, tick.ask, now))
+        assertTrue(engine.hasFreshBrokerQuoteVerification())
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.80, 4172.95, System.currentTimeMillis()))
+        assertTrue(!engine.hasFreshBrokerQuoteVerification())
     }
 
 
@@ -119,7 +122,6 @@ class MobileScalpingEngineTest {
         repeat(3) {
             val now = System.currentTimeMillis()
             engine.onTick(LiveTick("XAUUSD", 4172.45, 4172.55, 4172.50, 0.10, now, true))
-            engine.verifyBrokerQuote(4172.45, 4172.55, 2500L)
             Thread.sleep(3)
         }
         val now = System.currentTimeMillis()
