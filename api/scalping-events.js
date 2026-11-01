@@ -66,7 +66,7 @@ export default async function handler(req, res) {
         AND (${eventType}::text IS NULL OR event_type = ${eventType})
         AND (${from}::timestamptz IS NULL OR occurred_at >= ${from})
         AND (${to}::timestamptz IS NULL OR occurred_at <= ${to})
-      ORDER BY occurred_at ASC, id ASC LIMIT ${limit + 1}`;
+      ORDER BY CASE WHEN ${eventType}::text IS NOT NULL THEN occurred_at END ASC, CASE WHEN ${eventType}::text IS NULL THEN occurred_at END DESC, CASE WHEN ${eventType}::text IS NOT NULL THEN id END ASC, CASE WHEN ${eventType}::text IS NULL THEN id END DESC LIMIT ${limit + 1}`;
     const truncated = rows.length > limit;
     const events = truncated ? rows.slice(0, limit) : rows;
     const totals = await sql`SELECT event_type AS type, COUNT(*)::int AS count FROM veltrix_scalping_events GROUP BY event_type ORDER BY event_type`;
