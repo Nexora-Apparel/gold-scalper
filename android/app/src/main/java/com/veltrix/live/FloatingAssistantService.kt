@@ -32,6 +32,7 @@ import android.view.WindowManager
 import android.widget.TextView
 import org.json.JSONObject
 import java.util.concurrent.Executors
+import java.util.UUID
 
 class FloatingAssistantService : Service() {
     private lateinit var windowManager: WindowManager
@@ -56,6 +57,7 @@ class FloatingAssistantService : Service() {
     private var ocrThread: HandlerThread? = null
     private var lastOcrAt = 0L
     private var lastPositionSignature: String? = null
+    private var activePositionId: String? = null
     private var missingPositionFrames = 0
     private val textRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
@@ -303,17 +305,21 @@ class FloatingAssistantService : Service() {
             else if (feedHealthy) latestText = "EXNESS QUOTE MISMATCH · NO SIGNAL"
         }
         if (snapshot.noOpenPositions) {
-            if (lastPositionSignature != null) {
-                val fields = lastPositionSignature!!.split("|")
-                val closedSide = fields.getOrNull(1)
+            if (lastPositionSignature != null || prefs.getBoolean("position_active", false)) {
+                val fields = lastPositionSignature?.split("|") ?: emptyList()
+                val storedSide = prefs.getString("active_position_side", null)
+                val closedSide = fields.getOrNull(1) ?: storedSide
+                val positionId = activePositionId ?: prefs.getString("active_position_id", null)
                 val payload = JSONObject().put("source", "user_authorized_local_mt5_screen_ocr")
+                    .put("positionId", positionId ?: JSONObject.NULL)
                     .put("closureEvidence", "explicit_no_open_positions_text")
                     .put("confidence", 0.9).put("rawScreenUploaded", false)
                 journal.record("POSITION_CLOSED", symbol, payload, if (closedSide == "BUY" || closedSide == "SELL") closedSide else null)
             }
             mobileEngine?.clearPosition()
             currentDecisionText = null
-            prefs.edit().putBoolean("position_active", false).apply()
+            prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side").apply()
+            activePositionId = null
             lastPositionSignature = null
             missingPositionFrames = 0
             latestText = "MT5 shows no open positions"
@@ -322,11 +328,13 @@ class FloatingAssistantService : Service() {
         if (snapshot.positionDetected && snapshot.side != null && snapshot.entryPrice != null) {
             val signature = listOf(symbol, snapshot.side, snapshot.entryPrice.toString(), snapshot.volumeLots?.toString() ?: "").joinToString("|")
             missingPositionFrames = 0
-            prefs.edit().putBoolean("position_active", true).apply()
+            activePositionId = activePositionId ?: prefs.getString("active_position_id", null) ?: UUID.randomUUID().toString()
+            prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId).putString("active_position_side", snapshot.side).apply()
             mobileEngine?.setPosition(snapshot.side, snapshot.entryPrice)
             if (signature != lastPositionSignature) {
                 lastPositionSignature = signature
                 val payload = JSONObject()
+                    .put("positionId", activePositionId)
                     .put("side", snapshot.side)
                     .put("entryPrice", snapshot.entryPrice)
                     .put("volumeLots", snapshot.volumeLots ?: JSONObject.NULL)
