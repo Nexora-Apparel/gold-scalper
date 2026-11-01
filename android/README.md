@@ -46,3 +46,6 @@ The GitHub Actions validation workflow uploads this APK as the artifact named `v
 - Signal logic is experimental and intentionally fail-closed. It requires at least 15 completed contiguous M1 bars for M15 context plus completed M1 structure; early runtime may show NO_TRADE.
 - No 90% accuracy or profitability is claimed. Run at least two months on demo and record every closed trade's net realized R after fees and slippage before considering live reliance.
 - A human must physically test overlay, MediaProjection, OCR accuracy, Exness quote matching, background behavior and reconnection on the target Android device.
+
+
+MT5 OCR reads visible symbol/timeframe and rejects screen observations that conflict with the selected instrument. It only confirms positions when the Trade tab, side and entry price are explicit.
