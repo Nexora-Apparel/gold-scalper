@@ -41,6 +41,7 @@ class FloatingAssistantService : Service() {
     private var dotParams: WindowManager.LayoutParams? = null
     private val worker = Executors.newSingleThreadExecutor()
     private val syncWorker = Executors.newSingleThreadExecutor()
+    private val brokerQuoteWorker = Executors.newSingleThreadExecutor()
     @Volatile private var syncInFlight = false
     @Volatile private var brokerQuotePublishInFlight = false
     private var hub: BiquoteHubClient? = null
@@ -466,7 +467,7 @@ class FloatingAssistantService : Service() {
                 if (ownerSession.hasSession() && !brokerQuotePublishInFlight) {
                     brokerQuotePublishInFlight = true
                     try {
-                        syncWorker.execute {
+                        brokerQuoteWorker.execute {
                             try {
                                 ownerSession.publishBrokerQuote(symbol, snapshot.bid, snapshot.ask, observedAt)
                             } catch (_: Exception) {
@@ -706,6 +707,7 @@ class FloatingAssistantService : Service() {
         try { if (textRecognizerDelegate.isInitialized()) textRecognizer.close() } catch (_: Exception) {}
         worker.shutdownNow()
         syncWorker.shutdownNow()
+        brokerQuoteWorker.shutdownNow()
         try { panel?.let { windowManager.removeView(it) } } catch (_: Exception) {}
         try { dot?.let { windowManager.removeView(it) } } catch (_: Exception) {}
         super.onDestroy()
