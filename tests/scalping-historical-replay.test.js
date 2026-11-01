@@ -131,3 +131,17 @@ test("rejects negative or non-finite additional round-trip costs", () => {
     signals: [], roundTripAdditionalCostPriceUnits: -0.1
   }), /non-negative price-unit/);
 });
+
+test("reports Wilson 95 percent confidence intervals rather than implying precision from tiny samples", () => {
+  const result = replayScalpingSignals({
+    symbol: "XAUUSD",
+    quotes: [q(0, 2650, 2650.2), q(5000, 2650.5, 2650.7)],
+    signals: [{ symbol: "XAUUSD", side: "BUY", timestamp: new Date(base).toISOString() }],
+    horizonsSeconds: [5]
+  });
+  const interval = result.summary[0].hitRate95CI;
+  assert.equal(result.summary[0].decisive, 1);
+  assert.equal(interval.method, "Wilson 95% interval; flats excluded");
+  assert.ok(interval.lowerPercent < 100);
+  assert.equal(interval.upperPercent, 100);
+});
