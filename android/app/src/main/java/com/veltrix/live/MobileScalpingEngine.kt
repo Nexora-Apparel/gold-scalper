@@ -45,8 +45,9 @@ class MobileScalpingEngine(
             }
             pendingSignal = null
         }
+        val previousPosition = activePosition
+        if (previousPosition?.first != side || previousPosition.second != entryPrice) lastExitFingerprint = ""
         activePosition = Pair(side, entryPrice)
-        lastExitFingerprint = ""
     }
 
     @Synchronized
