@@ -12,6 +12,11 @@ on:
       - "android/**"
       - "package.json"
       - "index.html"
+      - "historical-replay.js"
+      - "historical-replay.html"
+      - "tick-archive.js"
+      - "tick-archive.html"
+      - "docs/**"
       - ".github/workflows/veltrix-live-validation.yml"
 
 permissions:
