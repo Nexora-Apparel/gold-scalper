@@ -155,7 +155,18 @@ class FloatingAssistantService : Service() {
                 editor.apply()
                 pendingSignalEventId = null
             }
-            if (eventType == "POSITION_OPENED" || eventType == "POSITION_CLOSED") { criticalExitAlert = false; currentDecisionText = null }
+            if (eventType == "POSITION_OPENED" || eventType == "POSITION_CLOSED") {
+                criticalExitAlert = false
+                currentDecisionText = null
+                prefs.edit().remove("pending_exit_at").remove("pending_exit_reason").apply()
+            }
+            if (eventType == "EXIT_RECOMMENDED" && payload.optString("action") == "CLOSE_NOW") {
+                prefs.edit().putLong("pending_exit_at", System.currentTimeMillis())
+                    .putString("pending_exit_reason", payload.optString("reason")).apply()
+            }
+            if (eventType == "EXIT_NOT_CONFIRMED" || eventType == "EXIT_RECOMMENDATION_CLEARED") {
+                prefs.edit().remove("pending_exit_at").remove("pending_exit_reason").apply()
+            }
             if (eventType == "EXIT_NOT_CONFIRMED") {
                 criticalExitAlert = true
                 currentDecisionText = "EXIT NOT CONFIRMED · CHECK EXNESS MT5"
@@ -201,6 +212,10 @@ class FloatingAssistantService : Service() {
             prefs.getString("pending_signal_side", null),
             prefs.getLong("pending_signal_at", 0L),
             prefs.getFloat("pending_signal_confidence", 0f).toDouble()
+        )
+        engine.restorePendingExit(
+            prefs.getLong("pending_exit_at", 0L),
+            prefs.getString("pending_exit_reason", null)
         )
         if (prefs.getBoolean("position_active", false)) {
             val savedSide = prefs.getString("active_position_side", null)
