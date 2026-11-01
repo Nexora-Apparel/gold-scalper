@@ -22,7 +22,7 @@ The Next.js monolith remains the control plane and persistent application. Verce
 A missing/stale quote, closed market, insufficient microstructure, unconfirmed structure, volatility spike or conflicting direction must resolve to NO_TRADE.
 
 ## Event journal
-The authenticated scalping-events API accepts 1–100 events per POST and supports GET with optional symbol and limit. eventId is unique and database-enforced for idempotency. Event payloads are capped at 12 KB. Events include market state, decisions, signal/rejection lifecycle, missed opportunities, position lifecycle, exit recommendations, feed failures and emergency-stop state.
+The authenticated scalping-events API accepts 1–100 events per POST and supports GET with optional symbol and limit. eventId is unique and database-enforced for idempotency. Event payloads are capped at 12 KB. Events include market state, decisions, signal/rejection lifecycle, missed opportunities, position lifecycle, exit recommendations, feed failures, emergency-stop state and manually recorded realized-R outcomes. The dashboard calculates settled trade count, win rate, net R and average R only from explicit outcome records; it never infers profit from a signal or position-closed event.
 
 The journal client maintains a bounded in-memory queue, batches writes, and retains events after failed requests. Android production storage must use a durable local queue (Room/SQLite) before network upload; an in-memory browser queue is not a substitute for durable device storage.
 
