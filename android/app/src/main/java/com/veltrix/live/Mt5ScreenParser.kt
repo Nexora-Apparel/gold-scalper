@@ -21,7 +21,7 @@ object Mt5ScreenParser {
     private val numberPattern = Regex("-?\\d[\\d,.]*")
 
     fun parse(text: String, expectedSymbol: String? = null): Mt5ScreenSnapshot {
-        val normalized = text
+        val normalized = text.replace("\\n", "\n").replace("\\r", "\n")
         val lines = normalized.lines().map { it.trim() }.filter { it.isNotEmpty() }
         val all = normalized.uppercase()
         val tradeTab = all.contains("TRADE") || all.contains("POSITIONS")
