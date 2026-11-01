@@ -151,7 +151,7 @@ class MobileScalpingEngine(
         val fingerprint = "HOLD_UNVERIFIED|feed_stale"
         if (lastExitFingerprint == fingerprint) return
         lastExitFingerprint = fingerprint
-        onEvent("EXIT_RECOMMENDED", position.first, JSONObject()
+        onEvent("EXIT_RECOMMENDED", position.side, JSONObject()
             .put("action", "HOLD_UNVERIFIED")
             .put("reason", "Market-data stream is stale or disconnected. Verify the position directly in MT5.")
             .put("entryPrice", position.entryPrice)
@@ -179,7 +179,7 @@ class MobileScalpingEngine(
         }
         val position = activePosition
         if (position != null && pendingExitAt > 0L && !pendingExitLogged) {
-            onEvent("EXIT_NOT_CONFIRMED", position.first, JSONObject()
+            onEvent("EXIT_NOT_CONFIRMED", position.side, JSONObject()
                 .put("reason", pendingExitReason)
                 .put("confirmationDelayMs", System.currentTimeMillis() - pendingExitAt)
                 .put("manualMT5ConfirmationRequired", true)
