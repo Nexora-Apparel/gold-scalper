@@ -1,5 +1,5 @@
 const DB_NAME = "veltrix-live-tick-archives";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "datasets";
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_TICKS = 250_000;
@@ -127,7 +127,7 @@ export function parseArchiveFile({name,text,metadata}) {
 function openDb() {
   return new Promise((resolve,reject)=>{
     const request=indexedDB.open(DB_NAME,DB_VERSION);
-    request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(STORE)){const store=db.createObjectStore(STORE,{keyPath:"id"});store.createIndex("symbol","manifest.symbol",{unique:false});store.createIndex("importedAt","manifest.importedAt",{unique:false});}};
+    request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(STORE)){const store=db.createObjectStore(STORE,{keyPath:"id"});store.createIndex("symbol","manifest.symbol",{unique:false});store.createIndex("importedAt","manifest.importedAt",{unique:false});}if(!db.objectStoreNames.contains("replayReports")){const reports=db.createObjectStore("replayReports",{keyPath:"id"});reports.createIndex("savedAt","savedAt",{unique:false});}};
     request.onsuccess=()=>resolve(request.result); request.onerror=()=>reject(request.error);
   });
 }
@@ -162,6 +162,40 @@ export async function deleteArchive(id) {
   const db=await openDb();
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(id);
+    tx.oncomplete=()=>{db.close();resolve(true);};tx.onerror=()=>{db.close();reject(tx.error);};
+  });
+}
+
+export async function saveReplayReport(report) {
+  const db=await openDb();
+  const serialized=JSON.stringify(report);
+  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(serialized));
+  const id=[...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,"0")).join("");
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction("replayReports","readwrite");
+    tx.objectStore("replayReports").put({id,savedAt:new Date().toISOString(),report});
+    tx.oncomplete=()=>{db.close();resolve(id);};tx.onerror=()=>{db.close();reject(tx.error);};
+  });
+}
+export async function listReplayReports() {
+  const db=await openDb();
+  return new Promise((resolve,reject)=>{
+    const req=db.transaction("replayReports","readonly").objectStore("replayReports").getAll();
+    req.onsuccess=()=>{db.close();resolve(req.result.map(({id,savedAt,report})=>({id,savedAt,symbol:report.archive.symbol,provider:report.archive.provider,signalCount:report.signalCount,signalSource:report.signalSource})).sort((a,b)=>b.savedAt.localeCompare(a.savedAt)));};
+    req.onerror=()=>{db.close();reject(req.error);};
+  });
+}
+export async function getReplayReport(id) {
+  const db=await openDb();
+  return new Promise((resolve,reject)=>{
+    const req=db.transaction("replayReports","readonly").objectStore("replayReports").get(id);
+    req.onsuccess=()=>{db.close();resolve(req.result?.report||null);};req.onerror=()=>{db.close();reject(req.error);};
+  });
+}
+export async function deleteReplayReport(id) {
+  const db=await openDb();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction("replayReports","readwrite");tx.objectStore("replayReports").delete(id);
     tx.oncomplete=()=>{db.close();resolve(true);};tx.onerror=()=>{db.close();reject(tx.error);};
   });
 }
