@@ -31,4 +31,13 @@ test("requires numeric realized R for manually recorded outcomes",()=>{
   assert.equal(validateScalpingEvent({eventId:"outcome-1",type:"POSITION_OUTCOME_RECORDED",symbol:"XAUUSD",payload:{positionId:"pos-1",realizedR:1.25}}).ok,true);
   assert.equal(validateScalpingEvent({eventId:"outcome-2",type:"POSITION_OUTCOME_RECORDED",symbol:"XAUUSD",payload:{positionId:"pos-1",realizedR:"not-a-number"}}).ok,false);
   assert.equal(validateScalpingEvent({eventId:"outcome-3",type:"POSITION_OUTCOME_RECORDED",symbol:"XAUUSD",payload:{realizedR:1.25}}).ok,false);
+
+test("rejects multiple outcome events for the same position in one batch",()=>{
+  const base={type:"POSITION_OUTCOME_RECORDED",symbol:"XAUUSD",payload:{positionId:"pos-1",realizedR:1.0}};
+  const result=validateScalpingEventBatch([
+    {eventId:"outcome-a",...base},
+    {eventId:"outcome-b",...base}
+  ]);
+  assert.equal(result.ok,false);
+});
 });
