@@ -49,6 +49,7 @@ class FloatingAssistantService : Service() {
     @Volatile private var lastTickAt = 0L
     @Volatile private var latestText = "Connecting to market feed…"
     @Volatile private var currentDecisionText: String? = null
+    @Volatile private var criticalExitAlert = false
     private val prefs by lazy { getSharedPreferences("veltrix_live", MODE_PRIVATE) }
     private val journal by lazy { EventJournalDb(this) }
     private val ownerSession by lazy { OwnerSessionStore(this) }
@@ -125,19 +126,30 @@ class FloatingAssistantService : Service() {
             } else if (eventType == "MISSED_OPPORTUNITY" || (eventType == "ENGINE_STATE" && payload.optBoolean("signalAccepted"))) {
                 prefs.edit().remove("pending_signal_side").remove("pending_signal_at").remove("pending_signal_confidence").apply()
             }
-            if (eventType == "SIGNAL" || eventType == "EXIT_RECOMMENDED") {
+            if (eventType == "POSITION_OPENED" || eventType == "POSITION_CLOSED") criticalExitAlert = false
+            if (eventType == "EXIT_RECOMMENDED") {
+                val action = payload.optString("action")
+                criticalExitAlert = action == "CLOSE_NOW" || action == "HOLD_UNVERIFIED"
+                currentDecisionText = when (action) {
+                    "CLOSE_NOW" -> "CLOSE NOW · " + payload.optString("reason")
+                    "HOLD_UNVERIFIED" -> "HOLD · FEED UNVERIFIED"
+                    else -> "POSITION HOLD · monitoring"
+                }
+                latestText = currentDecisionText ?: latestText
+                updateNotification(latestText)
+            } else if (eventType == "SIGNAL") {
                 currentDecisionText = payload.optString("action") + " · manual MT5 only"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
-            } else if (eventType == "NO_TRADE") {
+            } else if (eventType == "NO_TRADE" && !criticalExitAlert) {
                 currentDecisionText = "NO TRADE · " + (payload.optJSONArray("reasons")?.toString() ?: "quality gate blocked")
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
-            } else if (eventType == "MISSED_OPPORTUNITY") {
+            } else if (eventType == "MISSED_OPPORTUNITY" && !criticalExitAlert) {
                 currentDecisionText = "MISSED OPPORTUNITY · signal expired"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
-            } else if (eventType == "ENGINE_STATE" && payload.has("exnessQuoteVerification")) {
+            } else if (eventType == "ENGINE_STATE" && payload.has("exnessQuoteVerification") && !criticalExitAlert) {
                 val verification = payload.optString("exnessQuoteVerification")
                 currentDecisionText = if (verification == "MATCHED") "EXNESS QUOTE MATCHED · SIGNAL GATE OPEN" else "EXNESS QUOTE " + verification + " · SIGNALS BLOCKED"
                 latestText = currentDecisionText ?: latestText
@@ -165,12 +177,12 @@ class FloatingAssistantService : Service() {
             lastTickAt = System.currentTimeMillis()
             feedHealthy = tick.live
             if (tick.live && currentDecisionText?.startsWith("HOLD_UNVERIFIED") == true) currentDecisionText = null
-            latestText = if (!tick.live) "Market closed or quote stale" else currentDecisionText ?: ("Bid " + tick.bid + " · Ask " + tick.ask)
+            latestText = currentDecisionText ?: if (!tick.live) "Market closed or quote stale" else ("Bid " + tick.bid + " · Ask " + tick.ask)
             if (lastQuoteState != tick.live) {
                 lastQuoteState = tick.live
                 journal.record("QUOTE_STATE", symbol, JSONObject().put("live", tick.live).put("bid", tick.bid).put("ask", tick.ask))
             }
-            updateNotification(if (tick.live) "Live " + symbol + " tick stream" else symbol + " quote is not live")
+            updateNotification(latestText)
         }, { state ->
             feedHealthy = false
             currentDecisionText = null
@@ -178,7 +190,7 @@ class FloatingAssistantService : Service() {
             val type = if (state.contains("failed", true) || state.contains("disconnected", true) || state.contains("invalid", true)) "FEED_ERROR" else "ENGINE_STATE"
             if (type == "FEED_ERROR") mobileEngine?.onFeedStale()
             journal.record(type, symbol, JSONObject().put("state", state))
-            updateNotification(state)
+            updateNotification(currentDecisionText ?: state)
         })
         hub?.start()
     }
