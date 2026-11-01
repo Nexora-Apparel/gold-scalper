@@ -44,7 +44,8 @@ test("rejects stale and excessively future-dated observations", () => {
   assert.ok(future.reasons.includes("broker_quote_not_fresh"));
 });
 
-test("rejects string-coerced, non-finite and non-positive prices", () => {\n  assert.equal(validateBrokerQuoteObservation({ ...valid, bid: String(valid.bid) }, { now }).verified, false);
+test("rejects string-coerced, non-finite and non-positive prices", () => {
+  assert.equal(validateBrokerQuoteObservation({ ...valid, bid: String(valid.bid) }, { now }).verified, false);
   for (const bid of [NaN, Infinity, 0, -1]) {
     const result = validateBrokerQuoteObservation({ ...valid, bid }, { now });
     assert.equal(result.verified, false);
