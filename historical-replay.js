@@ -170,8 +170,8 @@ $("runReplay").addEventListener("click", async () => {
     message("Validating signal provenance and running isolated chronological replays…");
     const signalText = file ? await file.text() : JSON.stringify(journalSignalBundle);
     const parsed = file ? parseSignals(signalText, file.name, selectedArchive.manifest.symbol) : parseSignals(signalText, "journal.json", selectedArchive.manifest.symbol);
-    if (journalSignalBundle && !selectedArchive.manifest.provider.toLowerCase().includes("biquote")) {
-      throw new Error("These journal signals were generated from Biquote reference ticks. The selected archive provider does not match; cross-provider replay is blocked.");
+    if (parsed.metadata.provider && !selectedArchive.manifest.provider.toLowerCase().includes(parsed.metadata.provider.toLowerCase())) {
+      throw new Error("Signal source provider and tick archive provider do not match; cross-provider replay is blocked.");
     }
     const signalDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signalText));
     const signalFileSha256 = [...new Uint8Array(signalDigest)].map((value) => value.toString(16).padStart(2, "0")).join("");
