@@ -54,4 +54,12 @@ class MobileScalpingEngineTest {
         engine.checkTimeouts(System.currentTimeMillis() + 5001L)
         assertTrue(events.contains("EXIT_NOT_CONFIRMED"))
     }
+    @Test fun recordsEntryThatDriftedAwayFromTheRecommendationAsMissed() {
+        val events = mutableListOf<String>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, _ -> events.add(type) }
+        engine.restorePendingSignal("BUY", System.currentTimeMillis(), 0.82, 4172.50, 0.10)
+        engine.setPosition("BUY", 4175.00)
+        assertTrue(events.contains("MISSED_OPPORTUNITY"))
+        assertTrue(!events.contains("ENGINE_STATE"))
+    }
 }
