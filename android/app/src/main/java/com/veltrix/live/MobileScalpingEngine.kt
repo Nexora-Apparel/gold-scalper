@@ -88,6 +88,8 @@ class MobileScalpingEngine(
     private fun refreshMt5ReferenceQuoteVerification(now: Long = System.currentTimeMillis()) {
         val quote = latestMt5Quote
         if (quote == null || now - quote.observedAt !in -1000L..2500L) {
+            exnessVerifiedUntil = 0L
+            lastExnessMatch = null
             if (mt5ReferenceQuoteMatch != null) {
                 mt5ReferenceQuoteMatch = null
                 onEvent("ENGINE_STATE", null, JSONObject()
@@ -113,6 +115,10 @@ class MobileScalpingEngine(
             else -> "MISMATCHED"
         }
         val nextMatch = if (referenceFresh) matched else null
+        // A fresh OCR observation only opens the production signal gate while
+        // both Bid and Ask remain corroborated by the independent reference.
+        exnessVerifiedUntil = if (matched) quote.observedAt + 2500L else 0L
+        lastExnessMatch = matched
         if (mt5ReferenceQuoteMatch != nextMatch) {
             mt5ReferenceQuoteMatch = nextMatch
             onEvent("ENGINE_STATE", null, JSONObject()
@@ -421,7 +427,8 @@ class MobileScalpingEngine(
                 action = if (direction == "UP") "BUY_NOW" else "SELL_NOW"
                 side = if (direction == "UP") "BUY" else "SELL"
                 lastSignalAt = now
-                pendingSignal = PendingSignal(side!!, System.currentTimeMillis(), confidence, tick.mid, effectiveSpread)
+                val brokerEntryPrice = if (side == "BUY") freshMt5Quote?.ask ?: tick.mid else freshMt5Quote?.bid ?: tick.mid
+                pendingSignal = PendingSignal(side!!, System.currentTimeMillis(), confidence, brokerEntryPrice, effectiveSpread)
             }
         } else if (confidence < 0.72) reasons.add("confidence_below_threshold")
 
@@ -451,6 +458,9 @@ class MobileScalpingEngine(
                 .put("validForSeconds", if (side != null) 10 else 0)
                 .put("signalAt", if (side != null) pendingSignal?.at ?: System.currentTimeMillis() else JSONObject.NULL)
                 .put("signalMid", if (side != null) tick.mid else JSONObject.NULL)
+                .put("signalEntryPrice", if (side != null) pendingSignal?.referencePrice ?: JSONObject.NULL else JSONObject.NULL)
+                .put("signalEntryPriceSide", if (side == "BUY") "ASK" else if (side == "SELL") "BID" else JSONObject.NULL)
+                .put("signalQuoteSource", if (freshMt5Quote != null) "mt5_screen_ocr" else "biquote_reference_only")
                 .put("signalSpread", if (side != null) effectiveSpread else JSONObject.NULL)
                 .put("quoteBid", tick.bid).put("quoteAsk", tick.ask)
                 .put("quoteMid", tick.mid).put("spread", effectiveSpread)
