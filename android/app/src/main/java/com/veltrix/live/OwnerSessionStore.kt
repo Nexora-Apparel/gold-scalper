@@ -22,6 +22,7 @@ class OwnerSessionStore(context: Context) {
         .connectTimeout(1, TimeUnit.SECONDS)
         .readTimeout(1, TimeUnit.SECONDS)
         .writeTimeout(1, TimeUnit.SECONDS)
+        .callTimeout(1800, TimeUnit.MILLISECONDS)
         .build()
     private val prefs by lazy {
         val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
