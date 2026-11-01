@@ -255,6 +255,8 @@ class FloatingAssistantService : Service() {
                 metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 reader.surface, null, handler
             )
+            latestText = "LOCAL MT5 OCR ACTIVE · " + (prefs.getString("symbol", "XAUUSD") ?: "XAUUSD")
+            updateNotification(latestText)
             journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenObservation", "user_authorized_local_ocr_active"))
         } catch (error: Exception) {
             latestText = "Screen observation unavailable"
