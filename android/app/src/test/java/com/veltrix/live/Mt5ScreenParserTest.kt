@@ -26,4 +26,11 @@ class Mt5ScreenParserTest {
         assertEquals("SELL", result.side)
         assertTrue(result.positionDetected)
     }
+
+    @Test fun recognizesExplicitNoOpenPositionsState() {
+        val result = Mt5ScreenParser.parse("Trade\\nNo open positions")
+        assertTrue(result.tradeTabVisible)
+        assertTrue(result.noOpenPositions)
+        assertFalse(result.positionDetected)
+    }
 }
