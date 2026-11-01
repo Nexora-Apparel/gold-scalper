@@ -5,9 +5,10 @@ import org.junit.Test
 
 class Mt5ScreenParserTest {
     @Test fun detectsExplicitTradeTabPositionWithEntryPrice() {
-        val result = Mt5ScreenParser.parse("Trade\nXAUUSD\nBUY 0.01\nOpen Price 2650.25\nProfit 1.20")
+        val result = Mt5ScreenParser.parse("Trade\nXAUUSD\nBUY 0.01\nOpen Price 2650.25\nProfit 1.20\nM1")
         assertTrue(result.tradeTabVisible)
         assertEquals("XAUUSD", result.symbol)
+        assertEquals("M1", result.timeframe)
         assertEquals("BUY", result.side)
         assertEquals(2650.25, result.entryPrice!!, 0.0001)
         assertTrue(result.positionDetected)
