@@ -39,4 +39,10 @@ class Mt5ScreenParserTest {
         assertEquals(4172.55, result.entryPrice!!, 0.0001)
         assertTrue(result.positionDetected)
     }
+    @Test fun extractsExnessBidAskForQuoteVerification() {
+        val result = Mt5ScreenParser.parse("Trade\nXAUUSD\nBid 4,172.55\nAsk 4,172.70")
+        assertTrue(result.quoteDetected)
+        assertEquals(4172.55, result.bid!!, 0.0001)
+        assertEquals(4172.70, result.ask!!, 0.0001)
+    }
 }
