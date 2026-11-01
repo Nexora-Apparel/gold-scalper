@@ -75,6 +75,7 @@ class FloatingAssistantService : Service() {
                 if (feedHealthy && !fresh) {
                     feedHealthy = false
                     latestText = "STALE FEED · NO SIGNAL"
+                    currentDecisionText = null
                     val selected = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
                     journal.record("FEED_ERROR", selected, JSONObject().put("reason", "tick_stream_stale").put("lastTickAt", lastTickAt))
                     mobileEngine?.onFeedStale()
