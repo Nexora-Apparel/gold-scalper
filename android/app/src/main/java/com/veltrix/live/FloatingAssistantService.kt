@@ -678,10 +678,10 @@ class FloatingAssistantService : Service() {
             }
         }
         if (intent?.action == "VERIFY_QUOTES") {
-            val bid = intent.getDoubleExtra("exness_bid", 0.0)
-            val ask = intent.getDoubleExtra("exness_ask", 0.0)
-            val matched = mobileEngine?.verifyExnessQuote(bid, ask) == true
-            latestText = if (matched) "BROKER QUOTE VERIFIED · 5 MIN" else "BROKER QUOTE MISMATCH · NO SIGNAL"
+            val bid = intent.getDoubleExtra("broker_bid", 0.0)
+            val ask = intent.getDoubleExtra("broker_ask", 0.0)
+            val matched = mobileEngine?.verifyBrokerQuote(bid, ask) == true
+            latestText = if (matched) "BROKER QUOTE VERIFIED · 10 SEC" else "BROKER QUOTE MISMATCH · NO SIGNAL"
             updateNotification(latestText)
         }
         val resultCode = intent?.getIntExtra("projection_result_code", Activity.RESULT_CANCELED) ?: Activity.RESULT_CANCELED
