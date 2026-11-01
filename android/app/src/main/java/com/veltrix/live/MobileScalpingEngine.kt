@@ -139,26 +139,6 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
-    fun verifyBrokerQuote(exnessBid: Double, exnessAsk: Double, validForMs: Long = 10000L): Boolean {
-        val tick = latestTick
-        val now = System.currentTimeMillis()
-        val tolerance = if (symbol == "XAUUSD") 0.05 else 0.01
-        val matched = tick != null && tick.live && tick.timestampMillis - now in -1000L..1500L && exnessBid > 0 && exnessAsk > exnessBid &&
-            abs(exnessBid - tick.bid) <= tolerance && abs(exnessAsk - tick.ask) <= tolerance &&
-            abs((exnessAsk - exnessBid) - tick.spread) <= max(tolerance, tick.spread * 0.20)
-        val verificationWindow = validForMs.coerceIn(1000L, 10000L)
-        brokerQuoteVerifiedUntil = if (matched) now + verificationWindow else 0L
-        if (lastBrokerQuoteMatch != matched) {
-            lastBrokerQuoteMatch = matched
-            onEvent("ENGINE_STATE", null, JSONObject()
-                .put("brokerQuoteVerification", if (matched) "MATCHED" else "NOT_MATCHED")
-                .put("tolerance", tolerance).put("validForMs", if (matched) verificationWindow else 0L)
-                .put("rawScreenUploaded", false))
-        }
-        return matched
-    }
-
-    @Synchronized
     fun restorePendingSignal(side: String?, at: Long, confidence: Double, referencePrice: Double = 0.0, spread: Double = 0.0) {
         if ((side == "BUY" || side == "SELL") && at > 0 && confidence.isFinite() && confidence in 0.0..1.0) {
             pendingSignal = PendingSignal(side, at, confidence, referencePrice, spread)
