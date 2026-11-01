@@ -238,10 +238,54 @@ class MobileScalpingEngine(
         onEvent("ENGINE_STATE", null, JSONObject().put("paused", value).put("signalGenerationEnabled", !value))
     }
 
+    private fun quoteValidationError(tick: LiveTick): String? {
+        if (tick.symbol != symbol) return "symbol_mismatch"
+        if (!tick.bid.isFinite() || !tick.ask.isFinite() || !tick.mid.isFinite() || !tick.spread.isFinite()) return "non_finite_quote_value"
+        if (tick.bid <= 0.0 || tick.ask <= tick.bid || tick.mid <= 0.0 || tick.spread < 0.0) return "invalid_bid_ask_or_spread"
+        val midpointTolerance = max(0.000001, (tick.ask - tick.bid) * 0.02)
+        if (tick.mid < tick.bid - midpointTolerance || tick.mid > tick.ask + midpointTolerance) return "mid_outside_bid_ask"
+        return null
+    }
+
     @Synchronized
     fun onTick(tick: LiveTick) {
         checkTimeouts()
         if (tick.symbol != symbol) return
+        val validationError = quoteValidationError(tick)
+        if (validationError != null) {
+            latestTick = tick.copy(live = false)
+            exnessVerifiedUntil = 0L
+            lastExnessMatch = null
+            feedRevoked = true
+            onEvent("ENGINE_STATE", null, JSONObject()
+                .put("quoteValidation", "REJECTED")
+                .put("quoteValidationReason", validationError)
+                .put("signalGenerationEnabled", false)
+                .put("providerSource", tick.source))
+            val invalidFingerprint = "NO_TRADE|invalid_quote|$validationError"
+            if (invalidFingerprint != lastFingerprint) {
+                lastFingerprint = invalidFingerprint
+                onEvent("NO_TRADE", null, JSONObject()
+                    .put("action", "NO_TRADE")
+                    .put("reasons", JSONArray().put("invalid_quote").put(validationError))
+                    .put("provider", "biquote")
+                    .put("providerSource", tick.source)
+                    .put("executionEnabled", false))
+            }
+            val position = activePosition
+            if (position != null) {
+                val exitFingerprint = "HOLD_UNVERIFIED|invalid_quote"
+                if (lastExitFingerprint != exitFingerprint) {
+                    lastExitFingerprint = exitFingerprint
+                    onEvent("EXIT_RECOMMENDED", position.side, JSONObject()
+                        .put("action", "HOLD_UNVERIFIED")
+                        .put("reason", "Reference quote failed validation. Check the live position and executable price directly in MT5.")
+                        .put("entryPrice", position.entryPrice)
+                        .put("executionEnabled", false))
+                }
+            }
+            return
+        }
         val incomingAge = System.currentTimeMillis() - tick.timestampMillis
         if (!tick.live || incomingAge !in -1000L..1500L) {
             if (tick.live) onFeedStale()
