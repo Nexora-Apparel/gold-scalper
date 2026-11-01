@@ -113,4 +113,25 @@ class MobileScalpingEngineTest {
         assertEquals("mt5_screen_ocr", exit.getString("closeQuoteSource"))
     }
 
+
+    @Test fun mt5QuoteMismatchIsExplicitlyReportedAgainstReferenceFeed() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4173.10, 4173.30, System.currentTimeMillis()))
+        val verification = events.last { it.first == "ENGINE_STATE" }.second
+        assertEquals("MISMATCHED", verification.getString("mt5ReferenceQuoteVerification"))
+    }
+
+    @Test fun matchingMt5QuoteIsExplicitlyVerifiedAgainstReferenceFeed() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.51, 4172.66, System.currentTimeMillis()))
+        val verification = events.last { it.first == "ENGINE_STATE" }.second
+        assertEquals("MATCHED", verification.getString("mt5ReferenceQuoteVerification"))
+    }
+
 }
