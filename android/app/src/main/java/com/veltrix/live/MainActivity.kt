@@ -137,7 +137,16 @@ class MainActivity : Activity() {
             text = "ENABLE FLOATING ASSISTANT"
             setOnClickListener { if (!Settings.canDrawOverlays(this@MainActivity)) startActivityForResult(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)), 401) else startAssistant() }
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 20 })
-        root.addView(Button(this).apply { text = "STOP FLOATING ASSISTANT"; setOnClickListener { stopService(Intent(this@MainActivity, FloatingAssistantService::class.java)) } }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 10 })
+        root.addView(Button(this).apply {
+            text = "STOP FLOATING ASSISTANT"
+            setOnClickListener {
+                if (prefs.getBoolean("position_active", false)) {
+                    Toast.makeText(this@MainActivity, "Close or manually confirm the MT5 position before stopping monitoring.", Toast.LENGTH_LONG).show()
+                } else {
+                    stopService(Intent(this@MainActivity, FloatingAssistantService::class.java))
+                }
+            }
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 10 })
         root.addView(TextView(this).apply {
             text = "The Android system will request screen-capture permission. Frames are processed locally to read MT5 trade details; full-screen images are never uploaded. Only structured events sync after owner login. The assistant never places, modifies, or closes orders. Verify every quote against Exness MT5."
             textSize = 12f; setTextColor(0xFF9CA3AF.toInt()); setPadding(0, 24, 0, 0)
