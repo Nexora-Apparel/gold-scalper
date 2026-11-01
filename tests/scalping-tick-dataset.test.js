@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateHistoricalTickDataset } from "../lib/scalping-tick-dataset.js";
+import { importHistoricalTickCsv, validateHistoricalTickDataset } from "../lib/scalping-tick-dataset.js";
 import { replayScalpingSignals } from "../lib/scalping-historical-replay.js";
 
 const metadata = {
@@ -38,6 +38,16 @@ test("validated archive output feeds the chronological replay engine directly", 
   assert.equal(replay.evaluatedRows, 1);
   assert.equal(replay.results[0].entryPrice, quotes[0].ask);
   assert.equal(replay.results[0].exitPrice, quotes[2].bid);
+});
+
+test("imports standard CSV tick exports and rejects malformed CSV", () => {
+  const csv = "timestamp,bid,ask,symbol\\n2026-10-01T10:00:00.000Z,2650.10,2650.20,XAUUSD\\n2026-10-01T10:00:00.250Z,2650.20,2650.30,XAUUSD\\n";
+  const result = importHistoricalTickCsv({ metadata, csv });
+  assert.equal(result.ok, true);
+  assert.equal(result.manifest.tickCount, 2);
+  assert.equal(result.quotes[1].provider, metadata.provider);
+  assert.equal(importHistoricalTickCsv({ metadata, csv: "timestamp,bid,ask\\n\\"unterminated,1,2" }).ok, false);
+  assert.equal(importHistoricalTickCsv({ metadata, csv: "timestamp,bid,ask\\n2026-10-01T10:00:00.000Z,1.2,1.3" }).ok, false);
 });
 
 test("rejects OHLC data and missing provenance", () => {
