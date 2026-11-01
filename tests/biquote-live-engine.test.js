@@ -64,3 +64,19 @@ test("live tick decisions remain fail-closed until structure confirmation exists
   assert.ok(marketStates.length>=2);
   await engine.stop();
 });
+
+test("emits deduplicated journal events and fail-closed decisions",async()=>{
+  let now=Date.parse("2026-11-01T08:02:00Z");
+  const connection=new FakeConnection(), events=[], decisions=[];
+  const engine=new BiquoteLiveEngine({
+    connection,now:()=>now,fetchSnapshot:async()=>({quotes:{}}),
+    onEvent:event=>events.push(event),onDecision:decision=>decisions.push(decision)
+  });
+  await engine.start();
+  for(let i=0;i<5;i++){ connection.tick(tick("XAUUSD",now,2650+i*0.01)); now+=500; }
+  assert.ok(events.some(event=>event.type==="MARKET_STATE"));
+  assert.ok(events.some(event=>event.type==="NO_TRADE"));
+  assert.ok(events.every(event=>event.symbol==="XAUUSD" && event.eventId));
+  assert.ok(decisions.every(decision=>decision.action==="NO_TRADE"));
+  await engine.stop();
+});
