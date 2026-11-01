@@ -14,6 +14,7 @@ class MobileScalpingEngine(
     private data class Sample(val time: Long, val mid: Double, val spread: Double)
     private data class Bar(val time: Long, val open: Double, val high: Double, val low: Double, val close: Double)
     private data class ActiveBar(val time: Long, val open: Double, var high: Double, var low: Double, var close: Double)
+    private data class PendingSignal(val side: String, val at: Long, val confidence: Double)
 
     private val samples = mutableListOf<Sample>()
     private val bars = mutableListOf<Bar>()
@@ -23,13 +24,38 @@ class MobileScalpingEngine(
     private var lastMarketFingerprint = ""
     private var activePosition: Pair<String, Double>? = null
     private var lastExitFingerprint = ""
+    private var pendingSignal: PendingSignal? = null
     @Volatile private var paused = false
 
     @Synchronized
     fun setPosition(side: String, entryPrice: Double) {
         if (side !in setOf("BUY", "SELL") || !entryPrice.isFinite() || entryPrice <= 0) return
+        val pending = pendingSignal
+        if (pending != null) {
+            val age = System.currentTimeMillis() - pending.at
+            if (side == pending.side && age <= 15000L) {
+                onEvent("ENGINE_STATE", side, JSONObject().put("signalAccepted", true).put("signalAgeMs", age))
+                pendingSignal = null
+            } else if (age <= 15000L) {
+                onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject().put("reason", "different_side_position_detected").put("signalAgeMs", age))
+                pendingSignal = null
+            }
+        }
         activePosition = Pair(side, entryPrice)
         lastExitFingerprint = ""
+    }
+
+    @Synchronized
+    fun checkTimeouts(now: Long = System.currentTimeMillis()) {
+        val pending = pendingSignal ?: return
+        if (now - pending.at >= 10000L) {
+            onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject()
+                .put("reason", "signal_expired_without_detected_mt5_position")
+                .put("signalAgeMs", now - pending.at)
+                .put("confidence", pending.confidence)
+                .put("validForSeconds", 10))
+            pendingSignal = null
+        }
     }
 
     @Synchronized
@@ -47,6 +73,7 @@ class MobileScalpingEngine(
 
     @Synchronized
     fun onTick(tick: LiveTick) {
+        checkTimeouts(tick.timestampMillis)
         if (tick.symbol != symbol || paused) return
         val now = tick.timestampMillis
         samples.add(Sample(now, tick.mid, tick.spread))
@@ -118,6 +145,7 @@ class MobileScalpingEngine(
                 action = if (direction == "UP") "BUY_NOW" else "SELL_NOW"
                 side = if (direction == "UP") "BUY" else "SELL"
                 lastSignalAt = now
+                pendingSignal = PendingSignal(side!!, now, confidence)
             }
         } else if (confidence < 0.72) reasons.add("confidence_below_threshold")
 
