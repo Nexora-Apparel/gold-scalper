@@ -18,6 +18,11 @@ class OwnerSessionStore(context: Context) {
         .readTimeout(12, TimeUnit.SECONDS)
         .writeTimeout(12, TimeUnit.SECONDS)
         .build()
+    private val brokerQuoteClient = OkHttpClient.Builder()
+        .connectTimeout(1, TimeUnit.SECONDS)
+        .readTimeout(1, TimeUnit.SECONDS)
+        .writeTimeout(1, TimeUnit.SECONDS)
+        .build()
     private val prefs by lazy {
         val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
         EncryptedSharedPreferences.create(
@@ -63,7 +68,7 @@ class OwnerSessionStore(context: Context) {
             .toRequestBody("application/json; charset=utf-8".toMediaType())
         val request = Request.Builder().url(baseUrl + "/api/broker-quote-observation")
             .addHeader("Cookie", cookie).post(body).build()
-        client.newCall(request).execute().use { response ->
+        brokerQuoteClient.newCall(request).execute().use { response ->
             if (response.code == 401) prefs.edit().remove("cookie").apply()
             if (!response.isSuccessful) return false
             return JSONObject(response.body?.string() ?: "{}").optBoolean("accepted")
