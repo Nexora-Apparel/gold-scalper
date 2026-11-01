@@ -101,7 +101,7 @@ class MobileScalpingEngine(
             if (now - lastSignalAt < 20000L) reasons.add("signal_cooldown_active")
             else {
                 action = if (direction == "UP") "BUY_NOW" else "SELL_NOW"
-                side = direction
+                side = if (direction == "UP") "BUY" else "SELL"
                 lastSignalAt = now
             }
         } else if (confidence < 0.72) reasons.add("confidence_below_threshold")
