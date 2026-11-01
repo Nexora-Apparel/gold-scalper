@@ -553,7 +553,7 @@ class FloatingAssistantService : Service() {
             val entry = intent.getDoubleExtra("entry_price", 0.0)
             val volume = intent.getDoubleExtra("volume_lots", 0.0)
             if (side == "BUY" || side == "SELL") {
-                if (entry > 0 && mobileEngine != null && !prefs.getBoolean("position_active", false)) {
+                if (entry.isFinite() && entry > 0 && volume.isFinite() && volume >= 0 && mobileEngine != null && !prefs.getBoolean("position_active", false)) {
                     activePositionId = UUID.randomUUID().toString()
                     lastPositionSignature = listOf(prefs.getString("symbol", "XAUUSD"), side, entry.toString()).joinToString("|")
                     prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId)
@@ -579,7 +579,7 @@ class FloatingAssistantService : Service() {
                 val positionId = activePositionId ?: prefs.getString("active_position_id", null)
                 val payload = JSONObject().put("positionId", positionId ?: JSONObject.NULL)
                     .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
-                    .put("source", "manual_mt5_journal_entry").put("exitPrice", if (exitPrice > 0) exitPrice else JSONObject.NULL)
+                    .put("source", "manual_mt5_journal_entry").put("exitPrice", if (exitPrice.isFinite() && exitPrice > 0) exitPrice else JSONObject.NULL)
                 journal.record("POSITION_CLOSED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", payload, if (side == "BUY" || side == "SELL") side else null)
                 if (realizedR.isFinite() && positionId != null) {
                     journal.record("POSITION_OUTCOME_RECORDED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD",
