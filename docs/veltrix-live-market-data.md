@@ -79,3 +79,12 @@ Before a tick enters the Android signal calculations, the engine rejects non-fin
 - The server market-state and decision layers now require a broker-neutral verification object from the Android MT5 source. Biquote remains a reference feed and cannot satisfy this gate.
 - The current Biquote server engine does not yet submit an Android observation to the adapter. It therefore remains fail-closed and will continue to produce `NO_TRADE` until that authenticated observation transport is integrated.
 - No screenshot or screen recording is uploaded by this adapter. It accepts structured quote fields only.
+
+
+### Broker quote journal transport
+
+- The Android companion now journals a structured `BROKER_QUOTE_OBSERVED` event when its local MT5 OCR parser detects an unambiguous supported-symbol Bid/Ask pair. The event contains numeric Bid/Ask, derived spread, observation timestamp, `source=mt5_android`, the local OCR method label and `rawScreenUploaded=false`.
+- The event travels through the existing encrypted owner-session cookie and batched `/api/scalping-events` sync path into Neon. No new backend or repository is introduced.
+- Server validation rejects unsupported sources, wrong symbols, malformed prices, invalid observation timestamps, missing local-OCR provenance labels and any event claiming raw screen upload.
+- Because journal sync is batched and may occur several seconds after OCR, the journal validator validates the quote at its recorded observation time. It does **not** treat a delayed journal event as a fresh live quote.
+- This is an auditable history/transport integration only. The server does not yet use these journal rows as a live decision feed. Live decision eligibility still requires a fresh broker verification object at evaluation time; Biquote remains reference-only.
