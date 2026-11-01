@@ -134,4 +134,27 @@ class MobileScalpingEngineTest {
         assertEquals("MATCHED", verification.getString("mt5ReferenceQuoteVerification"))
     }
 
+    @Test fun staleReferenceFeedCannotLeaveMt5QuoteMarkedMatched() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
+        engine.updateMt5ObservedQuote("XAUUSD", 4172.51, 4172.66, now)
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now - 5000L, false))
+        val verification = events.last { it.first == "ENGINE_STATE" && it.second.has("mt5ReferenceQuoteVerification") }.second
+        assertEquals("REFERENCE_FEED_STALE", verification.getString("mt5ReferenceQuoteVerification"))
+    }
+
+    @Test fun expiredMt5QuoteReturnsVerificationToReferenceFeedMode() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
+        engine.updateMt5ObservedQuote("XAUUSD", 4172.51, 4172.66, now)
+        engine.checkTimeouts(now + 3000L)
+        val verification = events.last { it.first == "ENGINE_STATE" && it.second.has("mt5ReferenceQuoteVerification") }.second
+        assertEquals("NOT_OBSERVED_OR_EXPIRED", verification.getString("mt5ReferenceQuoteVerification"))
+        assertEquals("REFERENCE_FEED_MODE", verification.getString("signalGate"))
+    }
+
 }
