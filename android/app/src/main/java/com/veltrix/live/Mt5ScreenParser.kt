@@ -83,8 +83,9 @@ object Mt5ScreenParser {
         val sideLine = lines.firstOrNull { sideToken.containsMatchIn(it.uppercase()) }
         val sideLineNumbers = sideLine?.let { numberPattern.findAll(it).mapNotNull { match -> parseNumber(match.value) }.toList() } ?: emptyList()
         val minimumMetalPrice = if (symbol == "XAUUSD") 100.0 else 1.0
+        val compactRowEvidence = rowNumbers.size >= 2
         val labelledEntry = labelledNumber(listOf("open price", "price open", "entry price"))
-        val entry = labelledEntry ?: rowNumbers.firstOrNull { it >= minimumMetalPrice }
+        val entry = labelledEntry ?: if (compactRowEvidence) rowNumbers.firstOrNull { it >= minimumMetalPrice } else null
         val labelledVolume = labelledNumber(listOf("volume", "lots", "lot"))
         val volume = labelledVolume ?: sideLineNumbers.firstOrNull { it in 0.001..100.0 }
         val profit = labelledNumber(listOf("profit", "p/l"))
