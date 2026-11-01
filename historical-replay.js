@@ -1,5 +1,6 @@
 import { listArchives, exportArchive } from "./tick-archive.js";
 import { replayScalpingSignals } from "./lib/scalping-historical-replay.js";
+import { parseHistoricalSignalLog } from "./lib/scalping-signal-dataset.js";
 
 const $ = (id) => document.getElementById(id);
 const status = $("replayStatus");
@@ -15,58 +16,6 @@ let journalSignalBundle = null;
 function message(text, error = false) {
   status.textContent = text;
   status.dataset.error = String(error);
-}
-function strictTime(value) {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return NaN;
-  const time = Date.parse(value);
-  if (!Number.isFinite(time)) return NaN;
-  const zone = value.match(/(Z|[+-]\d{2}:\d{2})$/i)?.[1];
-  if (zone && zone.toUpperCase() !== "Z") {
-    const [offsetHours, offsetMinutes] = zone.slice(1).split(":").map(Number);
-    if (offsetHours > 14 || offsetMinutes > 59 || (offsetHours === 14 && offsetMinutes !== 0)) return NaN;
-  }
-  const datePart = value.slice(0, 10);
-  const [year, month, day] = datePart.split("-").map(Number);
-  if (month < 1 || month > 12 || day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate()) return NaN;
-  return time;
-}
-function parseSignals(text, filename, symbol) {
-  let metadata, signals;
-  if (filename.toLowerCase().endsWith(".json")) {
-    const parsed = JSON.parse(text);
-    metadata = parsed.metadata;
-    signals = parsed.signals;
-  } else if (filename.toLowerCase().endsWith(".csv")) {
-    const lines = text.replace(/^\uFEFF/, "").trim().split(/\r?\n/);
-    const headers = lines.shift().split(",").map((v) => v.trim().toLowerCase());
-    const indexes = Object.fromEntries(headers.map((v, i) => [v, i]));
-    if (["timestamp", "symbol", "side", "provider"].some((key) => indexes[key] === undefined)) throw new Error("Signal CSV requires timestamp,symbol,side,provider columns; id is optional.");
-    signals = lines.filter(Boolean).map((line, index) => {
-      if (line.includes('"')) throw new Error("Quoted CSV fields are not supported in signal logs; use plain comma-separated fields.");
-      const cells = line.split(",");
-      if (cells.length !== headers.length) throw new Error("Signal CSV column mismatch at data row " + (index + 1) + ".");
-      return { id: indexes.id === undefined ? null : cells[indexes.id].trim(), timestamp: cells[indexes.timestamp].trim(), symbol: cells[indexes.symbol].trim(), side: cells[indexes.side].trim().toUpperCase(), provider: cells[indexes.provider].trim() };
-    });
-    const providers = [...new Set(signals.map((signal) => signal.provider).filter(Boolean))];
-    if (providers.length !== 1 || signals.some((signal) => !signal.provider)) throw new Error("All signal CSV rows must identify one consistent provider.");
-    metadata = { sourceReference: filename, strategy: "imported_signal_log", provider: providers[0] };
-  } else throw new Error("Import a .json or .csv signal log.");
-  if (!metadata || typeof metadata.sourceReference !== "string" || !metadata.sourceReference.trim()) throw new Error("Signal-log provenance is required in metadata.sourceReference.");
-  if (typeof metadata.provider !== "string" || !metadata.provider.trim()) throw new Error("Signal-log provider is required so cross-provider replay can be blocked.");
-  if (!Array.isArray(signals) || !signals.length || signals.length > 5000) throw new Error("Signal log must contain 1–5,000 signals.");
-  const clean = [];
-  for (let i = 0; i < signals.length; i++) {
-    const item = signals[i];
-    const timestampMs = strictTime(item?.timestamp);
-    const side = String(item?.side || "").toUpperCase();
-    const itemSymbol = String(item?.symbol || "").toUpperCase();
-    if (!Number.isFinite(timestampMs)) throw new Error("Signal " + (i + 1) + " has an invalid or timezone-ambiguous timestamp.");
-    if (itemSymbol !== symbol) throw new Error("Signal " + (i + 1) + " has the wrong symbol.");
-    if (side !== "BUY" && side !== "SELL") throw new Error("Signal " + (i + 1) + " must be BUY or SELL.");
-    clean.push({ id: typeof item.id === "string" ? item.id : "signal-" + (i + 1), symbol, side, timestamp: new Date(timestampMs).toISOString(), timestampMs });
-  }
-  clean.sort((a, b) => a.timestampMs - b.timestampMs);
-  return { metadata: { sourceReference: metadata.sourceReference, strategy: metadata.strategy || "unspecified", provider: metadata.provider.trim() }, signals: clean };
 }
 function partitionQuotes(quotes, start, end) {
   return quotes.filter((q) => {
@@ -176,7 +125,7 @@ $("runReplay").addEventListener("click", async () => {
     runButton.disabled = true;
     message("Validating signal provenance and running isolated chronological replays…");
     const signalText = file ? await file.text() : JSON.stringify(journalSignalBundle);
-    const parsed = file ? parseSignals(signalText, file.name, selectedArchive.manifest.symbol) : parseSignals(signalText, "journal.json", selectedArchive.manifest.symbol);
+    const parsed = parseHistoricalSignalLog({ name: file ? file.name : "journal.json", text: signalText, expectedSymbol: selectedArchive.manifest.symbol });
     if (parsed.metadata.provider && !selectedArchive.manifest.provider.toLowerCase().includes(parsed.metadata.provider.toLowerCase())) {
       throw new Error("Signal source provider and tick archive provider do not match; cross-provider replay is blocked.");
     }
