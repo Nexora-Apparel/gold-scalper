@@ -133,6 +133,9 @@ class FloatingAssistantService : Service() {
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
         pendingSignalEventId = prefs.getString("pending_signal_event_id", null)
         val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
+            if (eventType == "EXIT_NOT_CONFIRMED" || eventType == "EXIT_RECOMMENDATION_CLEARED") {
+                payload.put("positionId", activePositionId ?: prefs.getString("active_position_id", null) ?: JSONObject.NULL)
+            }
             val journalEventId = journal.record(eventType, symbol, payload, side)
             if (eventType == "SIGNAL" && side != null) {
                 pendingSignalEventId = journalEventId
@@ -153,6 +156,17 @@ class FloatingAssistantService : Service() {
                 pendingSignalEventId = null
             }
             if (eventType == "POSITION_OPENED" || eventType == "POSITION_CLOSED") { criticalExitAlert = false; currentDecisionText = null }
+            if (eventType == "EXIT_NOT_CONFIRMED") {
+                criticalExitAlert = true
+                currentDecisionText = "EXIT NOT CONFIRMED · CHECK EXNESS MT5"
+                latestText = currentDecisionText ?: latestText
+                updateNotification(latestText)
+            } else if (eventType == "EXIT_RECOMMENDATION_CLEARED") {
+                criticalExitAlert = false
+                currentDecisionText = "POSITION HOLD · monitoring"
+                latestText = currentDecisionText ?: latestText
+                updateNotification(latestText)
+            }
             if (eventType == "EXIT_RECOMMENDED") {
                 val action = payload.optString("action")
                 criticalExitAlert = action == "CLOSE_NOW" || action == "HOLD_UNVERIFIED"
