@@ -245,7 +245,7 @@ class FloatingAssistantService : Service() {
             val savedSide = prefs.getString("active_position_side", null)
             val savedEntry = prefs.getString("active_position_entry", null)?.toDoubleOrNull()
             if ((savedSide == "BUY" || savedSide == "SELL") && savedEntry != null && savedEntry > 0) {
-                engine.setPosition(savedSide, savedEntry)
+                engine.setPosition(savedSide, savedEntry, prefs.getLong("active_position_opened_at", System.currentTimeMillis()))
                 activePositionId = prefs.getString("active_position_id", null)
                 lastPositionSignature = listOf(symbol, savedSide, savedEntry.toString()).joinToString("|")
             }
@@ -487,7 +487,7 @@ class FloatingAssistantService : Service() {
             mobileEngine?.clearPosition()
             currentDecisionText = null
             prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side")
-                    .remove("active_position_entry").remove("active_position_volume").remove("active_position_signal_event_id").remove("active_market_lock").apply()
+                    .remove("active_position_entry").remove("active_position_volume").remove("active_position_opened_at").remove("active_position_signal_event_id").remove("active_market_lock").apply()
             activePositionId = null
             lastPositionSignature = null
             missingPositionFrames = 0
@@ -507,11 +507,14 @@ class FloatingAssistantService : Service() {
                 return
             }
             missingPositionFrames = 0
+            val wasPositionActive = prefs.getBoolean("position_active", false)
+            val openedAt = if (wasPositionActive) prefs.getLong("active_position_opened_at", System.currentTimeMillis()) else System.currentTimeMillis()
             activePositionId = activePositionId ?: prefs.getString("active_position_id", null) ?: UUID.randomUUID().toString()
             prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId)
+                .putLong("active_position_opened_at", openedAt)
                 .putString("active_position_side", snapshot.side).putString("active_market_lock", symbol).putString("active_position_entry", snapshot.entryPrice.toString())
                 .putString("active_position_volume", snapshot.volumeLots?.toString() ?: "0").apply()
-            mobileEngine?.setPosition(snapshot.side, snapshot.entryPrice)
+            mobileEngine?.setPosition(snapshot.side, snapshot.entryPrice, openedAt)
             if (signature != lastPositionSignature) {
                 lastPositionSignature = signature
                 val payload = JSONObject()
@@ -592,11 +595,13 @@ class FloatingAssistantService : Service() {
                 if (entry.isFinite() && entry > 0 && volume.isFinite() && volume >= 0 && mobileEngine != null && !prefs.getBoolean("position_active", false)) {
                     activePositionId = UUID.randomUUID().toString()
                     lastPositionSignature = listOf(prefs.getString("symbol", "XAUUSD"), side, entry.toString()).joinToString("|")
+                    val openedAt = System.currentTimeMillis()
                     prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId)
+                        .putLong("active_position_opened_at", openedAt)
                         .putString("active_position_side", side).putString("active_market_lock", prefs.getString("symbol", "XAUUSD"))
                         .putString("active_position_entry", entry.toString())
                         .putString("active_position_volume", volume.toString()).apply()
-                    mobileEngine?.setPosition(side, entry)
+                    mobileEngine?.setPosition(side, entry, openedAt)
                     journal.record("POSITION_OPENED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD",
                         JSONObject().put("positionId", activePositionId)
                             .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
@@ -626,7 +631,7 @@ class FloatingAssistantService : Service() {
                 }
                 mobileEngine?.clearPosition()
                 prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side")
-                    .remove("active_position_entry").remove("active_position_volume").remove("active_position_signal_event_id").remove("active_market_lock").apply()
+                    .remove("active_position_entry").remove("active_position_volume").remove("active_position_opened_at").remove("active_position_signal_event_id").remove("active_market_lock").apply()
                 activePositionId = null; lastPositionSignature = null
                 latestText = "POSITION JOURNALED CLOSED"
                 updateNotification(latestText)
