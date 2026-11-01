@@ -99,12 +99,14 @@ class MobileScalpingEngine(
         }
         val tick = latestTick
         val tolerance = if (symbol == "XAUUSD") 0.05 else 0.01
-        val referenceFresh = tick != null && tick.live &&
-            now - tick.timestampMillis in -1000L..1500L
-        val matched = referenceFresh &&
-            abs(quote.bid - tick!!.bid) <= tolerance &&
-            abs(quote.ask - tick.ask) <= tolerance &&
-            abs(quote.spread - tick.spread) <= max(tolerance, tick.spread * 0.20)
+        val reference = tick?.takeIf {
+            it.live && now - it.timestampMillis in -1000L..1500L
+        }
+        val referenceFresh = reference != null
+        val matched = reference != null &&
+            abs(quote.bid - reference.bid) <= tolerance &&
+            abs(quote.ask - reference.ask) <= tolerance &&
+            abs(quote.spread - reference.spread) <= max(tolerance, reference.spread * 0.20)
         val status = when {
             !referenceFresh -> "REFERENCE_FEED_STALE"
             matched -> "MATCHED"
