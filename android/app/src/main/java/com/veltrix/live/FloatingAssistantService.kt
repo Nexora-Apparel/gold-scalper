@@ -108,6 +108,13 @@ class FloatingAssistantService : Service() {
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
         val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
             journal.record(eventType, symbol, payload, side)
+            if (eventType == "SIGNAL" && side != null) {
+                prefs.edit().putString("pending_signal_side", side)
+                    .putLong("pending_signal_at", payload.optLong("signalAt", System.currentTimeMillis()))
+                    .putFloat("pending_signal_confidence", payload.optDouble("confidence", 0.0).toFloat()).apply()
+            } else if (eventType == "MISSED_OPPORTUNITY" || (eventType == "ENGINE_STATE" && payload.optBoolean("signalAccepted"))) {
+                prefs.edit().remove("pending_signal_side").remove("pending_signal_at").remove("pending_signal_confidence").apply()
+            }
             if (eventType == "SIGNAL" || eventType == "EXIT_RECOMMENDED") {
                 currentDecisionText = payload.optString("action") + " · manual MT5 only"
                 latestText = currentDecisionText ?: latestText
@@ -128,6 +135,11 @@ class FloatingAssistantService : Service() {
             }
         }
         mobileEngine = engine
+        engine.restorePendingSignal(
+            prefs.getString("pending_signal_side", null),
+            prefs.getLong("pending_signal_at", 0L),
+            prefs.getFloat("pending_signal_confidence", 0f).toDouble()
+        )
         if (prefs.getBoolean("position_active", false)) {
             val savedSide = prefs.getString("active_position_side", null)
             val savedEntry = prefs.getString("active_position_entry", null)?.toDoubleOrNull()
