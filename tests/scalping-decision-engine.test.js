@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { evaluateScalpingDecision, evaluateDynamicExit } from "../lib/scalping-decision-engine.js";
 
-const marketState={ready:true,symbol:"XAUUSD",momentumDirection:"UP",volatilityRegime:"NORMAL",shortMovePercent:0.03,contextMovePercent:0.025,reasons:[]};
+const marketState={ready:true,exnessQuoteVerified:true,symbol:"XAUUSD",momentumDirection:"UP",volatilityRegime:"NORMAL",shortMovePercent:0.03,contextMovePercent:0.025,reasons:[]};
 const quote={symbol:"XAUUSD",bid:2650,ask:2650.2,spread:0.2,timestamp:"2026-11-01T10:00:00.000Z",marketState:"open",stale:false};
 const microstructure={pressure:0.8,ticksPerSecond:3};
 const structure={direction:"UP",strength:1};
