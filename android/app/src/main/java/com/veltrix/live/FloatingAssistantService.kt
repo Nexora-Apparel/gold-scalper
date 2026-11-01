@@ -355,7 +355,14 @@ class FloatingAssistantService : Service() {
 
     private fun handleScreenText(text: String) {
         val snapshot = Mt5ScreenParser.parse(text)
-        val symbol = snapshot.symbol ?: (prefs.getString("symbol", "XAUUSD") ?: "XAUUSD")
+        val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
+        if (snapshot.symbol != null && snapshot.symbol != symbol) {
+            journal.record("ENGINE_STATE", symbol, JSONObject().put("screenSymbolMismatch", true)
+                .put("selectedSymbol", symbol).put("detectedSymbol", snapshot.symbol)
+                .put("screenTimeframe", snapshot.timeframe ?: JSONObject.NULL))
+            latestText = "MT5 SCREEN SYMBOL MISMATCH · SELECT " + symbol
+            return
+        }
         if (snapshot.quoteDetected && snapshot.symbol == (prefs.getString("symbol", "XAUUSD") ?: "XAUUSD") && snapshot.bid != null && snapshot.ask != null) {
             val matched = mobileEngine?.verifyExnessQuote(snapshot.bid, snapshot.ask) == true
             if (matched) latestText = "EXNESS MT5 QUOTE MATCHED · SIGNAL GATE OPEN"
