@@ -23,6 +23,9 @@ class PositionClosureConfirmation(private val requiredFrames: Int = 3) {
         return false
     }
 
+    val framesRemaining: Int
+        @Synchronized get() = (requiredFrames - consecutiveFrames).coerceAtLeast(0)
+
     @Synchronized
     fun reset() { consecutiveFrames = 0 }
 }
