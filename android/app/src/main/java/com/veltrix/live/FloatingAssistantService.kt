@@ -368,7 +368,7 @@ class FloatingAssistantService : Service() {
             latestText = "MT5 SCREEN SYMBOL MISMATCH · SELECT " + symbol
             return
         }
-        if (lastScreenMismatch != null) {
+        if (snapshot.symbol == symbol && lastScreenMismatch != null) {
             journal.record("ENGINE_STATE", symbol, JSONObject().put("screenSymbolMismatch", false)
                 .put("selectedSymbol", symbol).put("screenTimeframe", snapshot.timeframe ?: JSONObject.NULL))
             lastScreenMismatch = null
