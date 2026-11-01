@@ -75,4 +75,10 @@ class Mt5ScreenParserTest {
         assertFalse(result.positionDetected)
         assertNull(result.entryPrice)
     }
+    @Test fun parsesCompactSilverTradeRows() {
+        val result = Mt5ScreenParser.parse("Trade\\nSELL 0.02 XAGUSD 31.450 31.600 0.50")
+        assertEquals("XAGUSD", result.symbol)
+        assertEquals(31.450, result.entryPrice!!, 0.0001)
+        assertTrue(result.positionDetected)
+    }
 }
