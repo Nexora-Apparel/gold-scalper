@@ -38,6 +38,7 @@ class MobileScalpingEngine(
     private var exnessVerifiedUntil = 0L
     private var lastExnessMatch: Boolean? = null
     private var feedRevoked = false
+    private var lastQuoteValidationFingerprint = ""
     @Volatile private var paused = false
 
     @Synchronized
@@ -257,11 +258,15 @@ class MobileScalpingEngine(
             exnessVerifiedUntil = 0L
             lastExnessMatch = null
             feedRevoked = true
-            onEvent("ENGINE_STATE", null, JSONObject()
-                .put("quoteValidation", "REJECTED")
-                .put("quoteValidationReason", validationError)
-                .put("signalGenerationEnabled", false)
-                .put("providerSource", tick.source))
+            val validationFingerprint = "REJECTED|$validationError"
+            if (lastQuoteValidationFingerprint != validationFingerprint) {
+                lastQuoteValidationFingerprint = validationFingerprint
+                onEvent("ENGINE_STATE", null, JSONObject()
+                    .put("quoteValidation", "REJECTED")
+                    .put("quoteValidationReason", validationError)
+                    .put("signalGenerationEnabled", false)
+                    .put("providerSource", tick.source))
+            }
             val invalidFingerprint = "NO_TRADE|invalid_quote|$validationError"
             if (invalidFingerprint != lastFingerprint) {
                 lastFingerprint = invalidFingerprint
@@ -285,6 +290,13 @@ class MobileScalpingEngine(
                 }
             }
             return
+        }
+        if (lastQuoteValidationFingerprint.isNotEmpty()) {
+            lastQuoteValidationFingerprint = ""
+            onEvent("ENGINE_STATE", null, JSONObject()
+                .put("quoteValidation", "ACCEPTED")
+                .put("signalGenerationEnabled", true)
+                .put("providerSource", tick.source))
         }
         val incomingAge = System.currentTimeMillis() - tick.timestampMillis
         if (!tick.live || incomingAge !in -1000L..1500L) {
