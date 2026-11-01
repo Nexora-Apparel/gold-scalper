@@ -295,7 +295,8 @@ class MobileScalpingEngine(
             lastQuoteValidationFingerprint = ""
             onEvent("ENGINE_STATE", null, JSONObject()
                 .put("quoteValidation", "ACCEPTED")
-                .put("signalGenerationEnabled", true)
+                .put("signalGenerationEnabled", tick.live &&
+                    (System.currentTimeMillis() - tick.timestampMillis) in -1000L..1500L)
                 .put("providerSource", tick.source))
         }
         val incomingAge = System.currentTimeMillis() - tick.timestampMillis
