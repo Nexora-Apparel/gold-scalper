@@ -25,6 +25,8 @@ class MobileScalpingEngine(
     private var activePosition: Pair<String, Double>? = null
     private var lastExitFingerprint = ""
     private var pendingSignal: PendingSignal? = null
+    private var latestTick: LiveTick? = null
+    private var exnessVerifiedUntil = 0L
     @Volatile private var paused = false
 
     @Synchronized
@@ -43,6 +45,22 @@ class MobileScalpingEngine(
         }
         activePosition = Pair(side, entryPrice)
         lastExitFingerprint = ""
+    }
+
+    @Synchronized
+    fun verifyExnessQuote(exnessBid: Double, exnessAsk: Double): Boolean {
+        val tick = latestTick
+        val now = System.currentTimeMillis()
+        val tolerance = if (symbol == "XAUUSD") 0.15 else 0.02
+        val matched = tick != null && tick.live && exnessBid > 0 && exnessAsk > exnessBid &&
+            abs(exnessBid - tick.bid) <= tolerance && abs(exnessAsk - tick.ask) <= tolerance &&
+            abs((exnessAsk - exnessBid) - tick.spread) <= max(tolerance, tick.spread * 0.20)
+        exnessVerifiedUntil = if (matched) now + 300000L else 0L
+        onEvent("ENGINE_STATE", null, JSONObject()
+            .put("exnessQuoteVerification", if (matched) "MATCHED" else "NOT_MATCHED")
+            .put("tolerance", tolerance).put("validForSeconds", if (matched) 300 else 0)
+            .put("rawScreenUploaded", false))
+        return matched
     }
 
     @Synchronized
@@ -88,6 +106,7 @@ class MobileScalpingEngine(
     fun onTick(tick: LiveTick) {
         checkTimeouts(tick.timestampMillis)
         if (tick.symbol != symbol || paused) return
+        latestTick = tick
         val now = tick.timestampMillis
         samples.add(Sample(now, tick.mid, tick.spread))
         samples.removeAll { it.time < now - 15000L }
@@ -98,6 +117,7 @@ class MobileScalpingEngine(
         val reasons = mutableListOf<String>()
         val age = System.currentTimeMillis() - now
         if (!tick.live || age !in -1000..1500) reasons.add("quote_not_live_or_fresh")
+        if (System.currentTimeMillis() > exnessVerifiedUntil) reasons.add("exness_quote_not_verified")
         if (short.size < 3) reasons.add("short_window_not_ready")
         if (context.size < 3) reasons.add("context_window_not_ready")
 
