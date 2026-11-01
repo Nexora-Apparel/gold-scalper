@@ -42,6 +42,7 @@ class FloatingAssistantService : Service() {
     private val worker = Executors.newSingleThreadExecutor()
     private val syncWorker = Executors.newSingleThreadExecutor()
     @Volatile private var syncInFlight = false
+    @Volatile private var brokerQuotePublishInFlight = false
     private var hub: BiquoteHubClient? = null
     private var mobileEngine: MobileScalpingEngine? = null
     @Volatile private var paused = false
@@ -461,6 +462,22 @@ class FloatingAssistantService : Service() {
             val observedAt = System.currentTimeMillis()
             val accepted = mobileEngine?.updateMt5ObservedQuote(symbol, snapshot.bid, snapshot.ask, observedAt) == true
             if (accepted) {
+                if (ownerSession.hasSession() && !brokerQuotePublishInFlight) {
+                    brokerQuotePublishInFlight = true
+                    try {
+                        syncWorker.execute {
+                            try {
+                                ownerSession.publishBrokerQuote(symbol, snapshot.bid, snapshot.ask, observedAt)
+                            } catch (_: Exception) {
+                                // Failed publication never promotes a stale or unsent quote.
+                            } finally {
+                                brokerQuotePublishInFlight = false
+                            }
+                        }
+                    } catch (_: java.util.concurrent.RejectedExecutionException) {
+                        brokerQuotePublishInFlight = false
+                    }
+                }
                 val spread = snapshot.spread
                 lastMt5SpreadAt = observedAt
                 latestMt5SpreadText = "MT5 SPREAD " + spread + " · BID " + snapshot.bid + " · ASK " + snapshot.ask
