@@ -405,6 +405,7 @@ class FloatingAssistantService : Service() {
                 lastPositionSignature = signature
                 val payload = JSONObject()
                     .put("positionId", activePositionId)
+                    .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
                     .put("side", snapshot.side)
                     .put("entryPrice", snapshot.entryPrice)
                     .put("volumeLots", snapshot.volumeLots ?: JSONObject.NULL)
