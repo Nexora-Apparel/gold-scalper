@@ -245,12 +245,10 @@ class MobileScalpingEngine(
         val fingerprint = action + "|" + reason
         if (fingerprint == lastExitFingerprint) return
         lastExitFingerprint = fingerprint
-        if (action == "CLOSE_NOW" || action == "HOLD_UNVERIFIED") {
-            onEvent("EXIT_RECOMMENDED", side, JSONObject()
-                .put("action", action).put("reason", reason).put("entryPrice", entry)
-                .put("indicativeExitPrice", exitPrice).put("move", move)
-                .put("executionEnabled", false).put("manualMT5ActionRequired", action == "CLOSE_NOW"))
-        }
+        onEvent("EXIT_RECOMMENDED", side, JSONObject()
+            .put("action", action).put("reason", reason).put("entryPrice", entry)
+            .put("indicativeExitPrice", exitPrice).put("move", move)
+            .put("executionEnabled", false).put("manualMT5ActionRequired", action == "CLOSE_NOW"))
     }
 
     private fun movement(window: List<Sample>): Double? {
