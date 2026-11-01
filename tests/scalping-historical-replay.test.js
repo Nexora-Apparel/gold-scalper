@@ -49,6 +49,7 @@ test("rejects OHLC, mixed providers, malformed quotes and unordered tapes", () =
   assert.throws(() => replayScalpingSignals({ symbol: "XAUUSD", quotes: [{ ...q(0, 2650, 2650.2), dataKind: "ohlc" }, q(5000, 2650, 2650.2)], signals: signal }), /tick data only/);
   assert.throws(() => replayScalpingSignals({ symbol: "XAUUSD", quotes: [q(0, 2650, 2650.2), { ...q(5000, 2650, 2650.2), provider: "other" }], signals: signal }), /mix market-data providers/);
   assert.throws(() => replayScalpingSignals({ symbol: "XAUUSD", quotes: [q(5000, 2650, 2650.2), q(0, 2650, 2650.2)], signals: signal }), /chronologically ordered/);
+  assert.throws(() => replayScalpingSignals({ symbol: "XAUUSD", quotes: [q(0, 2650, 2650.2), q(0, 2650, 2650.2)], signals: signal }), /unique and strictly chronologically ordered/);
   assert.throws(() => replayScalpingSignals({ symbol: "XAUUSD", quotes: [q(0, 2650, 2650), q(5000, 2650, 2650)], signals: signal }), /invalid Bid\/Ask/);
 });
 
