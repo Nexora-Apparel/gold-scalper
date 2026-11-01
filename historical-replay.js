@@ -188,16 +188,28 @@ $("runReplay").addEventListener("click", async () => {
       const bounds = manifest.partitions[key];
       const quotes = partitionQuotes(selectedArchive.quotes, bounds.startAt, bounds.endAt);
       const signals = partitionSignals(parsed.signals, bounds.startAt, bounds.endAt);
-      const result = replayScalpingSignals({
-        symbol: manifest.symbol,
-        quotes,
-        signals,
-        horizonsSeconds: HORIZONS,
-        maxEntryDelayMs: 1500,
-        maxExitWaitMs: 1500,
-        roundTripAdditionalCostPriceUnits
-      });
-      partitions[key] = { quoteCount: quotes.length, signalCount: signals.length, summary: result.summary, summaryBySide: result.summaryBySide, skippedSignalsOrHorizons: result.skippedSignalsOrHorizons, skipped: result.skipped, results: result.results };
+      const latencyScenarios = {};
+      for (const entryLatencyMs of LATENCY_SCENARIOS_MS) {
+        const replay = replayScalpingSignals({
+          symbol: manifest.symbol,
+          quotes,
+          signals,
+          horizonsSeconds: HORIZONS,
+          maxEntryDelayMs: 1500,
+          maxExitWaitMs: 1500,
+          entryLatencyMs,
+          roundTripAdditionalCostPriceUnits
+        });
+        latencyScenarios[String(entryLatencyMs)] = {
+          entryLatencyMs,
+          summary: replay.summary,
+          summaryBySide: replay.summaryBySide,
+          skippedSignalsOrHorizons: replay.skippedSignalsOrHorizons,
+          skipped: replay.skipped,
+          results: replay.results
+        };
+      }
+      partitions[key] = { quoteCount: quotes.length, signalCount: signals.length, latencyScenarios };
     }
     lastReport = {
       reportType: "veltrix_chronological_tick_replay_v1",
@@ -208,6 +220,7 @@ $("runReplay").addEventListener("click", async () => {
       strategy: parsed.metadata.strategy,
       signalCount: parsed.signals.length,
       splitMethod: manifest.splitMethod,
+      entryLatencyScenariosMs: LATENCY_SCENARIOS_MS,
       costModel: { roundTripAdditionalCostPriceUnits, includesBidAskSpread: false },
       partitions
     };
