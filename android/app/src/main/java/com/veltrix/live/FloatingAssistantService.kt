@@ -23,6 +23,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
@@ -398,6 +399,8 @@ class FloatingAssistantService : Service() {
                 }
                 lastOcrAt = now
                 val frame = source.acquireLatestImage() ?: return@setOnImageAvailableListener
+                val frameAgeMs = ((SystemClock.elapsedRealtimeNanos() - frame.timestamp) / 1_000_000L).coerceAtLeast(0L)
+                val frameObservedAt = System.currentTimeMillis() - frameAgeMs
                 var paddedBitmap: Bitmap? = null
                 var croppedBitmap: Bitmap? = null
                 try {
@@ -411,7 +414,7 @@ class FloatingAssistantService : Service() {
                     croppedBitmap = cropped
                     val input = InputImage.fromBitmap(cropped, 0)
                     textRecognizer.process(input)
-                        .addOnSuccessListener { result -> handleScreenText(result.text) }
+                        .addOnSuccessListener { result -> handleScreenText(result.text, frameObservedAt) }
                         .addOnFailureListener { error ->
                             latestText = "Local screen reading unavailable"
                             journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenOcrError", error.message ?: "unknown"))
@@ -442,7 +445,7 @@ class FloatingAssistantService : Service() {
         }
     }
 
-    private fun handleScreenText(text: String) {
+    private fun handleScreenText(text: String, frameObservedAt: Long) {
         val snapshot = Mt5ScreenParser.parse(text, prefs.getString("symbol", "XAUUSD"))
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
         if (snapshot.symbol != null && snapshot.symbol != symbol) {
@@ -468,7 +471,7 @@ class FloatingAssistantService : Service() {
                 .put("mt5ScreenTimeframe", snapshot.timeframe).put("rawScreenUploaded", false))
         }
         if (snapshot.quoteDetected && snapshot.symbol == symbol && snapshot.bid != null && snapshot.ask != null && snapshot.spread != null) {
-            val observedAt = System.currentTimeMillis()
+            val observedAt = frameObservedAt
             val accepted = mobileEngine?.updateMt5ObservedQuote(symbol, snapshot.bid, snapshot.ask, observedAt) == true
             if (accepted) {
                 if (ownerSession.hasSession() && !brokerQuotePublishInFlight) {
