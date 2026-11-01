@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatSignalMessage, buildSignalCardSvg, sendTelegramMessage, sendTelegramSignal, telegramConfigured } from "../lib/telegram.js";
+import { formatSignalSummary, buildSignalCardSvg, recordDashboardMessage, recordDashboardSignal, dashboardJournalAvailable } from "../lib/signal-formatters.js";
 
 function candidate(overrides = {}) {
   return {
@@ -30,7 +30,7 @@ function candidate(overrides = {}) {
 }
 
 test("formats a BUY candidate with entry, target, stop, risk, and disclaimer", () => {
-  const message = formatSignalMessage(candidate());
+  const message = formatSignalSummary(candidate());
   assert.match(message, /BUY XAUUSD — SIGNAL CANDIDATE/);
   assert.match(message, /Entry:<\/b> 4171\.00/);
   assert.match(message, /TP1:<\/b> 4211\.00/);
@@ -43,7 +43,7 @@ test("formats a BUY candidate with entry, target, stop, risk, and disclaimer", (
 });
 
 test("formats a SELL candidate and uses the red direction marker", () => {
-  const message = formatSignalMessage(candidate({
+  const message = formatSignalSummary(candidate({
     side: "SELL", entry: 4171, takeProfit: 4131, stopLoss: 4191
   }));
   assert.match(message, /🟥 SELL XAUUSD — SIGNAL CANDIDATE/);
@@ -53,7 +53,7 @@ test("formats a SELL candidate and uses the red direction marker", () => {
 
 test("labels pending entries and includes the quote observed before entry", () => {
   const base = candidate();
-  const message = formatSignalMessage({
+  const message = formatSignalSummary({
     ...base,
     currentPrice: 4168.5,
     signal: { ...base.signal, status: "PENDING" }
@@ -64,31 +64,31 @@ test("labels pending entries and includes the quote observed before entry", () =
 });
 
 test("rejects missing signals and invalid directions", () => {
-  assert.throws(() => formatSignalMessage({ status: "NO_TRADE", signal: null }), /missing signal/i);
-  assert.throws(() => formatSignalMessage(candidate({ side: "HOLD" })), /invalid direction/i);
+  assert.throws(() => formatSignalSummary({ status: "NO_TRADE", signal: null }), /missing signal/i);
+  assert.throws(() => formatSignalSummary(candidate({ side: "HOLD" })), /invalid direction/i);
 });
 
 test("rejects BUY prices whose stop or target is on the wrong side of entry", () => {
-  assert.throws(() => formatSignalMessage(candidate({ stopLoss: 4172 })), /do not match the trade direction/i);
-  assert.throws(() => formatSignalMessage(candidate({ takeProfit: 4170 })), /do not match the trade direction/i);
+  assert.throws(() => formatSignalSummary(candidate({ stopLoss: 4172 })), /do not match the trade direction/i);
+  assert.throws(() => formatSignalSummary(candidate({ takeProfit: 4170 })), /do not match the trade direction/i);
 });
 
 test("rejects SELL prices whose stop or target is on the wrong side of entry", () => {
-  assert.throws(() => formatSignalMessage(candidate({
+  assert.throws(() => formatSignalSummary(candidate({
     side: "SELL", stopLoss: 4170, takeProfit: 4151
   })), /do not match the trade direction/i);
-  assert.throws(() => formatSignalMessage(candidate({
+  assert.throws(() => formatSignalSummary(candidate({
     side: "SELL", stopLoss: 4191, takeProfit: 4172
   })), /do not match the trade direction/i);
 });
 
 test("rejects non-finite and non-positive prices", () => {
-  assert.throws(() => formatSignalMessage(candidate({ entry: Number.NaN })), /invalid price/i);
-  assert.throws(() => formatSignalMessage(candidate({ takeProfit: 0 })), /invalid price/i);
+  assert.throws(() => formatSignalSummary(candidate({ entry: Number.NaN })), /invalid price/i);
+  assert.throws(() => formatSignalSummary(candidate({ takeProfit: 0 })), /invalid price/i);
 });
 
 test("caps explanation lines and strips HTML angle brackets from free text", () => {
-  const message = formatSignalMessage(candidate({
+  const message = formatSignalSummary(candidate({
     timeframe: "<script>alert(1)</script>",
     explanation: ["<b>unsafe</b>", "reason 2", "reason 3", "reason 4", "reason 5"]
   }));
@@ -101,7 +101,7 @@ test("caps explanation lines and strips HTML angle brackets from free text", () 
 
 test("labels confirmed entry updates and includes the confirmation candle", () => {
   const base = candidate();
-  const message = formatSignalMessage({
+  const message = formatSignalSummary({
     ...base,
     signal: { ...base.signal, status: "CONFIRMED" },
     confirmation: { status: "ENTRY_CONFIRMED", candleTime: "2026-10-16T09:15:00Z" }
@@ -148,12 +148,12 @@ test("preview image remains the same compact BUY badge without extra text", () =
   assert.doesNotMatch(svg, /DESIGN PREVIEW|SAMPLE DATA|PREVIEW MODE|NOT A LIVE SIGNAL/);
 });
 
-test("Telegram transport is disabled and lifecycle delivery is dashboard-only", async () => {
-  assert.equal(telegramConfigured(), false);
-  const message = await sendTelegramMessage("test");
-  const signal = await sendTelegramSignal(candidate());
+test("lifecycle updates are retained in the dashboard journal only", async () => {
+  assert.equal(dashboardJournalAvailable(), true);
+  const message = await recordDashboardMessage("test");
+  const signal = await recordDashboardSignal(candidate());
   assert.equal(message.status, "DASHBOARD_ONLY");
   assert.equal(signal.status, "DASHBOARD_ONLY");
-  assert.equal(message.sent, true);
-  assert.equal(signal.sent, true);
+  assert.equal(message.recorded, true);
+  assert.equal(signal.recorded, true);
 });
