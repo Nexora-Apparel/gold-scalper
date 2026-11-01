@@ -19,7 +19,7 @@ test("accepts provenance-labelled chronological Bid/Ask ticks and partitions by 
  assert.equal(result.manifest.partitions.validation.tickCount,1);
  assert.equal(result.manifest.partitions.heldOutTest.tickCount,1);
  assert.equal(result.manifest.chronological,true);
- assert.equal(result.quotes[0].spread,0.1);
+ assert.ok(Math.abs(result.quotes[0].spread-0.1)<1e-9);
 });
 
 test("rejects duplicate and out-of-order timestamps",()=>{
