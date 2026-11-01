@@ -114,3 +114,5 @@ The repository currently contains live Biquote streaming and derived M1/M5/M15 a
 The legacy manual Bid/Ask entry path has been removed. Production broker verification can only be established by the user-authorised local MT5 OCR observation and its fresh reference-feed corroboration; manually typed prices cannot open the signal gate.
 
 Live quote publishing uses a dedicated OkHttp client with a 1.8-second total call timeout, separate from the slower journal/login client. Timed-out observations are not retried with stale timestamps; the next fresh OCR frame is the next attempt.
+
+MT5 OCR observation timestamps are derived from the Android ImageReader frame timestamp (mapped to wall-clock time), rather than the later ML Kit OCR completion callback. This prevents OCR processing delay from making an old screen frame appear newer than it is. If the platform provides no frame timestamp, the callback time is used and the normal freshness checks still apply.
