@@ -135,6 +135,7 @@ class FloatingAssistantService : Service() {
         val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
             if (eventType == "EXIT_NOT_CONFIRMED" || eventType == "EXIT_RECOMMENDATION_CLEARED") {
                 payload.put("positionId", activePositionId ?: prefs.getString("active_position_id", null) ?: JSONObject.NULL)
+                payload.put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
             }
             val journalEventId = journal.record(eventType, symbol, payload, side)
             if (eventType == "SIGNAL" && side != null) {
