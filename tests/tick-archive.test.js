@@ -42,10 +42,10 @@ test("requires timezone-explicit, calendar-valid timestamps",()=>{
 });
 
 test("imports strict CSV with timestamp,bid,ask columns",()=>{
- const csv="timestamp,bid,ask\n2026-10-31T09:00:00Z,4000.1,4000.2\n2026-10-31T09:00:01Z,4000.2,4000.3";
+ const csv="timestamp,bid,ask\n2026-10-31T09:00:00Z,4000.1,4000.2\n2026-10-31T09:00:01Z,4000.2,4000.3\n2026-10-31T09:00:02Z,4000.3,4000.4\n2026-10-31T09:00:03Z,4000.4,4000.5\n2026-10-31T09:00:04Z,4000.5,4000.6";
  const result=parseArchiveFile({name:"sample.csv",text:csv,metadata});
  assert.equal(result.ok,true);
- assert.equal(result.manifest.tickCount,2);
+ assert.equal(result.manifest.tickCount,5);
 });
 
 test("rejects malformed CSV and missing provenance",()=>{
