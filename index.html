@@ -131,7 +131,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
     </script>
   </div>
 </div>
-<p class="notice">Use the symbol selector to switch between XAUUSD and BTCUSD. EMA, RSI and ATR are visual chart indicators; the bot independently validates its own strategy inputs and market feed.</p>
+<p class="notice">Use the symbol selector to switch between XAUUSD (Gold) and XAGUSD (Silver). EMA, RSI and ATR are visual chart indicators; the bot independently validates its own strategy inputs and market feed.</p>
 </section>
 
 <section class="card" id="systemControl" data-view="control"><h2>System control</h2><div class="actions">
@@ -165,7 +165,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <p class="notice">After you decide what happened to a signal you manually traded (or chose not to take), record it here. This is for forward-testing statistics only; it does not place, modify, or close orders.</p>
 <div class="settings">
 <div class="field wide"><label for="outcomeSignal">Signal reference</label><select id="outcomeSignal"><option value="">Load signal history first</option></select></div>
-<div class="field"><label for="outcomeValue">Outcome</label><select id="outcomeValue"><option value="WIN">Win</option><option value="LOSS">Loss</option><option value="BREAKEVEN">Breakeven</option><option value="NOT_TAKEN">Not taken</option><option value="CANCELLED">Cancelled</option></select></div>
+<div class="field"><label for="outcomeValue">Outcome</label><select id="outcomeValue"><option value="TAKEN">Taken / currently open</option><option value="WIN">Win</option><option value="LOSS">Loss</option><option value="BREAKEVEN">Breakeven</option><option value="NOT_TAKEN">Not taken</option><option value="CANCELLED">Cancelled</option></select></div>
 <div class="field"><label for="realizedR">Realized R (optional)</label><input id="realizedR" type="number" step="0.1" min="-20" max="20" placeholder="e.g. 2 or -1"></div>
 <div class="field wide"><label for="outcomeNotes">Notes (optional)</label><input id="outcomeNotes" type="text" maxlength="500" placeholder="e.g. spread, slippage, early exit"></div>
 </div>
@@ -263,7 +263,7 @@ async function loadOutcomeHistory(){
   const s=r.statistics||{};
   const fmt=(v)=>v===null||v===undefined?'N/A':v;
   const groupLine=(items)=>Array.isArray(items)&&items.length?items.map(x=>x.key+': n='+x.performanceSampleSize+', netR='+x.netR+', expectancyR='+fmt(x.expectancyR)).join(' · '):'No samples yet';
-  $('outcomeStats').textContent='Recorded outcomes: '+(s.recordedOutcomes??0)+' · Performance sample: '+(s.performanceSampleSize??0)+' · Decided: '+(s.decided||0)+' · Wins: '+(s.wins||0)+' · Losses: '+(s.losses||0)+' · Win rate: '+(s.winRate===null?'N/A':s.winRate+'%')+' · Net R: '+(s.netR??0)+' · Average R: '+fmt(s.averageR)+' · Expectancy R: '+fmt(s.expectancyR)+' · Max drawdown R: '+fmt(s.maxDrawdownR)+'\nBy symbol: '+groupLine(s.bySymbol)+'\nBy Lagos-time session: '+groupLine(s.bySession)+'\nBy quality band: '+groupLine(s.byQualityBand);
+  $('outcomeStats').textContent='Journal records: '+(s.recordedOutcomes??0)+' · Open trades: '+(s.openTrades??0)+' · Not taken: '+(s.notTaken??0)+' · Performance sample: '+(s.performanceSampleSize??0)+' · Decided: '+(s.decided||0)+' · Wins: '+(s.wins||0)+' · Losses: '+(s.losses||0)+' · Win rate: '+(s.winRate===null?'N/A':s.winRate+'%')+' · Net R: '+(s.netR??0)+' · Average R: '+fmt(s.averageR)+' · Expectancy R: '+fmt(s.expectancyR)+' · Max drawdown R: '+fmt(s.maxDrawdownR)+'\nBy symbol: '+groupLine(s.bySymbol)+'\nBy Lagos-time session: '+groupLine(s.bySession)+'\nBy quality band: '+groupLine(s.byQualityBand);
 }
 $('loadOutcomes').addEventListener('click',async()=>{const b=$('loadOutcomes');b.disabled=true;$('outcomeStats').textContent='Loading recorded signals…';try{await loadOutcomeHistory()}catch(e){$('outcomeStats').textContent='Could not load outcome history: '+e.message}finally{b.disabled=false}});
 $('saveOutcome').addEventListener('click',async()=>{const signalRef=$('outcomeSignal').value;if(!signalRef){$('outcomeStats').textContent='Select a signal reference first.';return}const raw=$('realizedR').value;const body={signalRef,outcome:$('outcomeValue').value,realizedR:raw===''?null:Number(raw),notes:$('outcomeNotes').value};const b=$('saveOutcome');b.disabled=true;try{const r=await api('/api/outcomes',body);$('outcomeStats').textContent=r.message||'Outcome saved.';await loadOutcomeHistory()}catch(e){$('outcomeStats').textContent='Outcome not saved: '+e.message}finally{b.disabled=false}});
