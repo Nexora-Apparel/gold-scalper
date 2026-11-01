@@ -35,7 +35,14 @@ object Mt5ScreenParser {
             hasSilver -> "XAGUSD"
             else -> null
         }
-        val timeframe = Regex("\\b(M1|M5|M15|M30|H1|H4|D1|W1|MN1)\\b").find(all)?.groupValues?.get(1)
+        val timeframeTokens = Regex("\\b(M1|M5|M15|M30|H1|H4|D1|W1|MN1)\\b")
+            .findAll(all).map { it.groupValues[1] }.distinct().toList()
+        val explicitlySelectedTimeframe = Regex(
+            "\\b(?:TIMEFRAME|PERIOD|SELECTED)\\s*[:=]?\\s*(M1|M5|M15|M30|H1|H4|D1|W1|MN1)\\b"
+        ).find(all)?.groupValues?.get(1)
+        // Multiple timeframe labels often mean the MT5 timeframe menu is open.
+        // Never infer the selected chart period from the first OCR token.
+        val timeframe = explicitlySelectedTimeframe ?: timeframeTokens.singleOrNull()
         val side = when {
             Regex("\\bBUY\\b").containsMatchIn(all) -> "BUY"
             Regex("\\bSELL\\b").containsMatchIn(all) -> "SELL"
