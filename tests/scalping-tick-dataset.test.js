@@ -20,7 +20,7 @@ test("validates provenance-labelled chronological tick archive and reports cover
   assert.equal(result.manifest.tickCount, 3);
   assert.equal(result.manifest.medianIntervalMs, 250);
   assert.equal(result.manifest.maxGapMs, 750);
-  assert.equal(result.quotes[0].spread, 0.1);
+  assert.ok(Math.abs(result.quotes[0].spread - 0.1) < 1e-9);
 });
 
 test("rejects OHLC data and missing provenance", () => {
