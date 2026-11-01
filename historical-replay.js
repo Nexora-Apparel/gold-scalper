@@ -20,7 +20,7 @@ function strictTime(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return NaN;
   const time = Date.parse(value);
   if (!Number.isFinite(time)) return NaN;
-  const zone = value.match(/(Z|[+-]\\d{2}:\\d{2})$/i)?.[1];
+  const zone = value.match(/(Z|[+-]\d{2}:\d{2})$/i)?.[1];
   if (zone && zone.toUpperCase() !== "Z") {
     const [offsetHours, offsetMinutes] = zone.slice(1).split(":").map(Number);
     if (offsetHours > 14 || offsetMinutes > 59 || (offsetHours === 14 && offsetMinutes !== 0)) return NaN;
