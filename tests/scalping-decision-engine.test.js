@@ -34,4 +34,10 @@ test("dynamic exit closes on extreme spread expansion and rejects mismatched pos
  const base={position:{symbol:"XAUUSD",side:"BUY",entryPrice:2650},quote,now,microstructure:{pressure:0},marketState:{momentumDirection:"UP",volatilityRegime:"NORMAL",spreadMultiple:3.2}};
  assert.equal(evaluateDynamicExit(base).action,"CLOSE_NOW");
  assert.equal(evaluateDynamicExit({...base,position:{...base.position,symbol:"XAGUSD"}}).action,"HOLD_UNVERIFIED");
+
+test("blocks signals until the Exness quote has been explicitly verified",()=>{
+ const unverified=evaluateScalpingDecision({marketState:{...marketState,exnessQuoteVerified:false},quote,microstructure,structure,now:Date.parse(quote.timestamp)});
+ assert.equal(unverified.action,"NO_TRADE");
+ assert.ok(unverified.reasons.includes("exness_quote_not_verified"));
+});
 });
