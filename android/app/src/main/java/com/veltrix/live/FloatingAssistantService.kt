@@ -45,6 +45,7 @@ class FloatingAssistantService : Service() {
     private val brokerQuoteWorker = Executors.newSingleThreadExecutor()
     @Volatile private var syncInFlight = false
     @Volatile private var brokerQuotePublishInFlight = false
+    @Volatile private var lastBrokerQuoteTransportHealthy: Boolean? = null
     private var hub: BiquoteHubClient? = null
     private var mobileEngine: MobileScalpingEngine? = null
     @Volatile private var paused = false
@@ -479,9 +480,22 @@ class FloatingAssistantService : Service() {
                     try {
                         brokerQuoteWorker.execute {
                             try {
-                                ownerSession.publishBrokerQuote(symbol, snapshot.bid, snapshot.ask, observedAt)
-                            } catch (_: Exception) {
-                                // Failed publication never promotes a stale or unsent quote.
+                                val published = ownerSession.publishBrokerQuote(symbol, snapshot.bid, snapshot.ask, observedAt)
+                                if (lastBrokerQuoteTransportHealthy != published) {
+                                    lastBrokerQuoteTransportHealthy = published
+                                    journal.record("ENGINE_STATE", symbol, JSONObject()
+                                        .put("brokerQuoteTransport", if (published) "PUBLISHED" else "NOT_PUBLISHED")
+                                        .put("reason", if (published) JSONObject.NULL else "server_rejected_or_transport_unavailable")
+                                        .put("observationAt", java.time.Instant.ofEpochMilli(observedAt).toString()))
+                                }
+                            } catch (error: Exception) {
+                                if (lastBrokerQuoteTransportHealthy != false) {
+                                    lastBrokerQuoteTransportHealthy = false
+                                    journal.record("ENGINE_STATE", symbol, JSONObject()
+                                        .put("brokerQuoteTransport", "NOT_PUBLISHED")
+                                        .put("reason", error.message ?: "transport_exception")
+                                        .put("observationAt", java.time.Instant.ofEpochMilli(observedAt).toString()))
+                                }
                             } finally {
                                 brokerQuotePublishInFlight = false
                             }
