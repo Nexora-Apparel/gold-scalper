@@ -5,7 +5,7 @@ import { ShortTermStructureDetector } from "../lib/short-term-structure.js";
 const bar=(time,open,high,low,close)=>({symbol:"XAUUSD",timeframe:"M1",time:new Date(time).toISOString(),open,high,low,close,complete:true});
 
 test("requires completed M1 bars and confirms close beyond prior swing high",()=>{
-  const d=new ShortTermStructureDetector({lookback:3,minBreakoutRangeRatio:0.2});
+  const d=new ShortTermStructureDetector({lookback:3,minBreakoutRangeRatio:0.1});
   const t=Date.parse("2026-11-01T08:00:00Z");
   d.ingest({...bar(t,100,102,99,101),complete:false});
   assert.equal(d.snapshot("XAUUSD").ready,false);
