@@ -142,11 +142,16 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 401 && Settings.canDrawOverlays(this)) startAssistant()
-        if (requestCode == 402 && resultCode == RESULT_OK && data != null) {
-            val service = Intent(this, FloatingAssistantService::class.java)
-                .putExtra("projection_result_code", resultCode)
-                .putExtra("projection_data", data)
-            startForegroundService(service)
+        if (requestCode == 402) {
+            if (resultCode == RESULT_OK && data != null) {
+                val service = Intent(this, FloatingAssistantService::class.java)
+                    .putExtra("projection_result_code", resultCode)
+                    .putExtra("projection_data", data)
+                startForegroundService(service)
+            } else {
+                startForegroundService(Intent(this, FloatingAssistantService::class.java))
+                Toast.makeText(this, "Screen reading disabled. Manual Exness quote checks remain available.", Toast.LENGTH_LONG).show()
+            }
         }
     }
     private fun startAssistant() {
