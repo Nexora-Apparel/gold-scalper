@@ -679,6 +679,16 @@ class FloatingAssistantService : Service() {
     override fun onDestroy() {
         paused = true
         prefs.edit().putBoolean("assistant_active", false).apply()
+        if (prefs.getBoolean("position_active", false)) {
+            val selected = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
+            journal.record("ENGINE_STATE", selected, JSONObject()
+                .put("assistantStoppedWithOpenPosition", true)
+                .put("positionId", prefs.getString("active_position_id", null) ?: JSONObject.NULL)
+                .put("manualMT5CheckRequired", true))
+            notifyCriticalExit("ASSISTANT STOPPED WHILE A POSITION IS TRACKED · CHECK EXNESS MT5")
+        } else {
+            getSystemService(NotificationManager::class.java).cancel(7102)
+        }
         hub?.stop()
         stopScreenObservation()
         try { textRecognizer.close() } catch (_: Exception) {}
