@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
   if (!hasOwnerSession(req)) {
-    return res.status(401).json({ error: "Owner login required to view or save manual trade outcomes." });
+    return res.status(401).json({ error: "Owner login required to view or save trade journal records." });
   }
 
   try {
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
         notes = EXCLUDED.notes,
         recorded_at = NOW()
     `;
-    return res.status(200).json({ saved: true, message: "Manual outcome saved for forward testing. No broker action was performed." });
+    return res.status(200).json({ saved: true, message: "Trade journal updated. TAKEN marks an open manually executed trade; update it to WIN, LOSS or BREAKEVEN when closed. NOT_TAKEN records a skipped signal. No broker action was performed." });
   } catch (error) {
     console.error("Outcome tracking failure:", error?.message || "unknown error");
     return res.status(503).json({ error: "Outcome tracking storage is unavailable. The outcome was not saved." });
