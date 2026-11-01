@@ -40,6 +40,16 @@ class MobileScalpingEngineTest {
         assertTrue(!engine.verifyBrokerQuote(4172.80, 4172.95))
     }
 
+
+    @Test fun defaultEngineFailsClosedWithoutBrokerQuoteVerification() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
+        val noTrade = events.last { it.first == "NO_TRADE" }.second
+        assertTrue(noTrade.getJSONArray("reasons").toString().contains("broker_quote_parity_not_verified"))
+    }
+
     @Test fun productionSignalModeBlocksWhenFreshMt5QuoteIsUnavailable() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
         val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { type, _, payload -> events.add(type to payload) }
