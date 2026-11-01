@@ -6,7 +6,8 @@ Measure whether the on-device recommendations produce a repeatable, positive net
 
 ## Test conditions
 
-- Run for at least 60 calendar days on an Exness demo account.
+- Current development can run in paper/simulated mode using Biquote reference prices and MT5-screen spread observations where available. Do not describe these as broker fills.
+- The later broker-validation phase requires at least 60 calendar days on the intended broker's demo account (Exness integration is deferred until the user is ready).
 - Test XAUUSD and XAGUSD separately; only one instrument may be selected at a time.
 - Do not change thresholds mid-session. Any strategy change starts a new versioned evaluation period.
 - Keep broker execution manual. No automated order placement is enabled.
