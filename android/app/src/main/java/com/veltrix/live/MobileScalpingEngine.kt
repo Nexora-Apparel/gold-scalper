@@ -84,21 +84,37 @@ class MobileScalpingEngine(
         return true
     }
 
-    private fun refreshMt5ReferenceQuoteVerification() {
-        val quote = latestMt5Quote ?: return
-        val now = System.currentTimeMillis()
-        if (now - quote.observedAt !in -1000L..2500L) return
+    private fun refreshMt5ReferenceQuoteVerification(now: Long = System.currentTimeMillis()) {
+        val quote = latestMt5Quote
+        if (quote == null || now - quote.observedAt !in -1000L..2500L) {
+            if (mt5ReferenceQuoteMatch != null) {
+                mt5ReferenceQuoteMatch = null
+                onEvent("ENGINE_STATE", null, JSONObject()
+                    .put("mt5ReferenceQuoteVerification", "NOT_OBSERVED_OR_EXPIRED")
+                    .put("signalGate", "REFERENCE_FEED_MODE")
+                    .put("rawScreenUploaded", false))
+            }
+            return
+        }
         val tick = latestTick
         val tolerance = if (symbol == "XAUUSD") 0.05 else 0.01
-        val matched = tick != null && tick.live &&
-            now - tick.timestampMillis in -1000L..1500L &&
-            abs(quote.bid - tick.bid) <= tolerance &&
+        val referenceFresh = tick != null && tick.live &&
+            now - tick.timestampMillis in -1000L..1500L
+        val matched = referenceFresh &&
+            abs(quote.bid - tick!!.bid) <= tolerance &&
             abs(quote.ask - tick.ask) <= tolerance &&
             abs(quote.spread - tick.spread) <= max(tolerance, tick.spread * 0.20)
-        if (mt5ReferenceQuoteMatch != matched) {
-            mt5ReferenceQuoteMatch = matched
+        val status = when {
+            !referenceFresh -> "REFERENCE_FEED_STALE"
+            matched -> "MATCHED"
+            else -> "MISMATCHED"
+        }
+        val nextMatch = if (referenceFresh) matched else null
+        if (mt5ReferenceQuoteMatch != nextMatch) {
+            mt5ReferenceQuoteMatch = nextMatch
             onEvent("ENGINE_STATE", null, JSONObject()
-                .put("mt5ReferenceQuoteVerification", if (matched) "MATCHED" else "MISMATCHED")
+                .put("mt5ReferenceQuoteVerification", status)
+                .put("signalGate", if (matched) "QUOTE_CORROBORATED" else "BLOCK_WHILE_MT5_QUOTE_VISIBLE")
                 .put("tolerancePriceUnits", tolerance)
                 .put("mt5Bid", quote.bid).put("mt5Ask", quote.ask)
                 .put("referenceBid", tick?.bid ?: JSONObject.NULL)
@@ -146,6 +162,7 @@ class MobileScalpingEngine(
 
     @Synchronized
     fun checkTimeouts(now: Long = System.currentTimeMillis()) {
+        refreshMt5ReferenceQuoteVerification(now)
         val pending = pendingSignal
         if (pending != null && now - pending.at >= 10000L) {
             onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject()
@@ -230,6 +247,7 @@ class MobileScalpingEngine(
             if (tick.live) onFeedStale()
             val staleTick = tick.copy(live = false)
             latestTick = staleTick
+            refreshMt5ReferenceQuoteVerification()
             evaluatePositionExit(staleTick, "QUIET", 1.0, null, 0.0)
             val staleFingerprint = "NO_TRADE|quote_not_live_or_fresh"
             if (staleFingerprint != lastFingerprint) {
