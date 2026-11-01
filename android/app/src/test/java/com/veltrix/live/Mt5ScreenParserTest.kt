@@ -58,6 +58,11 @@ class Mt5ScreenParserTest {
         assertFalse(result.quoteDetected)
         assertNull(result.spread)
     }
+    @Test fun rejectsAmbiguousSpreadWhenBothMetalsAppearOnScreen() {
+        val result = Mt5ScreenParser.parse("Trade\\nXAUUSD\\nXAGUSD\\nBid 4172.50\\nAsk 4172.70", "XAUUSD")
+        assertFalse(result.quoteDetected)
+        assertNull(result.spread)
+    }
     @Test fun parsesEuropeanDecimalAndThousandsSeparators() {
         val result = Mt5ScreenParser.parse("Trade\nXAUUSD\nBUY 0.01\nOpen Price 4.172,55")
         assertEquals(4172.55, result.entryPrice!!, 0.0001)
