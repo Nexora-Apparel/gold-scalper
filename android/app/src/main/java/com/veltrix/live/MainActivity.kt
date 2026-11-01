@@ -8,6 +8,9 @@ import android.provider.Settings
 import android.view.Gravity
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.EditText
+import android.widget.Toast
+import java.util.concurrent.Executors
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
@@ -27,6 +30,31 @@ class MainActivity : Activity() {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) { prefs.edit().putString("symbol", if (position == 1) "XAGUSD" else "XAUUSD").apply() }
         }
         root.addView(selector, LinearLayout.LayoutParams(-1, -2))
+        val passwordInput = EditText(this).apply {
+            hint = "Dashboard password"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setSingleLine(true)
+        }
+        root.addView(passwordInput, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 16 })
+        root.addView(Button(this).apply {
+            text = "CONNECT SECURE DASHBOARD SESSION"
+            setOnClickListener {
+                val password = passwordInput.text.toString()
+                if (password.isBlank()) {
+                    Toast.makeText(this@MainActivity, "Enter the dashboard password.", Toast.LENGTH_SHORT).show()
+                } else {
+                    isEnabled = false
+                    Executors.newSingleThreadExecutor().execute {
+                        val connected = try { OwnerSessionStore(this@MainActivity).login(password) } catch (_: Exception) { false }
+                        runOnUiThread {
+                            isEnabled = true
+                            passwordInput.text.clear()
+                            Toast.makeText(this@MainActivity, if (connected) "Dashboard session connected." else "Login failed. Check password and server configuration.", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        }, LinearLayout.LayoutParams(-1, -2))
         root.addView(Button(this).apply {
             text = "ENABLE FLOATING ASSISTANT"
             setOnClickListener { if (!Settings.canDrawOverlays(this@MainActivity)) startActivityForResult(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)), 401) else startAssistant() }
