@@ -57,3 +57,10 @@ test("rejects non-finite bid ask and midpoint values",()=>{
     assert.ok(state.reasons.includes("invalid_quote"));
   }
 });
+
+
+test("rejects midpoint values outside the executable bid ask interval",()=>{
+  const state=evaluateScalpingMarketState({quote:{...quote,mid:quote.ask+0.05},...windows,now,exnessQuoteVerified:true});
+  assert.equal(state.ready,false);
+  assert.ok(state.reasons.includes("mid_outside_bid_ask"));
+});
