@@ -422,6 +422,7 @@ class FloatingAssistantService : Service() {
                     .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
                     .put("side", snapshot.side)
                     .put("entryPrice", snapshot.entryPrice)
+                    .put("mt5Timeframe", snapshot.timeframe ?: JSONObject.NULL)
                     .put("volumeLots", snapshot.volumeLots ?: JSONObject.NULL)
                     .put("floatingProfit", snapshot.floatingProfit ?: JSONObject.NULL)
                     .put("source", "user_authorized_local_mt5_screen_ocr")
