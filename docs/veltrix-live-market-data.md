@@ -169,3 +169,5 @@ The intake library also accepts standard comma-separated CSV exports through `im
 - Hit-rate reporting includes Wilson 95% confidence intervals, with flat outcomes excluded from the decisive win/loss denominator. Confidence intervals are wide for small samples by design; the evaluated and decisive counts must be considered alongside the percentage.
 
 - Imported signal logs must carry provider provenance (JSON `metadata.provider`; CSV `provider` column). The replay console rejects missing or inconsistent provider labels and blocks signal/tick archive provider mismatches.
+
+- Journal-derived signal timestamps use the original `payload.tickTimestamp` from the market tick that triggered the decision, not the later batch-sync arrival time. Events without that original tick timestamp are excluded from replay.
