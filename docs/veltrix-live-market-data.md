@@ -47,3 +47,8 @@ The next integration stage is the Android companion runtime and its authenticate
 ## Validation
 
 Run `npm run check` on Node.js 20 or later. CI is configured to run the check workflow on `veltrix-live-rebuild`. Tests have been authored but must not be considered passed until a runner reports success.
+
+
+## Single-market selection
+
+The saved dashboard preference `scalpInstrument` is either `XAUUSD` or `XAGUSD` (default `XAUUSD`). The live engine accepts this value as `selectedSymbol`, requests a REST bootstrap snapshot for that symbol only, and subscribes to that symbol only. This is an intentional one-market-at-a-time operating mode: the user switches instruments from Strategy settings before starting a session. The selector does not change Exness MT5's chart automatically and does not enable broker execution. The app must pass the saved `settings.scalpInstrument` into the persistent Android/live-engine runtime when that runtime is integrated.
