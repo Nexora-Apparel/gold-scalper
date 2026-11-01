@@ -7,7 +7,7 @@ import java.time.Instant
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-data class LiveTick(val symbol: String, val bid: Double, val ask: Double, val mid: Double, val spread: Double, val timestampMillis: Long, val live: Boolean)
+data class LiveTick(val symbol: String, val bid: Double, val ask: Double, val mid: Double, val spread: Double, val timestampMillis: Long, val live: Boolean, val source: String = "unknown")
 
 class BiquoteHubClient(
     private val symbol: String,
@@ -65,6 +65,11 @@ class BiquoteHubClient(
     private fun handleTick(payload: JsonElement) {
         try {
             val json = payload.asJsonObject
+            val payloadSymbol = json.get("symbol")?.asString?.uppercase() ?: return
+            if (payloadSymbol != symbol) {
+                onState("Unexpected symbol rejected: " + payloadSymbol)
+                return
+            }
             val bid = json.get("bid")?.asDouble ?: return
             val ask = json.get("ask")?.asDouble ?: return
             val stale = json.get("stale")?.asBoolean ?: true
@@ -74,7 +79,7 @@ class BiquoteHubClient(
             val mid = json.get("mid")?.asDouble ?: (bid + ask) / 2.0
             val spread = json.get("spread")?.asDouble ?: (ask - bid)
             val live = bid > 0 && ask > bid && mid > 0 && spread >= 0 && !stale && marketState == "open" && age in -1000..1500
-            onTick(LiveTick(symbol, bid, ask, mid, spread, Instant.parse(timestamp).toEpochMilli(), live))
+            onTick(LiveTick(symbol, bid, ask, mid, spread, Instant.parse(timestamp).toEpochMilli(), live, json.get("source")?.asString ?: "unknown"))
         } catch (_: Exception) {
             onState("Invalid tick payload · feed rejected")
         }
