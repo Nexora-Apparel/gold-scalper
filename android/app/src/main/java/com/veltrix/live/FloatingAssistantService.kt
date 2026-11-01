@@ -65,6 +65,7 @@ class FloatingAssistantService : Service() {
     @Volatile private var pendingSignalEventId: String? = null
     private var activePositionId: String? = null
     private var missingPositionFrames = 0
+    private val closureConfirmation = PositionClosureConfirmation(3)
     private val textRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
     override fun onCreate() {
@@ -443,7 +444,12 @@ class FloatingAssistantService : Service() {
             else if (feedHealthy) latestText = "EXNESS QUOTE MISMATCH · NO SIGNAL"
         }
         if (snapshot.noOpenPositions) {
-            if (lastPositionSignature != null || prefs.getBoolean("position_active", false)) {
+            val confirmedClosed = closureConfirmation.observe(snapshot.tradeTabVisible, true)
+            if (prefs.getBoolean("position_active", false) && !confirmedClosed) {
+                latestText = "VERIFYING MT5 POSITION CLOSURE · " + closureConfirmationFramesRemaining()
+                return
+            }
+            if (confirmedClosed && (lastPositionSignature != null || prefs.getBoolean("position_active", false))) {
                 val fields = lastPositionSignature?.split("|") ?: emptyList()
                 val storedSide = prefs.getString("active_position_side", null)
                 val closedSide = fields.getOrNull(1) ?: storedSide
@@ -451,19 +457,23 @@ class FloatingAssistantService : Service() {
                 val payload = JSONObject().put("source", "user_authorized_local_mt5_screen_ocr")
                     .put("positionId", positionId ?: JSONObject.NULL)
                     .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
-                    .put("closureEvidence", "explicit_no_open_positions_text")
-                    .put("confidence", 0.9).put("rawScreenUploaded", false)
+                    .put("closureEvidence", "three_consecutive_explicit_no_open_positions_frames")
+                    .put("confidence", 0.97).put("rawScreenUploaded", false)
                 journal.record("POSITION_CLOSED", symbol, payload, if (closedSide == "BUY" || closedSide == "SELL") closedSide else null)
-            }
-            mobileEngine?.clearPosition()
-            currentDecisionText = null
-            prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side")
+                mobileEngine?.clearPosition()
+                currentDecisionText = null
+                prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side")
                     .remove("active_position_entry").remove("active_position_volume").remove("active_position_signal_event_id").remove("active_market_lock").apply()
-            activePositionId = null
-            lastPositionSignature = null
-            missingPositionFrames = 0
-            latestText = "MT5 shows no open positions"
+                activePositionId = null
+                lastPositionSignature = null
+                missingPositionFrames = 0
+                latestText = "MT5 position closure confirmed"
+            } else if (!prefs.getBoolean("position_active", false)) {
+                latestText = "MT5 shows no open positions"
+            }
             return
+        } else {
+            closureConfirmation.reset()
         }
         if (snapshot.positionDetected && snapshot.side != null && snapshot.entryPrice != null) {
             val signature = listOf(symbol, snapshot.side, snapshot.entryPrice.toString()).joinToString("|")
@@ -505,6 +515,10 @@ class FloatingAssistantService : Service() {
                 journal.record("ENGINE_STATE", symbol, JSONObject().put("positionVisibility", "not_visible").put("note", "OCR absence is not proof of closure; confirm the MT5 Trade tab manually."))
             }
         }
+    }
+
+    private fun closureConfirmationFramesRemaining(): String {
+        return "3-frame confirmation required"
     }
 
     private fun stopScreenObservation() {
