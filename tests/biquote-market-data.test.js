@@ -18,7 +18,7 @@ const tick = (overrides = {}) => ({
 test("normalizes fresh XAUUSD bid/ask and derives midpoint", () => {
   const quote = normalizeBiquoteTick(tick(), { symbol: "XAUUSD", now: NOW });
   assert.equal(quote.mid, (4391.999 + 4392.181) / 2);
-  assert.equal(quote.spread, 0.18200000000040745);
+  assert.ok(Math.abs(quote.spread - 0.182) < 1e-9);
   assert.equal(quote.executableForExness, false);
 });
 
