@@ -375,8 +375,19 @@ class MobileScalpingEngine(
         val entry = position.entryPrice
         val heldMs = (System.currentTimeMillis() - position.openedAtMillis).coerceAtLeast(0L)
         val opposite = if (side == "BUY") "DOWN" else "UP"
-        val exitPrice = if (side == "BUY") tick.bid else tick.ask
+        val now = System.currentTimeMillis()
+        val tickAgeMs = now - tick.timestampMillis
+        val mt5Quote = latestMt5Quote?.takeIf { now - it.observedAt in -1000L..2500L }
+        // A BUY closes at Bid; a SELL closes at Ask. These executable-side quotes
+        // already include the spread, so never subtract spread a second time.
+        val exitPrice = if (mt5Quote != null) {
+            if (side == "BUY") mt5Quote.bid else mt5Quote.ask
+        } else {
+            if (side == "BUY") tick.bid else tick.ask
+        }
+        val closeQuoteSource = if (mt5Quote != null) "mt5_screen_ocr" else "biquote_reference"
         val move = if (side == "BUY") exitPrice - entry else entry - exitPrice
+        val effectiveSpread = mt5Quote?.spread ?: tick.spread
         val action: String
         val reason: String
         when {
@@ -409,7 +420,16 @@ class MobileScalpingEngine(
         lastExitFingerprint = fingerprint
         onEvent("EXIT_RECOMMENDED", side, JSONObject()
             .put("action", action).put("reason", reason).put("entryPrice", entry)
-            .put("indicativeExitPrice", exitPrice).put("move", move)
+            .put("indicativeExitPrice", exitPrice)
+            .put("grossMovePriceUnits", move)
+            .put("move", move)
+            .put("closeQuoteSource", closeQuoteSource)
+            .put("quoteAgeMs", tickAgeMs.coerceAtLeast(0L))
+            .put("observedSpreadPriceUnits", effectiveSpread)
+            .put("spreadSource", if (mt5Quote != null) "mt5_screen_ocr" else "biquote_reference")
+            .put("spreadIncludedInExecutableQuote", true)
+            .put("netProfitCurrency", JSONObject.NULL)
+            .put("netProfitCurrencyReason", "Contract size, verified volume, and account-currency conversion are not available.")
             .put("holdingTimeMs", heldMs).put("maximumHoldingTimeMs", 60000L)
             .put("minimumNormalHoldingTimeMs", 5000L)
             .put("executionEnabled", false).put("manualMT5ActionRequired", action == "CLOSE_NOW"))
