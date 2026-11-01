@@ -358,7 +358,7 @@ class FloatingAssistantService : Service() {
     private fun notification(text: String): Notification {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, "veltrix_live").setContentTitle("VELTRIX LIVE").setContentText(text)
-                .setSmallIcon(android.R.drawable.ic_menu_info_details).setOngoing(true).build()
+                .setSmallIcon(R.drawable.ic_veltrix_notification).setOngoing(true).build()
         } else {
             @Suppress("DEPRECATION")
             Notification.Builder(this).setContentTitle("VELTRIX LIVE").setContentText(text)
