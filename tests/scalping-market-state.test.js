@@ -14,7 +14,7 @@ const windows = {
 };
 
 test("allows downstream analysis only when quote and both microstructure windows are healthy",()=>{
-  const state=evaluateScalpingMarketState({quote,...windows,now,exnessQuoteVerified:true});
+  const state=evaluateScalpingMarketState({quote,...windows,now,brokerQuoteVerification:{verified:true,status:"BROKER_QUOTE_VERIFIED",source:"mt5_android",symbol:"XAUUSD"}});
   assert.equal(state.ready,true);
   assert.equal(state.momentumDirection,"UP");
   assert.equal(state.volatilityRegime,"NORMAL");
@@ -22,10 +22,10 @@ test("allows downstream analysis only when quote and both microstructure windows
 });
 
 test("fails closed on stale quotes and closed market snapshots",()=>{
-  const stale=evaluateScalpingMarketState({quote:{...quote,timestamp:new Date(now-2000).toISOString()},...windows,now,exnessQuoteVerified:true});
+  const stale=evaluateScalpingMarketState({quote:{...quote,timestamp:new Date(now-2000).toISOString()},...windows,now,brokerQuoteVerification:{verified:true,status:"BROKER_QUOTE_VERIFIED",source:"mt5_android",symbol:"XAUUSD"}});
   assert.equal(stale.ready,false);
   assert.ok(stale.reasons.includes("quote_not_fresh"));
-  const closed=evaluateScalpingMarketState({quote:{...quote,marketState:"closed"},...windows,now,exnessQuoteVerified:true});
+  const closed=evaluateScalpingMarketState({quote:{...quote,marketState:"closed"},...windows,now,brokerQuoteVerification:{verified:true,status:"BROKER_QUOTE_VERIFIED",source:"mt5_android",symbol:"XAUUSD"}});
   assert.ok(closed.reasons.includes("market_not_live"));
 });
 
@@ -33,7 +33,7 @@ test("blocks spread expansion and detects volatility spikes",()=>{
   const state=evaluateScalpingMarketState({
     quote:{...quote,spread:0.8},...windows,
     shortWindow:{...windows.shortWindow,priceChangePercent:0.08},
-    now, exnessQuoteVerified:true
+    now, brokerQuoteVerification:{verified:true,status:"BROKER_QUOTE_VERIFIED",source:"mt5_android",symbol:"XAUUSD"}
   });
   assert.ok(state.reasons.includes("spread_anomaly"));
   assert.equal(state.volatilityRegime,"SPIKE");
@@ -44,7 +44,7 @@ test("does not treat conflicting momentum as directional confirmation",()=>{
     quote,
     shortWindow:{...windows.shortWindow,priceChangePercent:0.01},
     contextWindow:{...windows.contextWindow,priceChangePercent:-0.01},
-    now, exnessQuoteVerified:true
+    now, brokerQuoteVerification:{verified:true,status:"BROKER_QUOTE_VERIFIED",source:"mt5_android",symbol:"XAUUSD"}
   });
   assert.equal(state.momentumDirection,"UNALIGNED");
 });
@@ -52,7 +52,7 @@ test("does not treat conflicting momentum as directional confirmation",()=>{
 
 test("rejects non-finite bid ask and midpoint values",()=>{
   for (const field of ["bid","ask","mid"]) {
-    const state=evaluateScalpingMarketState({quote:{...quote,[field]:Infinity},...windows,now,exnessQuoteVerified:true});
+    const state=evaluateScalpingMarketState({quote:{...quote,[field]:Infinity},...windows,now,brokerQuoteVerification:{verified:true,status:"BROKER_QUOTE_VERIFIED",source:"mt5_android",symbol:"XAUUSD"}});
     assert.equal(state.ready,false);
     assert.ok(state.reasons.includes("invalid_quote"));
   }
@@ -60,7 +60,7 @@ test("rejects non-finite bid ask and midpoint values",()=>{
 
 
 test("rejects midpoint values outside the executable bid ask interval",()=>{
-  const state=evaluateScalpingMarketState({quote:{...quote,mid:quote.ask+0.05},...windows,now,exnessQuoteVerified:true});
+  const state=evaluateScalpingMarketState({quote:{...quote,mid:quote.ask+0.05},...windows,now,brokerQuoteVerification:{verified:true,status:"BROKER_QUOTE_VERIFIED",source:"mt5_android",symbol:"XAUUSD"}});
   assert.equal(state.ready,false);
   assert.ok(state.reasons.includes("mid_outside_bid_ask"));
 });
