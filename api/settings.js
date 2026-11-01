@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       atrTargetMultiple: Number(b.atrTargetMultiple) === 3 ? 3 : 4,
       mode: "manual",
       goldEnabled: b.goldEnabled === true,
-      btcEnabled: b.btcEnabled === true,
+      silverEnabled: b.silverEnabled !== false,
       majorsEnabled: b.majorsEnabled === true,
       newsEnabled: true,
       scanMode: b.scanMode,
