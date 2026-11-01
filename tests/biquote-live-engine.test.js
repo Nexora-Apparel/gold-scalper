@@ -46,3 +46,21 @@ test("subscribes to only the user-selected metal",async()=>{
   assert.equal(engine.getStatus().selectedSymbol,"XAGUSD");
   await engine.stop();
 });
+
+test("live tick decisions remain fail-closed until structure confirmation exists",async()=>{
+  let now=Date.parse("2026-11-01T08:01:05Z");
+  const connection=new FakeConnection(), decisions=[], marketStates=[];
+  const engine=new BiquoteLiveEngine({
+    connection,now:()=>now,fetchSnapshot:async()=>({quotes:{}}),
+    onDecision:d=>decisions.push(d),onMarketState:s=>marketStates.push(s)
+  });
+  await engine.start();
+  connection.tick(tick("XAUUSD",now,2650));
+  now+=1000;
+  connection.tick(tick("XAUUSD",now,2650.2));
+  assert.equal(decisions.length,2);
+  assert.ok(decisions.every(d=>d.action==="NO_TRADE"));
+  assert.ok(decisions.every(d=>d.executionEnabled===false));
+  assert.ok(marketStates.length>=2);
+  await engine.stop();
+});
