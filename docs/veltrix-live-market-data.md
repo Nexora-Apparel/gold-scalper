@@ -120,3 +120,27 @@ MT5 OCR observation timestamps are derived from the Android ImageReader frame ti
 The Android journal records only broker-quote transport health transitions (PUBLISHED / NOT_PUBLISHED), not every network attempt, preventing repetitive failure spam while making loss of server sync auditable.
 
 The Android engine also rejects OCR observations whose frame timestamp is not strictly newer than the currently held MT5 quote. This prevents slower OCR jobs from overwriting a newer frame when recognition callbacks complete out of order.
+
+
+## Historical tick archive intake
+
+`lib/scalping-tick-dataset.js` validates externally supplied historical tick archives before replay. Required manifest fields are `symbol` (`XAUUSD` or `XAGUSD`), `provider`, `sourceReference` and `dataKind: "tick"`. Each quote requires a timezone-explicit ISO timestamp (or integer epoch milliseconds), numeric Bid and Ask, and strictly increasing timestamps. OHLC candles, numeric strings, mixed symbols, duplicate/out-of-order timestamps, invalid spreads and missing provenance are rejected. The validator reports tick count, date coverage, median and 95th-percentile inter-tick interval, and maximum observed gap. It never sorts, interpolates or fabricates missing ticks.
+
+Example input shape:
+
+```json
+{
+  "metadata": {
+    "symbol": "XAUUSD",
+    "provider": "DATA_PROVIDER_NAME",
+    "sourceReference": "export-id-or-source-url",
+    "dataKind": "tick"
+  },
+  "quotes": [
+    {"symbol": "XAUUSD", "timestamp": "2026-10-01T10:00:00.000Z", "bid": 2650.10, "ask": 2650.20},
+    {"symbol": "XAUUSD", "timestamp": "2026-10-01T10:00:00.250Z", "bid": 2650.15, "ask": 2650.25}
+  ]
+}
+```
+
+This is an intake validator only. No historical dataset is bundled or claimed to exist; replay results remain unavailable until a genuine provider archive is supplied and validated.
