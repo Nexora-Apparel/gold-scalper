@@ -45,4 +45,10 @@ class Mt5ScreenParserTest {
         assertEquals(4172.55, result.bid!!, 0.0001)
         assertEquals(4172.70, result.ask!!, 0.0001)
     }
+    @Test fun separatesBidAndAskWhenBothAreOnOneOcrLine() {
+        val result = Mt5ScreenParser.parse("Trade\nXAUUSD\nBid 4,172.55 Ask 4,172.70")
+        assertTrue(result.quoteDetected)
+        assertEquals(4172.55, result.bid!!, 0.0001)
+        assertEquals(4172.70, result.ask!!, 0.0001)
+    }
 }
