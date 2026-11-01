@@ -42,9 +42,13 @@ object Mt5ScreenParser {
                 val index = line.lowercase().indexOf(label)
                 if (index < 0) continue
                 val token = numberPattern.find(line.substring(index + label.length))?.value ?: continue
+                val commaAt = token.lastIndexOf(',')
+                val dotAt = token.lastIndexOf('.')
                 val normalizedToken = when {
-                    token.contains(",") && token.contains(".") -> token.replace(",", "")
-                    token.contains(",") -> token.replace(",", ".")
+                    commaAt >= 0 && dotAt >= 0 && commaAt > dotAt -> token.replace(".", "").replace(",", ".")
+                    commaAt >= 0 && dotAt >= 0 -> token.replace(",", "")
+                    commaAt >= 0 && dotAt < 0 && token.length - commaAt - 1 == 3 -> token.replace(",", "")
+                    commaAt >= 0 -> token.replace(",", ".")
                     else -> token
                 }
                 normalizedToken.toDoubleOrNull()?.let { return it }
