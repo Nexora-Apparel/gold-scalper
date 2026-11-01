@@ -126,7 +126,7 @@ class FloatingAssistantService : Service() {
             } else if (eventType == "MISSED_OPPORTUNITY" || (eventType == "ENGINE_STATE" && payload.optBoolean("signalAccepted"))) {
                 prefs.edit().remove("pending_signal_side").remove("pending_signal_at").remove("pending_signal_confidence").apply()
             }
-            if (eventType == "POSITION_OPENED" || eventType == "POSITION_CLOSED") criticalExitAlert = false
+            if (eventType == "POSITION_OPENED" || eventType == "POSITION_CLOSED") { criticalExitAlert = false; currentDecisionText = null }
             if (eventType == "EXIT_RECOMMENDED") {
                 val action = payload.optString("action")
                 criticalExitAlert = action == "CLOSE_NOW" || action == "HOLD_UNVERIFIED"
