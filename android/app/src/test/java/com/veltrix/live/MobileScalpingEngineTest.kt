@@ -157,4 +157,29 @@ class MobileScalpingEngineTest {
         assertEquals("REFERENCE_FEED_MODE", verification.getString("signalGate"))
     }
 
+
+    @Test fun malformedMarketQuotesAreRejectedBeforeSignalAnalysis() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4173.00, 0.15, now, true))
+        val noTrade = events.last { it.first == "NO_TRADE" }.second
+        assertTrue(noTrade.getJSONArray("reasons").toString().contains("mid_outside_bid_ask"))
+        val state = events.last { it.first == "ENGINE_STATE" }.second
+        assertEquals("REJECTED", state.getString("quoteValidation"))
+        assertTrue(!state.getBoolean("signalGenerationEnabled"))
+        assertTrue(events.none { it.first == "SIGNAL" })
+    }
+
+    @Test fun nonFiniteQuoteValuesAreRejectedBeforeSignalAnalysis() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAGUSD") { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAGUSD", 31.40, 31.60, Double.NaN, 0.20, now, true))
+        val noTrade = events.last { it.first == "NO_TRADE" }.second
+        assertTrue(noTrade.getJSONArray("reasons").toString().contains("non_finite_quote_value"))
+        assertTrue(events.none { it.first == "SIGNAL" })
+    }
+
+
 }
