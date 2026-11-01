@@ -198,6 +198,7 @@ class FloatingAssistantService : Service() {
                 currentDecisionText = "EXIT NOT CONFIRMED · CHECK EXNESS MT5"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
+                notifyCriticalExit(latestText)
             } else if (eventType == "EXIT_RECOMMENDATION_CLEARED") {
                 criticalExitAlert = false
                 currentDecisionText = "POSITION HOLD · monitoring"
@@ -207,6 +208,9 @@ class FloatingAssistantService : Service() {
             if (eventType == "EXIT_RECOMMENDED") {
                 val action = payload.optString("action")
                 criticalExitAlert = action == "CLOSE_NOW" || action == "HOLD_UNVERIFIED"
+                if (action == "CLOSE_NOW" || action == "HOLD_UNVERIFIED") {
+                    notifyCriticalExit(action.replace("_", " ") + " · " + payload.optString("reason"))
+                }
                 currentDecisionText = when (action) {
                     "CLOSE_NOW" -> "CLOSE NOW · " + payload.optString("reason")
                     "HOLD_UNVERIFIED" -> "HOLD · FEED UNVERIFIED"
@@ -552,8 +556,15 @@ class FloatingAssistantService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(NotificationManager::class.java)
             val channel = NotificationChannel("veltrix_live", "VELTRIX LIVE", NotificationManager.IMPORTANCE_LOW)
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            manager.createNotificationChannel(channel)
+            val critical = NotificationChannel("veltrix_critical", "VELTRIX LIVE critical exit alerts", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Immediate manual MT5 exit and feed-integrity alerts"
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 350, 180, 350)
+            }
+            manager.createNotificationChannel(critical)
         }
     }
 
@@ -565,6 +576,20 @@ class FloatingAssistantService : Service() {
             @Suppress("DEPRECATION")
             Notification.Builder(this).setContentTitle("VELTRIX LIVE").setContentText(text)
                 .setSmallIcon(android.R.drawable.ic_menu_info_details).setOngoing(true).build()
+        }
+    }
+
+    private fun notifyCriticalExit(text: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val alert = Notification.Builder(this, "veltrix_critical")
+                .setContentTitle("VELTRIX LIVE · MANUAL MT5 ACTION")
+                .setContentText(text)
+                .setStyle(Notification.BigTextStyle().bigText(text))
+                .setSmallIcon(R.drawable.ic_veltrix_notification)
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .build()
+            getSystemService(NotificationManager::class.java).notify(7102, alert)
         }
     }
 
