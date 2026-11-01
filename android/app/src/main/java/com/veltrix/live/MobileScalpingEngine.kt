@@ -76,6 +76,11 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
+    fun hasFreshBrokerQuoteVerification(now: Long = System.currentTimeMillis()): Boolean {
+        return brokerQuoteVerifiedUntil > now
+    }
+
+    @Synchronized
     fun updateMt5ObservedQuote(observedSymbol: String, bid: Double, ask: Double, observedAt: Long = System.currentTimeMillis()): Boolean {
         if (observedSymbol != symbol || !bid.isFinite() || !ask.isFinite() || bid <= 0.0 || ask <= bid || observedAt <= 0L) return false
         val age = System.currentTimeMillis() - observedAt
