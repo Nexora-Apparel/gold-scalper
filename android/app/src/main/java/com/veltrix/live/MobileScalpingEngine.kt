@@ -107,6 +107,10 @@ class MobileScalpingEngine(
         checkTimeouts(tick.timestampMillis)
         if (tick.symbol != symbol || paused) return
         latestTick = tick
+        if (exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
+            exnessVerifiedUntil = 0L
+            onEvent("ENGINE_STATE", null, JSONObject().put("exnessQuoteVerification", "EXPIRED").put("signalGenerationEnabled", false))
+        }
         val now = tick.timestampMillis
         samples.add(Sample(now, tick.mid, tick.spread))
         samples.removeAll { it.time < now - 15000L }
