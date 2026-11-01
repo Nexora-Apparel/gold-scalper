@@ -119,7 +119,7 @@ class FloatingAssistantService : Service() {
                     } else if ((paused || !fresh) && dot?.animation != null) {
                         dot?.clearAnimation()
                     }
-                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + (latestMt5SpreadText ?: "MT5 SPREAD UNAVAILABLE · REFERENCE FEED ONLY") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
+                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + (latestMt5SpreadText ?: "MT5 QUOTE UNAVAILABLE · SIGNALS BLOCKED") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
                 }
                 Thread.sleep(1000)
             }
@@ -230,10 +230,11 @@ class FloatingAssistantService : Service() {
                 updateNotification(latestText)
             } else if (eventType == "ENGINE_STATE" && payload.has("mt5ReferenceQuoteVerification") && !criticalExitAlert) {
                 val verification = payload.optString("mt5ReferenceQuoteVerification")
-                currentDecisionText = if (verification == "MATCHED") {
-                    "MT5 BID/ASK MATCHED · REFERENCE FEED CONFIRMED"
-                } else {
-                    "MT5 BID/ASK MISMATCH · SIGNALS BLOCKED"
+                currentDecisionText = when (verification) {
+                    "MATCHED" -> "MT5 BID/ASK MATCHED · SIGNAL GATE OPEN"
+                    "MISMATCHED" -> "MT5 BID/ASK MISMATCH · SIGNALS BLOCKED"
+                    "REFERENCE_FEED_STALE" -> "REFERENCE FEED STALE · SIGNALS BLOCKED"
+                    else -> "MT5 QUOTE UNAVAILABLE / EXPIRED · SIGNALS BLOCKED"
                 }
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
