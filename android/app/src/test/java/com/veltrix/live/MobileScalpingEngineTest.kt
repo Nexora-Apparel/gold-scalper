@@ -46,6 +46,7 @@ class MobileScalpingEngineTest {
         repeat(3) {
             val now = System.currentTimeMillis()
             engine.onTick(LiveTick("XAUUSD", 4172.45, 4172.55, 4172.50, 0.10, now, true))
+            engine.verifyExnessQuote(4172.45, 4172.55)
             Thread.sleep(3)
         }
         val now = System.currentTimeMillis()
