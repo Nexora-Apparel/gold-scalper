@@ -481,7 +481,11 @@ class FloatingAssistantService : Service() {
                     .put("positionId", positionId ?: JSONObject.NULL)
                     .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
                     .put("closureEvidence", "explicit_no_open_positions_text")
-                    .put("confidence", 0.9).put("rawScreenUploaded", false)
+                    .put("confidence", 0.9)
+                    .put("positionOpenedAt", java.time.Instant.ofEpochMilli(prefs.getLong("active_position_opened_at", System.currentTimeMillis())).toString())
+                    .put("positionClosedAt", java.time.Instant.now().toString())
+                    .put("holdingTimeMs", (System.currentTimeMillis() - prefs.getLong("active_position_opened_at", System.currentTimeMillis())).coerceAtLeast(0L))
+                    .put("rawScreenUploaded", false)
                 journal.record("POSITION_CLOSED", symbol, payload, if (closedSide == "BUY" || closedSide == "SELL") closedSide else null)
             }
             mobileEngine?.clearPosition()
@@ -618,9 +622,14 @@ class FloatingAssistantService : Service() {
                 val realizedR = intent.getDoubleExtra("realized_r", Double.NaN)
                 val side = prefs.getString("active_position_side", null)
                 val positionId = activePositionId ?: prefs.getString("active_position_id", null)
+                val openedAt = prefs.getLong("active_position_opened_at", System.currentTimeMillis())
+                val closedAt = System.currentTimeMillis()
                 val payload = JSONObject().put("positionId", positionId ?: JSONObject.NULL)
                     .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
                     .put("source", "manual_mt5_journal_entry").put("exitPrice", if (exitPrice.isFinite() && exitPrice > 0) exitPrice else JSONObject.NULL)
+                    .put("positionOpenedAt", java.time.Instant.ofEpochMilli(openedAt).toString())
+                    .put("positionClosedAt", java.time.Instant.ofEpochMilli(closedAt).toString())
+                    .put("holdingTimeMs", (closedAt - openedAt).coerceAtLeast(0L))
                 journal.record("POSITION_CLOSED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", payload, if (side == "BUY" || side == "SELL") side else null)
                 if (realizedR.isFinite() && positionId != null) {
                     journal.record("POSITION_OUTCOME_RECORDED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD",
