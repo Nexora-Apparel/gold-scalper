@@ -17,11 +17,12 @@ export default async function handler(req, res) {
       let inserted = 0;
       let duplicateOutcomes = 0;
       const outcomeIds = checked.value.filter(event => event.type === "POSITION_OUTCOME_RECORDED").map(event => event.payload.positionId);
-      const existingOutcomes = outcomeIds.length
-        ? await sql`SELECT payload->>'positionId' AS position_id FROM veltrix_scalping_events
-            WHERE event_type = 'POSITION_OUTCOME_RECORDED' AND payload->>'positionId' = ANY(${outcomeIds})`
-        : [];
-      const existingOutcomeIds = new Set(existingOutcomes.map(row => row.position_id));
+      const existingOutcomeIds = new Set();
+      for (const positionId of outcomeIds) {
+        const existing = await sql`SELECT event_id FROM veltrix_scalping_events
+          WHERE event_type = 'POSITION_OUTCOME_RECORDED' AND payload->>'positionId' = ${positionId} LIMIT 1`;
+        if (existing.length) existingOutcomeIds.add(positionId);
+      }
       for (const event of checked.value) {
         if (event.type === "POSITION_OUTCOME_RECORDED" && existingOutcomeIds.has(event.payload.positionId)) {
           duplicateOutcomes += 1;
