@@ -226,10 +226,12 @@ class FloatingAssistantService : Service() {
                     val plane = frame.planes[0]
                     val pixelStride = plane.pixelStride
                     val rowPadding = plane.rowStride - pixelStride * frame.width
-                    paddedBitmap = Bitmap.createBitmap(frame.width + rowPadding / pixelStride, frame.height, Bitmap.Config.ARGB_8888)
-                    paddedBitmap.copyPixelsFromBuffer(plane.buffer)
-                    croppedBitmap = Bitmap.createBitmap(paddedBitmap, 0, 0, frame.width, frame.height)
-                    val input = InputImage.fromBitmap(croppedBitmap, 0)
+                    val padded = Bitmap.createBitmap(frame.width + rowPadding / pixelStride, frame.height, Bitmap.Config.ARGB_8888)
+                    paddedBitmap = padded
+                    padded.copyPixelsFromBuffer(plane.buffer)
+                    val cropped = Bitmap.createBitmap(padded, 0, 0, frame.width, frame.height)
+                    croppedBitmap = cropped
+                    val input = InputImage.fromBitmap(cropped, 0)
                     textRecognizer.process(input)
                         .addOnSuccessListener { result -> handleScreenText(result.text) }
                         .addOnFailureListener { error ->
@@ -238,8 +240,8 @@ class FloatingAssistantService : Service() {
                         }
                         .addOnCompleteListener {
                             frame.close()
-                            try { croppedBitmap?.recycle() } catch (_: Exception) {}
-                            try { if (paddedBitmap !== croppedBitmap) paddedBitmap?.recycle() } catch (_: Exception) {}
+                            try { cropped.recycle() } catch (_: Exception) {}
+                            try { if (padded !== cropped) padded.recycle() } catch (_: Exception) {}
                         }
                 } catch (error: Exception) {
                     frame.close()
