@@ -16,6 +16,7 @@ data class Mt5ScreenSnapshot(
 )
 
 object Mt5ScreenParser {
+    // Conservative local OCR parser; never uploads captured screen frames.
     private val numberPattern = Regex("-?\\d[\\d,.]*")
 
     fun parse(text: String): Mt5ScreenSnapshot {
