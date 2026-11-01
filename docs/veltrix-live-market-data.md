@@ -118,3 +118,5 @@ Live quote publishing uses a dedicated OkHttp client with a 1.8-second total cal
 MT5 OCR observation timestamps are derived from the Android ImageReader frame timestamp (mapped to wall-clock time), rather than the later ML Kit OCR completion callback. This prevents OCR processing delay from making an old screen frame appear newer than it is. If the platform provides no frame timestamp, the callback time is used and the normal freshness checks still apply.
 
 The Android journal records only broker-quote transport health transitions (PUBLISHED / NOT_PUBLISHED), not every network attempt, preventing repetitive failure spam while making loss of server sync auditable.
+
+The Android engine also rejects OCR observations whose frame timestamp is not strictly newer than the currently held MT5 quote. This prevents slower OCR jobs from overwriting a newer frame when recognition callbacks complete out of order.
