@@ -20,6 +20,10 @@ class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("veltrix_live", MODE_PRIVATE) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (prefs.getBoolean("position_active", false)) {
+            val locked = prefs.getString("active_market_lock", null)
+            if (locked == "XAUUSD" || locked == "XAGUSD") prefs.edit().putString("symbol", locked).apply()
+        }
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(28, 40, 28, 24); setBackgroundColor(0xFF08090D.toInt()) }
         root.addView(TextView(this).apply { text = "VELTRIX LIVE"; textSize = 24f; setTextColor(0xFFF2C85B.toInt()); gravity = Gravity.CENTER })
         root.addView(TextView(this).apply { text = "Tick-stream companion · Manual Exness MT5 execution only"; textSize = 14f; setTextColor(0xFFE5E7EB.toInt()); gravity = Gravity.CENTER; setPadding(0, 18, 0, 24) })
