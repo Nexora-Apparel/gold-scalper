@@ -59,6 +59,10 @@ class FloatingAssistantService : Service() {
     private var imageReader: ImageReader? = null
     private var ocrThread: HandlerThread? = null
     private var lastOcrAt = 0L
+    @Volatile private var lastMt5SpreadAt = 0L
+    @Volatile private var latestMt5SpreadText: String? = null
+    private var lastSpreadJournalAt = 0L
+    private var lastJournalledMt5Spread: Double? = null
     private var lastPositionSignature: String? = null
     private var lastScreenTimeframe: String? = null
     private var lastScreenMismatch: String? = null
@@ -80,7 +84,9 @@ class FloatingAssistantService : Service() {
             var lastSyncAt = 0L
             while (!Thread.currentThread().isInterrupted) {
                 mobileEngine?.checkTimeouts()
-                val fresh = feedHealthy && System.currentTimeMillis() - lastTickAt <= 5000
+                val now = System.currentTimeMillis()
+                if (now - lastMt5SpreadAt > 2500L) latestMt5SpreadText = null
+                val fresh = feedHealthy && now - lastTickAt <= 5000
                 if (feedHealthy && !fresh) {
                     feedHealthy = false
                     latestText = "STALE FEED · NO SIGNAL"
@@ -127,6 +133,10 @@ class FloatingAssistantService : Service() {
         criticalExitAlert = false
         lastScreenTimeframe = null
         lastScreenMismatch = null
+        lastMt5SpreadAt = 0L
+        latestMt5SpreadText = null
+        lastSpreadJournalAt = 0L
+        lastJournalledMt5Spread = null
         if (prefs.getBoolean("position_active", false)) {
             val lockedSymbol = prefs.getString("active_market_lock", null)
             if (lockedSymbol == "XAUUSD" || lockedSymbol == "XAGUSD") prefs.edit().putString("symbol", lockedSymbol).apply()
@@ -250,7 +260,7 @@ class FloatingAssistantService : Service() {
             lastTickAt = System.currentTimeMillis()
             feedHealthy = tick.live
             if (tick.live && currentDecisionText?.startsWith("HOLD · FEED UNVERIFIED") == true) currentDecisionText = null
-            latestText = currentDecisionText ?: if (!tick.live) "Market closed or quote stale" else ("Bid " + tick.bid + " · Ask " + tick.ask)
+            latestText = currentDecisionText ?: latestMt5SpreadText ?: if (!tick.live) "Market closed or quote stale" else ("Bid " + tick.bid + " · Ask " + tick.ask)
             if (lastQuoteState != tick.live) {
                 lastQuoteState = tick.live
                 journal.record("QUOTE_STATE", symbol, JSONObject().put("live", tick.live).put("bid", tick.bid).put("ask", tick.ask))
@@ -438,10 +448,28 @@ class FloatingAssistantService : Service() {
             journal.record("ENGINE_STATE", symbol, JSONObject().put("mt5ScreenSymbol", symbol)
                 .put("mt5ScreenTimeframe", snapshot.timeframe).put("rawScreenUploaded", false))
         }
-        if (snapshot.quoteDetected && snapshot.symbol == symbol && snapshot.bid != null && snapshot.ask != null) {
-            val matched = mobileEngine?.verifyExnessQuote(snapshot.bid, snapshot.ask, 2500L) == true
-            if (matched) latestText = "EXNESS MT5 QUOTE MATCHED · SIGNAL GATE OPEN"
-            else if (feedHealthy) latestText = "EXNESS QUOTE MISMATCH · NO SIGNAL"
+        if (snapshot.quoteDetected && snapshot.symbol == symbol && snapshot.bid != null && snapshot.ask != null && snapshot.spread != null) {
+            val observedAt = System.currentTimeMillis()
+            val accepted = mobileEngine?.updateMt5ObservedQuote(symbol, snapshot.bid, snapshot.ask, observedAt) == true
+            if (accepted) {
+                val spread = snapshot.spread
+                lastMt5SpreadAt = observedAt
+                latestMt5SpreadText = "MT5 SPREAD " + spread + " · BID " + snapshot.bid + " · ASK " + snapshot.ask
+                val previous = lastJournalledMt5Spread
+                val changed = previous == null || kotlin.math.abs(spread - previous) >= kotlin.math.max(0.00001, kotlin.math.abs(previous) * 0.10)
+                if (observedAt - lastSpreadJournalAt >= 5000L || changed) {
+                    journal.record("MT5_SPREAD_OBSERVED", symbol, JSONObject()
+                        .put("bid", snapshot.bid).put("ask", snapshot.ask)
+                        .put("spreadPriceDelta", spread).put("spreadUnit", "raw_price_delta")
+                        .put("source", "user_authorized_local_mt5_screen_ocr")
+                        .put("observedAt", java.time.Instant.ofEpochMilli(observedAt).toString())
+                        .put("rawScreenUploaded", false))
+                    lastSpreadJournalAt = observedAt
+                    lastJournalledMt5Spread = spread
+                }
+                latestText = latestMt5SpreadText ?: latestText
+                updateNotification(latestText)
+            }
         }
         if (snapshot.noOpenPositions) {
             if (lastPositionSignature != null || prefs.getBoolean("position_active", false)) {
