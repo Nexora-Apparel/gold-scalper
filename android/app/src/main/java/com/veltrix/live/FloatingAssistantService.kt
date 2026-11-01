@@ -118,7 +118,7 @@ class FloatingAssistantService : Service() {
                     } else if ((paused || !fresh) && dot?.animation != null) {
                         dot?.clearAnimation()
                     }
-                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
+                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + (latestMt5SpreadText ?: "MT5 SPREAD UNAVAILABLE · REFERENCE FEED ONLY") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
                 }
                 Thread.sleep(1000)
             }
