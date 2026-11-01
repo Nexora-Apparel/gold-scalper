@@ -482,7 +482,9 @@ class FloatingAssistantService : Service() {
                         .putString("active_position_volume", volume.toString()).apply()
                     mobileEngine?.setPosition(side, entry)
                     journal.record("POSITION_OPENED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD",
-                        JSONObject().put("positionId", activePositionId).put("side", side).put("entryPrice", entry)
+                        JSONObject().put("positionId", activePositionId)
+                            .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
+                            .put("side", side).put("entryPrice", entry)
                             .put("volumeLots", volume).put("source", "manual_mt5_journal_entry"), side)
                     latestText = "POSITION JOURNALED · " + side
                 } else { latestText = "POSITION NOT JOURNALED · CHECK ENGINE OR EXISTING POSITION" }
