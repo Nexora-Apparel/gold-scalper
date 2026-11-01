@@ -84,4 +84,33 @@ class MobileScalpingEngineTest {
         assertTrue(events.contains("MISSED_OPPORTUNITY"))
         assertTrue(!events.contains("ENGINE_STATE"))
     }
+
+    @Test fun buyExitUsesFreshMt5BidWithoutSubtractingSpreadTwice() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.setPosition("BUY", 4172.50, now - 2000L)
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.62, 4172.82, now))
+        engine.onTick(LiveTick("XAUUSD", 4172.40, 4172.50, 4172.45, 0.10, now, true))
+        val exit = events.last { it.first == "EXIT_RECOMMENDED" }.second
+        assertEquals(4172.62, exit.getDouble("indicativeExitPrice"), 0.000001)
+        assertEquals(0.12, exit.getDouble("grossMovePriceUnits"), 0.000001)
+        assertEquals("mt5_screen_ocr", exit.getString("closeQuoteSource"))
+        assertTrue(exit.getBoolean("spreadIncludedInExecutableQuote"))
+        assertTrue(exit.isNull("netProfitCurrency"))
+    }
+
+    @Test fun sellExitUsesFreshMt5AskAsExecutableClosePrice() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        engine.setPosition("SELL", 4172.50, now - 2000L)
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.62, 4172.82, now))
+        engine.onTick(LiveTick("XAUUSD", 4172.40, 4172.50, 4172.45, 0.10, now, true))
+        val exit = events.last { it.first == "EXIT_RECOMMENDED" }.second
+        assertEquals(4172.82, exit.getDouble("indicativeExitPrice"), 0.000001)
+        assertEquals(-0.32, exit.getDouble("grossMovePriceUnits"), 0.000001)
+        assertEquals("mt5_screen_ocr", exit.getString("closeQuoteSource"))
+    }
+
 }
