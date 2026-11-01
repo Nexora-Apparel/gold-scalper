@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       ), curve AS (
         SELECT *, SUM(realized_r) OVER (ORDER BY occurred_at, id) AS cumulative_r FROM outcomes
       ), drawdown AS (
-        SELECT *, MAX(cumulative_r) OVER (ORDER BY occurred_at, id) AS peak_r FROM curve
+        SELECT *, GREATEST(0, MAX(cumulative_r) OVER (ORDER BY occurred_at, id)) AS peak_r FROM curve
       )
       SELECT COUNT(*)::int AS settled,
         COUNT(*) FILTER (WHERE realized_r > 0)::int AS wins,
