@@ -187,7 +187,7 @@ class FloatingAssistantService : Service() {
             feedHealthy = false
             currentDecisionText = null
             latestText = state
-            val type = if (state.contains("failed", true) || state.contains("disconnected", true) || state.contains("invalid", true)) "FEED_ERROR" else "ENGINE_STATE"
+            val type = if (state.contains("failed", true) || state.contains("disconnected", true) || state.contains("invalid", true) || state.contains("unexpected", true) || state.contains("rejected", true)) "FEED_ERROR" else "ENGINE_STATE"
             if (type == "FEED_ERROR") mobileEngine?.onFeedStale()
             journal.record(type, symbol, JSONObject().put("state", state))
             updateNotification(currentDecisionText ?: state)
