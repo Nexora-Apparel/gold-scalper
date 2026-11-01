@@ -108,8 +108,9 @@ $("loadJournalSignals").addEventListener("click", async () => {
       (event.side === "BUY" || event.side === "SELL") &&
       event.payload?.provider === "biquote" &&
       event.payload?.signalQuoteSource === "mt5_screen_ocr" &&
-      event.payload?.mt5ReferenceQuoteVerification === "MATCHED"
-    ).map((event) => ({ id: event.eventId, timestamp: event.occurredAt, symbol: event.symbol, side: event.side }));
+      event.payload?.mt5ReferenceQuoteVerification === "MATCHED" &&
+      typeof event.payload?.tickTimestamp === "string"
+    ).map((event) => ({ id: event.eventId, timestamp: event.payload.tickTimestamp, symbol: event.symbol, side: event.side, provider: "biquote" }));
     if (!signals.length) throw new Error("No broker-matched BUY/SELL SIGNAL events were found in this period. Unverified or reference-only signals are excluded.");
     journalSignalBundle = { metadata: { sourceReference: "authenticated_veltrix_scalping_events:" + m.symbol + ":" + m.startAt + ":" + m.endAt, strategy: "mobile_scalping_engine", provider: "biquote" }, signals };
     signalFile.value = "";
