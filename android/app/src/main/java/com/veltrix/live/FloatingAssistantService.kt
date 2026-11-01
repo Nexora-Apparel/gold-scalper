@@ -625,6 +625,7 @@ class FloatingAssistantService : Service() {
 
     override fun onDestroy() {
         paused = true
+        mobileEngine?.shutdown()
         prefs.edit().putBoolean("assistant_active", false).apply()
         hub?.stop()
         stopScreenObservation()
