@@ -59,6 +59,19 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
+    fun onFeedStale() {
+        val position = activePosition ?: return
+        val fingerprint = "HOLD_UNVERIFIED|feed_stale"
+        if (lastExitFingerprint == fingerprint) return
+        lastExitFingerprint = fingerprint
+        onEvent("EXIT_RECOMMENDED", position.first, JSONObject()
+            .put("action", "HOLD_UNVERIFIED")
+            .put("reason", "Market-data stream is stale or disconnected. Verify the position directly in Exness MT5.")
+            .put("entryPrice", position.second)
+            .put("executionEnabled", false))
+    }
+
+    @Synchronized
     fun clearPosition() {
         activePosition = null
         lastExitFingerprint = ""
