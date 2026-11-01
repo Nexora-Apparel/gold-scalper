@@ -41,7 +41,7 @@ test("summarizes decided trades separately from not-taken outcomes", () => {
   assert.equal(result.averageR, 0.5);
   assert.equal(result.expectancyR, 0.5);
   assert.equal(result.maxDrawdownR, 1);
-  assert.deepEqual(result.bySymbol, [{ key: "Unknown", recordedOutcomes: 3, performanceSampleSize: 2, decided: 2, wins: 1, losses: 1, winRate: 50, netR: 1, averageR: 0.5, expectancyR: 0.5, maxDrawdownR: 1 }]);
+  assert.deepEqual(result.bySymbol, [{ key: "Unknown", recordedOutcomes: 3, openTrades: 0, notTaken: 1, performanceSampleSize: 2, decided: 2, wins: 1, losses: 1, winRate: 50, netR: 1, averageR: 0.5, expectancyR: 0.5, maxDrawdownR: 1 }]);
 });
 
 
