@@ -20,18 +20,14 @@ export default async function handler(req, res) {
     const b = req.body || {};
     const s = {
       balance: Number(b.balance),
-      scalpInstrument: b.scalpInstrument === "XAGUSD" ? "XAGUSD" : "XAUUSD",
       currency: b.currency,
       riskPercent: Number(b.riskPercent),
       minQuality: Number(b.minQuality),
-      maxSignals: Number(b.maxSignals),
       timeframe: b.timeframe,
       strategyMode: b.strategyMode === "EMA_RIBBON_RSI" ? "EMA_RIBBON_RSI" : "MSNR_SMC",
       atrTargetMultiple: Number(b.atrTargetMultiple) === 3 ? 3 : 4,
       mode: "manual",
       goldEnabled: b.goldEnabled === true,
-      btcEnabled: b.btcEnabled === true,
-      majorsEnabled: b.majorsEnabled === true,
       newsEnabled: true,
       scanMode: b.scanMode,
       sessionStart: b.sessionStart,
@@ -41,7 +37,6 @@ export default async function handler(req, res) {
     if (!(s.balance > 0) || !["USD", "NGN", "EUR", "GBP"].includes(s.currency) ||
         !(s.riskPercent >= 0.1 && s.riskPercent <= 1) ||
         ![65, 70, 75, 80].includes(s.minQuality) ||
-        ![1, 2, 3].includes(s.maxSignals) ||
         !["M5", "M15"].includes(s.timeframe) ||
         !["MSNR_SMC", "EMA_RIBBON_RSI"].includes(s.strategyMode) ||
         !["session", "24h"].includes(s.scanMode) ||

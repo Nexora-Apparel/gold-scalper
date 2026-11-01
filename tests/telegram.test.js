@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatSignalMessage, buildSignalCardSvg } from "../lib/telegram.js";
+import { formatSignalMessage, buildSignalCardSvg, sendTelegramMessage, sendTelegramSignal, telegramConfigured } from "../lib/telegram.js";
 
 function candidate(overrides = {}) {
   return {
@@ -110,17 +110,6 @@ test("labels confirmed entry updates and includes the confirmation candle", () =
   assert.match(message, /Entry confirmation candle:<\/b> 2026-10-16T09:15:00Z/);
 });
 
-test("formats BTCUSD as BTCUSD and never labels it XAUUSD", () => {
-  const base = candidate();
-  const message = formatSignalMessage({
-    ...base,
-    symbol: "BTCUSD",
-    signal: { ...base.signal, symbol: "BTCUSD", entry: 65000, takeProfit: 67000, stopLoss: 64000, riskReward: 2 }
-  });
-  assert.match(message, /BUY BTCUSD — SIGNAL CANDIDATE/);
-  assert.doesNotMatch(message, /XAUUSD/);
-});
-
 
 test("builds a compact black BUY badge with bold blue text only", () => {
   const svg = buildSignalCardSvg(candidate());
@@ -157,4 +146,14 @@ test("preview image remains the same compact BUY badge without extra text", () =
   assert.doesNotMatch(svg, /<text\b|font-family/);
   assert.match(svg, /fill="#000000"/);
   assert.doesNotMatch(svg, /DESIGN PREVIEW|SAMPLE DATA|PREVIEW MODE|NOT A LIVE SIGNAL/);
+});
+
+test("Telegram transport is disabled and lifecycle delivery is dashboard-only", async () => {
+  assert.equal(telegramConfigured(), false);
+  const message = await sendTelegramMessage("test");
+  const signal = await sendTelegramSignal(candidate());
+  assert.equal(message.status, "DASHBOARD_ONLY");
+  assert.equal(signal.status, "DASHBOARD_ONLY");
+  assert.equal(message.sent, true);
+  assert.equal(signal.sent, true);
 });

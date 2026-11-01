@@ -16,7 +16,7 @@ test("dashboard inline JavaScript parses without executing it", () => {
 
 test("dashboard exposes metals-only controls and keeps broker execution disconnected", () => {
   assert.match(html, /ANALYZE GOLD NOW/);
-  assert.match(html, /ANALYZE SILVER NOW/);
+  assert.match(html, /Silver is chart-only/);
   assert.doesNotMatch(html, /BTCUSD|Bitcoin|telegramTest|Telegram delivery/i);
   assert.doesNotMatch(html, /\/api\/analyze-btc|\/api\/telegram-test/);
   assert.match(html, /No broker order execution or automatic trading is connected/);

@@ -71,7 +71,7 @@ jobs:
             process.exit(1);
           }
           const skipForPause = (status.emergencyStop === true || status.engine !== "RUNNING") && status.activeSignalNeedsMonitoring !== true;
-          const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true && true;
+          const skipForSession = status.sessionActive === false && status.activeSignalNeedsMonitoring !== true;
           if (skipForPause || skipForSession) {
             console.log(skipForSession
               ? "Monitor skipped: outside the configured monitoring session with no pending signal to monitor."

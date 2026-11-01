@@ -44,7 +44,6 @@ export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   if (req.method !== "GET") { res.setHeader("Allow", "GET"); return res.status(405).json({ error: "Method not allowed" }); }
   const keyConfigured = Boolean(process.env.TWELVEDATA_API_KEY);
-  const telegramConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
   const cronSecretConfigured = Boolean(process.env.CRON_SECRET);
   try {
     const sql = await ensureStorage();
@@ -59,16 +58,8 @@ export default async function handler(req, res) {
     }
     const latestRows = await sql`SELECT status, result, created_at AS "createdAt"
       FROM gold_scalper_history WHERE symbol = 'XAUUSD' ORDER BY created_at DESC, id DESC LIMIT 1`;
-    const latestBtcRows = await sql`SELECT status, result, created_at AS "createdAt"
-      FROM gold_scalper_history WHERE symbol = 'BTCUSD' ORDER BY created_at DESC, id DESC LIMIT 1`;
     const schedulerRows = await sql`SELECT created_at AS "createdAt" FROM gold_scalper_history ORDER BY created_at DESC, id DESC LIMIT 1`;
     const schedulerTelemetry = getSchedulerHealth(schedulerRows[0]?.createdAt, Date.now());
-    const btcActiveSignal = await getActiveSignal(sql, "BTCUSD");
-    const btcActiveSignalNeedsMonitoring = Boolean(btcActiveSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(btcActiveSignal.state) || (["CONFIRMATION_EXPIRED", "INVALIDATED", "EXPIRED"].includes(btcActiveSignal.state) && btcActiveSignal.candidateNotification?.sent === true && btcActiveSignal.lifecycleNotification?.sent !== true)));
-    const latestAnalysis = latestRows[0] || null;
-    const health = marketHealth(latestAnalysis, keyConfigured);
-    const btcLatestAnalysis = latestBtcRows[0] || null;
-    const btcHealth = marketHealth(btcLatestAnalysis, keyConfigured);
     const activeSignalNeedsMonitoring = Boolean(activeSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(activeSignal.state) || (["CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE", "INVALIDATED", "EXPIRED"].includes(activeSignal.state) && activeSignal.candidateNotification?.sent === true && activeSignal.lifecycleNotification?.sent !== true)));
     const sessionActive = withinSession(settings);
     const goldMarketStatus = getGoldMarketStatus();
@@ -79,21 +70,13 @@ export default async function handler(req, res) {
       schedulerHealth: !cronSecretConfigured ? "NOT_CONFIGURED" : schedulerTelemetry.status,
       schedulerLastRunAt: schedulerTelemetry.lastRunAt,
       schedulerAgeMinutes: schedulerTelemetry.ageMinutes,
-      btcEnabled: settings.btcEnabled === true,
-      btcMarketConnected: btcHealth.marketConnected,
-      btcMarketData: btcHealth.marketData,
-      btcLastAnalysisAt: btcHealth.lastAnalysisAt,
-      btcLastAnalysisStatus: btcHealth.lastAnalysisStatus,
-      btcLastAnalysisMarketDataVerified: btcHealth.lastAnalysisMarketDataVerified,
-      btcActiveSignalNeedsMonitoring,
       marketOpen: goldMarketStatus.open,
       marketStatus: goldMarketStatus.status,
       marketStatusReason: goldMarketStatus.reason,
       newsFilterEnabled: true,
       newsCalendar: "Fair Economy weekly economic calendar; runtime status checked during candidate/confirmation validation",
       marketKeyConfigured: keyConfigured,
-      telegram: telegramConfigured ? "Configured; owner-authenticated delivery test available" : "Not configured",
-      telegramConfigured,
+      notifications: "DASHBOARD_ONLY",
       scheduler: cronSecretConfigured
         ? `Scheduler authentication configured; heartbeat ${schedulerTelemetry.status.toLowerCase()}`
         : "Not configured; CRON_SECRET is missing, so scheduled monitoring cannot authenticate",
