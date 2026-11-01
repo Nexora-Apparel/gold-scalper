@@ -71,4 +71,14 @@ class Mt5ScreenParserTest {
         val result = Mt5ScreenParser.parse("XAUUSD\nXAGUSD\nTrade\nSELL 0.02\nEntry Price 31.450", "XAGUSD")
         assertEquals("XAGUSD", result.symbol)
     }
+    @Test fun timeframeIsUnknownWhenMultipleMenuOptionsAreVisible() {
+        val snapshot = Mt5ScreenParser.parse("MT5\nXAUUSD\nM1\nM5\nM15")
+        assertEquals(null, snapshot.timeframe)
+    }
+
+    @Test fun timeframeCanBeReadWhenExplicitlyMarkedSelected() {
+        val snapshot = Mt5ScreenParser.parse("MT5\nXAUUSD\nTIMEFRAME: M1\nM5\nM15")
+        assertEquals("M1", snapshot.timeframe)
+    }
+
 }
