@@ -36,8 +36,8 @@ class MobileScalpingEngineTest {
         val engine = MobileScalpingEngine("XAUUSD") { _, _, _ -> }
         val now = System.currentTimeMillis()
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
-        assertTrue(engine.verifyExnessQuote(4172.50, 4172.65))
-        assertTrue(!engine.verifyExnessQuote(4172.80, 4172.95))
+        assertTrue(engine.verifyBrokerQuote(4172.50, 4172.65))
+        assertTrue(!engine.verifyBrokerQuote(4172.80, 4172.95))
     }
 
     @Test fun productionSignalModeBlocksWhenFreshMt5QuoteIsUnavailable() {
@@ -89,7 +89,7 @@ class MobileScalpingEngineTest {
         repeat(3) {
             val now = System.currentTimeMillis()
             engine.onTick(LiveTick("XAUUSD", 4172.45, 4172.55, 4172.50, 0.10, now, true))
-            engine.verifyExnessQuote(4172.45, 4172.55, 2500L)
+            engine.verifyBrokerQuote(4172.45, 4172.55, 2500L)
             Thread.sleep(3)
         }
         val now = System.currentTimeMillis()
