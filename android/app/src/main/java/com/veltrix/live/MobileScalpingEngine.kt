@@ -84,6 +84,7 @@ class MobileScalpingEngine(
         if (observedSymbol != symbol || !bid.isFinite() || !ask.isFinite() || bid <= 0.0 || ask <= bid || observedAt <= 0L) return false
         val age = System.currentTimeMillis() - observedAt
         if (age !in -1000L..2500L) return false
+        if (latestMt5Quote?.let { observedAt <= it.observedAt } == true) return false
         latestMt5Quote = Mt5Quote(bid, ask, ask - bid, observedAt)
         refreshMt5ReferenceQuoteVerification()
         return true
