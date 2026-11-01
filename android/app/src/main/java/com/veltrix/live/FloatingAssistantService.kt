@@ -470,7 +470,8 @@ class FloatingAssistantService : Service() {
         }
         if (snapshot.noOpenPositions) {
             val confirmedClosed = closureConfirmation.observe(snapshot.tradeTabVisible, true)
-            if (prefs.getBoolean("position_active", false) && !confirmedClosed) {
+            val positionTracked = prefs.getBoolean("position_active", false) || lastPositionSignature != null
+            if (positionTracked && !confirmedClosed) {
                 latestText = "VERIFYING MT5 POSITION CLOSURE · " + closureConfirmationFramesRemaining()
                 return
             }
@@ -543,7 +544,7 @@ class FloatingAssistantService : Service() {
     }
 
     private fun closureConfirmationFramesRemaining(): String {
-        return "3-frame confirmation required"
+        return closureConfirmation.framesRemaining.toString() + " explicit frames remaining"
     }
 
     private fun stopScreenObservation() {
