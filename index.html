@@ -176,6 +176,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <section class="card" id="activityResults" data-view="activity"><h2>Activity / results</h2><div class="actions" style="margin-bottom:10px"><button class="btn" id="refreshScalpingEvents" type="button">↻ REFRESH LIVE EVENT JOURNAL</button></div><div class="log" id="scalpingEventSummary">Live scalping event journal has not been loaded.</div>
 <div class="actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0">
 <select id="outcomeSymbol"><option value="XAUUSD">Gold · XAUUSD</option><option value="XAGUSD">Silver · XAGUSD</option></select>
+<input id="outcomePositionId" type="text" placeholder="MT5 position ID from POSITION_OPENED event" style="min-width:260px;max-width:100%">
 <input id="outcomeRealizedR" type="number" step="0.01" placeholder="Realized R after costs" style="max-width:190px">
 <button class="btn" id="saveScalpingOutcome" type="button">RECORD CLOSED TRADE RESULT</button>
 </div>
@@ -299,15 +300,16 @@ async function refreshScalpingEvents(){
 $('refreshScalpingEvents')?.addEventListener('click',async()=>{const button=$('refreshScalpingEvents');button.disabled=true;try{await refreshScalpingEvents()}finally{button.disabled=false}});
 async function saveScalpingOutcome(){
  const input=$('outcomeRealizedR'),status=$('outcomeSaveStatus'),button=$('saveScalpingOutcome');
- const realizedR=Number(input?.value);
+ const realizedR=Number(input?.value),positionId=$('outcomePositionId')?.value.trim();
+ if(!positionId){status.textContent='Enter the positionId shown in the matching POSITION_OPENED journal event.';return}
  if(!Number.isFinite(realizedR)||input.value.trim()===''){status.textContent='Enter a valid realized R multiple.';return}
  button.disabled=true;
  try{
   const symbol=$('outcomeSymbol')?.value||'XAUUSD';
   const eventId='manual-outcome-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
-  await api('/api/scalping-events',[{eventId,type:'POSITION_OUTCOME_RECORDED',symbol,side:null,payload:{realizedR,outcomeSource:'manual_after_fees_and_slippage'}}]);
-  input.value='';
-  status.textContent='Closed-trade result saved. Win rate and net R have been updated.';
+  await api('/api/scalping-events',[{eventId,type:'POSITION_OUTCOME_RECORDED',symbol,side:null,payload:{positionId,realizedR,outcomeSource:'manual_after_fees_and_slippage'}}]);
+  input.value='';$('outcomePositionId').value='';
+  status.textContent='Closed-trade result saved for position '+positionId+'. Win rate and net R have been updated.';
   await refreshScalpingEvents();
  }catch(error){status.textContent='Outcome was not confirmed saved: '+error.message}
  finally{button.disabled=false}
