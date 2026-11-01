@@ -60,4 +60,19 @@ class Mt5ScreenParserTest {
         val result = Mt5ScreenParser.parse("XAUUSD\nXAGUSD\nTrade\nSELL 0.02\nEntry Price 31.450", "XAGUSD")
         assertEquals("XAGUSD", result.symbol)
     }
+
+    @Test fun parsesCompactMt5TradeRowWithoutLocalizedColumnLabels() {
+        val result = Mt5ScreenParser.parse("Trade\\nBUY 0.01 XAUUSD 4,172.55 4,173.00 0.50")
+        assertEquals("XAUUSD", result.symbol)
+        assertEquals("BUY", result.side)
+        assertEquals(0.01, result.volumeLots!!, 0.0001)
+        assertEquals(4172.55, result.entryPrice!!, 0.0001)
+        assertTrue(result.positionDetected)
+    }
+
+    @Test fun doesNotTreatChartBuyButtonAndBidAskAsAnOpenPosition() {
+        val result = Mt5ScreenParser.parse("Trade\\nXAUUSD\\nBUY\\nBid 4,172.55\\nAsk 4,172.70")
+        assertFalse(result.positionDetected)
+        assertNull(result.entryPrice)
+    }
 }
