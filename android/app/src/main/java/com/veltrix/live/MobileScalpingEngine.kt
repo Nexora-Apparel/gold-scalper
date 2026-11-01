@@ -154,6 +154,16 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
+    fun shutdown() {
+        val pending = pendingSignal ?: return
+        onEvent("MISSED_OPPORTUNITY", pending.side, JSONObject()
+            .put("reason", "assistant_stopped_before_position_confirmation")
+            .put("signalAgeMs", System.currentTimeMillis() - pending.at)
+            .put("confidence", pending.confidence))
+        pendingSignal = null
+    }
+
+    @Synchronized
     fun setPaused(value: Boolean) {
         if (paused == value) return
         paused = value
