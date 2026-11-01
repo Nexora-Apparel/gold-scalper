@@ -212,6 +212,7 @@ class MobileScalpingEngine(
             lastMarketFingerprint = marketFingerprint
             onEvent("MARKET_STATE", null, JSONObject()
                 .put("live", tick.live).put("quoteAgeMs", age).put("spread", tick.spread)
+                .put("provider", "biquote").put("providerSource", tick.source)
                 .put("spreadMultiple", spreadMultiple).put("volatilityRegime", volatility)
                 .put("momentumDirection", direction ?: JSONObject.NULL).put("reasons", JSONArray(reasons)))
         }
@@ -221,6 +222,7 @@ class MobileScalpingEngine(
             lastFingerprint = fingerprint
             val payload = JSONObject()
                 .put("action", action).put("confidence", confidence)
+                .put("provider", "biquote").put("providerSource", tick.source)
                 .put("validForSeconds", if (side != null) 10 else 0)
                 .put("signalAt", if (side != null) now else JSONObject.NULL)
                 .put("quoteBid", tick.bid).put("quoteAsk", tick.ask)
