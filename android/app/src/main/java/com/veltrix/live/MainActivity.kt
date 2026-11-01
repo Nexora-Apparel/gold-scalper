@@ -96,6 +96,38 @@ class MainActivity : Activity() {
                 }
             }
         }, LinearLayout.LayoutParams(-1, -2))
+        root.addView(TextView(this).apply { text = "MT5 trade journal"; setTextColor(0xFFE5E7EB.toInt()); setPadding(0, 18, 0, 4) })
+        val journalSide = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("BUY", "SELL")) }
+        val journalEntry = EditText(this).apply { hint = "MT5 entry price"; inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL }
+        val journalVolume = EditText(this).apply { hint = "Volume in lots (optional)"; inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL }
+        root.addView(journalSide, LinearLayout.LayoutParams(-1, -2))
+        root.addView(journalEntry, LinearLayout.LayoutParams(-1, -2))
+        root.addView(journalVolume, LinearLayout.LayoutParams(-1, -2))
+        root.addView(Button(this).apply {
+            text = "RECORD MT5 POSITION OPEN"
+            setOnClickListener {
+                val entry = journalEntry.text.toString().toDoubleOrNull()
+                val volume = journalVolume.text.toString().toDoubleOrNull() ?: 0.0
+                if (entry == null || entry <= 0 || !prefs.getBoolean("assistant_active", false)) {
+                    Toast.makeText(this@MainActivity, "Start the assistant and enter a valid entry price.", Toast.LENGTH_LONG).show()
+                } else startService(Intent(this@MainActivity, FloatingAssistantService::class.java)
+                    .setAction("JOURNAL_POSITION_OPEN").putExtra("position_side", journalSide.selectedItem.toString())
+                    .putExtra("entry_price", entry).putExtra("volume_lots", volume))
+            }
+        }, LinearLayout.LayoutParams(-1, -2))
+        val journalExit = EditText(this).apply { hint = "MT5 exit price (optional)"; inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL }
+        val journalR = EditText(this).apply { hint = "Realized R multiple (e.g. 1.5 or -1)"; inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL or android.text.InputType.TYPE_NUMBER_FLAG_SIGNED }
+        root.addView(journalExit, LinearLayout.LayoutParams(-1, -2))
+        root.addView(journalR, LinearLayout.LayoutParams(-1, -2))
+        root.addView(Button(this).apply {
+            text = "RECORD MT5 POSITION CLOSE"
+            setOnClickListener {
+                if (!prefs.getBoolean("assistant_active", false)) Toast.makeText(this@MainActivity, "Start the assistant first.", Toast.LENGTH_SHORT).show()
+                else startService(Intent(this@MainActivity, FloatingAssistantService::class.java).setAction("JOURNAL_POSITION_CLOSE")
+                    .putExtra("exit_price", journalExit.text.toString().toDoubleOrNull() ?: 0.0)
+                    .putExtra("realized_r", journalR.text.toString().toDoubleOrNull() ?: Double.NaN))
+            }
+        }, LinearLayout.LayoutParams(-1, -2))
         root.addView(Button(this).apply {
             text = "ENABLE FLOATING ASSISTANT"
             setOnClickListener { if (!Settings.canDrawOverlays(this@MainActivity)) startActivityForResult(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)), 401) else startAssistant() }
