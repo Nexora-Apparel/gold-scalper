@@ -165,3 +165,5 @@ The intake library also accepts standard comma-separated CSV exports through `im
 - The UI and CI wiring are implemented, but browser/device verification and a genuine historical archive import remain outstanding. Synthetic unit tests are not a substitute for a real out-of-sample market replay.
 
 - Replay supports an optional user-supplied additional round-trip cost in quote price units, explicitly **excluding** the Bid/Ask spread already embedded in entry/exit. If omitted, gross outcomes remain available but net outcomes are null/unavailable. Do not enter a commission amount in account currency directly; converting it requires verified contract size, volume and currency conversion for the exact instrument/account.
+
+- Hit-rate reporting includes Wilson 95% confidence intervals, with flat outcomes excluded from the decisive win/loss denominator. Confidence intervals are wide for small samples by design; the evaluated and decisive counts must be considered alongside the percentage.
