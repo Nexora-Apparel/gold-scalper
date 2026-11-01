@@ -16,7 +16,7 @@ const tick=(symbol,time,mid)=>({
 });
 
 test("composes stream and M1 aggregation without enabling trade execution",async()=>{
-  const now=Date.parse("2026-11-01T08:01:05Z");
+  let now=Date.parse("2026-11-01T08:01:05Z");
   const connection=new FakeConnection(), quotes=[], candles=[];
   const engine=new BiquoteLiveEngine({
     connection,now:()=>now,fetchSnapshot:async()=>({quotes:{}}),
@@ -24,7 +24,8 @@ test("composes stream and M1 aggregation without enabling trade execution",async
   });
   await engine.start();
   connection.tick(tick("XAUUSD",now,2650));
-  connection.tick(tick("XAUUSD",now+60000,2651));
+  now+=60000;
+  connection.tick(tick("XAUUSD",now,2651));
   const status=engine.getStatus();
   assert.equal(quotes.length,2);
   assert.equal(candles.length,1);
