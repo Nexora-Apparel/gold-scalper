@@ -412,7 +412,7 @@ class FloatingAssistantService : Service() {
             mobileEngine?.clearPosition()
             currentDecisionText = null
             prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side")
-                    .remove("active_position_entry").remove("active_position_volume").remove("active_position_signal_event_id").apply()
+                    .remove("active_position_entry").remove("active_position_volume").remove("active_position_signal_event_id").remove("active_market_lock").apply()
             activePositionId = null
             lastPositionSignature = null
             missingPositionFrames = 0
@@ -550,7 +550,7 @@ class FloatingAssistantService : Service() {
                 }
                 mobileEngine?.clearPosition()
                 prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side")
-                    .remove("active_position_entry").remove("active_position_volume").remove("active_position_signal_event_id").apply()
+                    .remove("active_position_entry").remove("active_position_volume").remove("active_position_signal_event_id").remove("active_market_lock").apply()
                 activePositionId = null; lastPositionSignature = null
                 latestText = "POSITION JOURNALED CLOSED"
                 updateNotification(latestText)
