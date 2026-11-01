@@ -39,11 +39,36 @@ export default async function handler(req, res) {
         duplicates: checked.value.length - inserted, duplicateOutcomes
       });
     }
-    const limit = Math.min(200, Math.max(1, Number(req.query?.limit) || 100));
-    const symbol = ["XAUUSD", "XAGUSD"].includes(String(req.query?.symbol || "").toUpperCase()) ? String(req.query.symbol).toUpperCase() : null;
-    const rows = symbol
-      ? await sql`SELECT event_id AS "eventId", event_type AS type, symbol, side, occurred_at AS "occurredAt", payload FROM veltrix_scalping_events WHERE symbol = ${symbol} ORDER BY occurred_at DESC, id DESC LIMIT ${limit}`
-      : await sql`SELECT event_id AS "eventId", event_type AS type, symbol, side, occurred_at AS "occurredAt", payload FROM veltrix_scalping_events ORDER BY occurred_at DESC, id DESC LIMIT ${limit}`;
+    const limit = Math.min(1000, Math.max(1, Number(req.query?.limit) || 100));
+    const requestedSymbol = String(req.query?.symbol || "").toUpperCase();
+    if (requestedSymbol && !["XAUUSD", "XAGUSD"].includes(requestedSymbol)) {
+      return res.status(400).json({ error: "symbol must be XAUUSD or XAGUSD." });
+    }
+    const symbol = requestedSymbol || null;
+    const requestedType = String(req.query?.type || "").toUpperCase();
+    if (requestedType && requestedType !== "SIGNAL") {
+      return res.status(400).json({ error: "Only type=SIGNAL export filtering is currently supported." });
+    }
+    const eventType = requestedType || null;
+    const parseBound = (value) => {
+      if (!value) return null;
+      const parsed = new Date(value);
+      return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : NaN;
+    };
+    const from = parseBound(req.query?.from);
+    const to = parseBound(req.query?.to);
+    if (Number.isNaN(from) || Number.isNaN(to) || (from && to && Date.parse(from) > Date.parse(to))) {
+      return res.status(400).json({ error: "Invalid event time range." });
+    }
+    const rows = await sql`SELECT event_id AS "eventId", event_type AS type, symbol, side, occurred_at AS "occurredAt", payload
+      FROM veltrix_scalping_events
+      WHERE (${symbol}::text IS NULL OR symbol = ${symbol})
+        AND (${eventType}::text IS NULL OR event_type = ${eventType})
+        AND (${from}::timestamptz IS NULL OR occurred_at >= ${from})
+        AND (${to}::timestamptz IS NULL OR occurred_at <= ${to})
+      ORDER BY occurred_at ASC, id ASC LIMIT ${limit + 1}`;
+    const truncated = rows.length > limit;
+    const events = truncated ? rows.slice(0, limit) : rows;
     const totals = await sql`SELECT event_type AS type, COUNT(*)::int AS count FROM veltrix_scalping_events GROUP BY event_type ORDER BY event_type`;
     const totalRows = await sql`SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE event_type = 'POSITION_CLOSED')::int AS closed_positions, COUNT(*) FILTER (WHERE event_type = 'MISSED_OPPORTUNITY')::int AS missed_opportunities FROM veltrix_scalping_events`;
     const outcomeRows = await sql`WITH outcomes AS (
@@ -71,7 +96,8 @@ export default async function handler(req, res) {
       FROM veltrix_scalping_events WHERE event_type = 'POSITION_OUTCOME_RECORDED'
       GROUP BY symbol ORDER BY symbol`;
     return res.status(200).json({
-      events: rows,
+      events,
+      truncated,
       summary: {
         totalEvents: Number(totalRows[0]?.total || 0),
         closedPositions: Number(totalRows[0]?.closed_positions || 0),
