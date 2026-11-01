@@ -72,35 +72,10 @@ class MainActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, -2))
         root.addView(TextView(this).apply {
-            text = "Exness MT5 quote verification (required before signals)"
+            text = "Broker quote verification is automatic. Authorise local MT5 screen observation to enable signals; manual quote entry is disabled."
             setTextColor(0xFFE5E7EB.toInt())
             setPadding(0, 18, 0, 4)
         })
-        val exnessBidInput = EditText(this).apply {
-            hint = "Exness MT5 BID"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
-        val exnessAskInput = EditText(this).apply {
-            hint = "Exness MT5 ASK"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
-        root.addView(exnessBidInput, LinearLayout.LayoutParams(-1, -2))
-        root.addView(exnessAskInput, LinearLayout.LayoutParams(-1, -2))
-        root.addView(Button(this).apply {
-            text = "VERIFY EXNESS BID / ASK"
-            setOnClickListener {
-                val bid = exnessBidInput.text.toString().toDoubleOrNull()
-                val ask = exnessAskInput.text.toString().toDoubleOrNull()
-                if (bid == null || ask == null || ask <= bid || !prefs.getBoolean("assistant_active", false)) {
-                    Toast.makeText(this@MainActivity, "Start the assistant and enter valid current Exness bid/ask quotes.", Toast.LENGTH_LONG).show()
-                } else {
-                    startService(Intent(this@MainActivity, FloatingAssistantService::class.java)
-                        .setAction("VERIFY_QUOTES")
-                        .putExtra("exness_bid", bid)
-                        .putExtra("exness_ask", ask))
-                }
-            }
-        }, LinearLayout.LayoutParams(-1, -2))
         root.addView(TextView(this).apply { text = "MT5 trade journal"; setTextColor(0xFFE5E7EB.toInt()); setPadding(0, 18, 0, 4) })
         val journalSide = Spinner(this).apply { adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("BUY", "SELL")) }
         val journalEntry = EditText(this).apply { hint = "MT5 entry price"; inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL }
