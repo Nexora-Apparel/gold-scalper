@@ -58,7 +58,8 @@ function renderReport(result) {
     const title = document.createElement("h3");
     title.textContent = name + " · " + data.quoteCount.toLocaleString() + " quotes · " + data.signalCount.toLocaleString() + " signals";
     section.append(title);
-    for (const [latency, scenario] of Object.entries(data.latencyScenarios)) {
+    const scenarios = data.latencyScenarios || { "0": data };
+    for (const [latency, scenario] of Object.entries(scenarios)) {
       const latencyTitle = document.createElement("h3");
       latencyTitle.textContent = "Assumed signal-to-entry delay: " + latency + " ms";
       section.append(latencyTitle);
@@ -75,7 +76,8 @@ function renderReport(result) {
   }
   const boundary = document.createElement("p");
   boundary.className = "warning";
-  boundary.textContent = "Research estimate only. Bid/Ask spread is embedded in executable-side entry/exit prices. " + (result.costModel.roundTripAdditionalCostPriceUnits === null ? "Additional commission/slippage costs were not supplied, so net results are unavailable. " : "The manually supplied additional round-trip cost of " + result.costModel.roundTripAdditionalCostPriceUnits + " price units was deducted; this is an estimate, not a broker-verified cost. ") + "Execution latency, partial fills and Exness fill parity are not modelled. Do not treat hit rate as validated live accuracy or profitability.";
+  const additionalCost = result.costModel?.roundTripAdditionalCostPriceUnits ?? null;
+  boundary.textContent = "Research estimate only. Bid/Ask spread is embedded in executable-side entry/exit prices. " + (additionalCost === null ? "Additional commission/slippage costs were not supplied, so net results are unavailable. " : "The manually supplied additional round-trip cost of " + result.costModel.roundTripAdditionalCostPriceUnits + " price units was deducted; this is an estimate, not a broker-verified cost. ") + "Execution latency, partial fills and Exness fill parity are not modelled. Do not treat hit rate as validated live accuracy or profitability.";
   report.append(boundary);
 }
 function downloadReport(report, id = "replay") {
