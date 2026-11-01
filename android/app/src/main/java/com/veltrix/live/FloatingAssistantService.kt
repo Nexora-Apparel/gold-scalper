@@ -434,7 +434,7 @@ class FloatingAssistantService : Service() {
                 .put("mt5ScreenTimeframe", snapshot.timeframe).put("rawScreenUploaded", false))
         }
         if (snapshot.quoteDetected && snapshot.symbol == symbol && snapshot.bid != null && snapshot.ask != null) {
-            val matched = mobileEngine?.verifyExnessQuote(snapshot.bid, snapshot.ask) == true
+            val matched = mobileEngine?.verifyExnessQuote(snapshot.bid, snapshot.ask, 2500L) == true
             if (matched) latestText = "EXNESS MT5 QUOTE MATCHED · SIGNAL GATE OPEN"
             else if (feedHealthy) latestText = "EXNESS QUOTE MISMATCH · NO SIGNAL"
         }
