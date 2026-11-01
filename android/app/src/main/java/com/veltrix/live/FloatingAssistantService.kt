@@ -37,6 +37,7 @@ class FloatingAssistantService : Service() {
     private var dotParams: WindowManager.LayoutParams? = null
     private val worker = Executors.newSingleThreadExecutor()
     private var hub: BiquoteHubClient? = null
+    private var mobileEngine: MobileScalpingEngine? = null
     @Volatile private var paused = false
     @Volatile private var feedHealthy = false
     @Volatile private var lastTickAt = 0L
@@ -83,11 +84,12 @@ class FloatingAssistantService : Service() {
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
         val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
             journal.record(eventType, symbol, payload, side)
-            if (eventType == "SIGNAL") {
+            if (eventType == "SIGNAL" || eventType == "EXIT_RECOMMENDED") {
                 latestText = payload.optString("action") + " · manual MT5 only"
                 updateNotification(latestText)
             }
         }
+        mobileEngine = engine
         hub = BiquoteHubClient(symbol, { tick ->
             engine.onTick(tick)
             lastTickAt = System.currentTimeMillis()
@@ -235,6 +237,7 @@ class FloatingAssistantService : Service() {
         if (snapshot.positionDetected && snapshot.side != null && snapshot.entryPrice != null) {
             val signature = listOf(symbol, snapshot.side, snapshot.entryPrice.toString(), snapshot.volumeLots?.toString() ?: "").joinToString("|")
             missingPositionFrames = 0
+            mobileEngine?.setPosition(snapshot.side, snapshot.entryPrice)
             if (signature != lastPositionSignature) {
                 lastPositionSignature = signature
                 val payload = JSONObject()
