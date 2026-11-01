@@ -119,6 +119,13 @@ class FloatingAssistantService : Service() {
     }
 
     private fun connectSelectedMarket() {
+        lastTickAt = 0L
+        feedHealthy = false
+        lastQuoteState = null
+        currentDecisionText = null
+        criticalExitAlert = false
+        lastScreenTimeframe = null
+        lastScreenMismatch = null
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
         pendingSignalEventId = prefs.getString("pending_signal_event_id", null)
         val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
