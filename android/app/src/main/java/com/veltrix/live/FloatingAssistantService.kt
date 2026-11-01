@@ -160,7 +160,8 @@ class FloatingAssistantService : Service() {
                 currentDecisionText = null
                 prefs.edit().remove("pending_exit_at").remove("pending_exit_reason").apply()
             }
-            if (eventType == "EXIT_RECOMMENDED" && payload.optString("action") == "CLOSE_NOW") {
+            if (eventType == "EXIT_RECOMMENDED" && payload.optString("action") == "CLOSE_NOW" &&
+                prefs.getLong("pending_exit_at", 0L) == 0L) {
                 prefs.edit().putLong("pending_exit_at", System.currentTimeMillis())
                     .putString("pending_exit_reason", payload.optString("reason")).apply()
             }
