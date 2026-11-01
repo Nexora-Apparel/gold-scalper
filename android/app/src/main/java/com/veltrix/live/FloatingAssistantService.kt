@@ -151,7 +151,7 @@ class FloatingAssistantService : Service() {
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             } else if (eventType == "SIGNAL") {
-                currentDecisionText = payload.optString("action") + " · manual MT5 only"
+                currentDecisionText = payload.optString("action").replace("_", " ") + " · manual MT5 only"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             } else if (eventType == "NO_TRADE" && !criticalExitAlert) {
