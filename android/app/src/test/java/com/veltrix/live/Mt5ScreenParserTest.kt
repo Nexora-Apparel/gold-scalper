@@ -81,4 +81,8 @@ class Mt5ScreenParserTest {
         assertEquals(31.450, result.entryPrice!!, 0.0001)
         assertTrue(result.positionDetected)
     }
+    @Test fun doesNotTreatSinglePriceOrderRowAsAnOpenPosition() {
+        val result = Mt5ScreenParser.parse("Trade\\nBUY 0.01 XAUUSD 4172.55")
+        assertFalse(result.positionDetected)
+    }
 }
