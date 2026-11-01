@@ -417,7 +417,10 @@ class FloatingAssistantService : Service() {
             if (side == "BUY" || side == "SELL") {
                 if (entry > 0 && mobileEngine != null && !prefs.getBoolean("position_active", false)) {
                     activePositionId = UUID.randomUUID().toString()
-                    prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId).putString("active_position_side", side).apply()
+                    lastPositionSignature = listOf(prefs.getString("symbol", "XAUUSD"), side, entry.toString(), volume.toString()).joinToString("|")
+                    prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId)
+                        .putString("active_position_side", side).putString("active_position_entry", entry.toString())
+                        .putString("active_position_volume", volume.toString()).apply()
                     mobileEngine?.setPosition(side, entry)
                     journal.record("POSITION_OPENED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD",
                         JSONObject().put("positionId", activePositionId).put("side", side).put("entryPrice", entry)
