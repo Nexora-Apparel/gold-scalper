@@ -97,7 +97,7 @@ class MobileScalpingEngine(
                 mt5ReferenceQuoteMatch = null
                 onEvent("ENGINE_STATE", null, JSONObject()
                     .put("mt5ReferenceQuoteVerification", "NOT_OBSERVED_OR_EXPIRED")
-                    .put("signalGate", "REFERENCE_FEED_MODE")
+                    .put("signalGate", if (requireBrokerQuoteParity) "BROKER_QUOTE_REQUIRED" else "REFERENCE_FEED_MODE")
                     .put("rawScreenUploaded", false))
             }
             return
@@ -125,7 +125,7 @@ class MobileScalpingEngine(
             mt5ReferenceQuoteMatch = nextMatch
             onEvent("ENGINE_STATE", null, JSONObject()
                 .put("mt5ReferenceQuoteVerification", status)
-                .put("signalGate", if (matched) "QUOTE_CORROBORATED" else "BLOCK_WHILE_MT5_QUOTE_VISIBLE")
+                .put("signalGate", if (matched) "QUOTE_CORROBORATED" else if (requireBrokerQuoteParity) "BROKER_QUOTE_REQUIRED" else "BLOCK_WHILE_MT5_QUOTE_VISIBLE")
                 .put("tolerancePriceUnits", tolerance)
                 .put("mt5Bid", quote.bid).put("mt5Ask", quote.ask)
                 .put("referenceBid", tick?.bid ?: JSONObject.NULL)
