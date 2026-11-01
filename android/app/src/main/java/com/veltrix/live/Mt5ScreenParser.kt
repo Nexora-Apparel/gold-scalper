@@ -82,15 +82,15 @@ object Mt5ScreenParser {
         } ?: emptyList()
         val sideLine = lines.firstOrNull { sideToken.containsMatchIn(it.uppercase()) }
         val sideLineNumbers = sideLine?.let { numberPattern.findAll(it).mapNotNull { match -> parseNumber(match.value) }.toList() } ?: emptyList()
+        val minimumMetalPrice = if (symbol == "XAUUSD") 100.0 else 1.0
         val labelledEntry = labelledNumber(listOf("open price", "price open", "entry price"))
-        val entry = labelledEntry ?: rowNumbers.firstOrNull { it >= 100.0 }
+        val entry = labelledEntry ?: rowNumbers.firstOrNull { it >= minimumMetalPrice }
         val labelledVolume = labelledNumber(listOf("volume", "lots", "lot"))
         val volume = labelledVolume ?: sideLineNumbers.firstOrNull { it in 0.001..100.0 }
         val profit = labelledNumber(listOf("profit", "p/l"))
         val bid = labelledNumber(listOf("bid"))
         val ask = labelledNumber(listOf("ask"))
         val quoteDetected = symbol != null && bid != null && ask != null && bid > 0 && ask > bid
-        val minimumMetalPrice = if (symbol == "XAUUSD") 100.0 else 1.0
         val detected = tradeTab && symbol != null && side != null && entry != null && entry.isFinite() && entry >= minimumMetalPrice
         val noOpenPositions = tradeTab && Regex("NO\\s+(OPEN\\s+)?POSITIONS?").containsMatchIn(all)
         val confidence = when {
