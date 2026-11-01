@@ -43,11 +43,9 @@ class MainActivity : Activity() {
                 if (password.isBlank()) {
                     Toast.makeText(this@MainActivity, "Enter the dashboard password.", Toast.LENGTH_SHORT).show()
                 } else {
-                    isEnabled = false
                     Executors.newSingleThreadExecutor().execute {
                         val connected = try { OwnerSessionStore(this@MainActivity).login(password) } catch (_: Exception) { false }
                         runOnUiThread {
-                            isEnabled = true
                             passwordInput.text.clear()
                             Toast.makeText(this@MainActivity, if (connected) "Dashboard session connected." else "Login failed. Check password and server configuration.", Toast.LENGTH_LONG).show()
                         }
