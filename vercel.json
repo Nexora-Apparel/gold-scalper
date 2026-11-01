@@ -2,10 +2,6 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/diagnose-btc",
-      "destination": "/api/market-data-btc"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     }

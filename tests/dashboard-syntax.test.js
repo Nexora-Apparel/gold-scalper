@@ -14,11 +14,11 @@ test("dashboard inline JavaScript parses without executing it", () => {
   assert.doesNotThrow(() => new Function(inline[inline.length - 1]));
 });
 
-test("dashboard exposes BTC controls and keeps broker execution disconnected", () => {
-  assert.match(html, /ANALYZE BTCUSD NOW/);
-  assert.match(html, /SUPPORTED PAIRS/);
-  assert.match(html, /id="btcEnabled"/);
-  assert.match(html, /\/api\/analyze-btc/);
+test("dashboard exposes metals-only controls and keeps broker execution disconnected", () => {
+  assert.match(html, /ANALYZE GOLD NOW/);
+  assert.match(html, /ANALYZE SILVER NOW/);
+  assert.doesNotMatch(html, /BTCUSD|Bitcoin|telegramTest|Telegram delivery/i);
+  assert.doesNotMatch(html, /\/api\/analyze-btc|\/api\/telegram-test/);
   assert.match(html, /No broker order execution or automatic trading is connected/);
   assert.match(html, /PENDING ENTRY — Setup identified; wait for the planned entry/);
   assert.match(html, /ENTRY CONFIRMED — Entry conditions were satisfied/);
