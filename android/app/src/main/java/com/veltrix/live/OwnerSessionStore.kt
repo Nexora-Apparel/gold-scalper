@@ -70,7 +70,6 @@ class OwnerSessionStore(context: Context) {
         }
     }
 
-    @Synchronized
     fun syncJournal(database: EventJournalDb): Int {
         val cookie = prefs.getString("cookie", null) ?: return 0
         val events = database.pending(50)
