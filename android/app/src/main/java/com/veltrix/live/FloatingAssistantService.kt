@@ -398,6 +398,44 @@ class FloatingAssistantService : Service() {
                 journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("marketSelectionChanged", true))
             }
         }
+        if (intent?.action == "JOURNAL_POSITION_OPEN") {
+            val side = intent.getStringExtra("position_side") ?: ""
+            val entry = intent.getDoubleExtra("entry_price", 0.0)
+            val volume = intent.getDoubleExtra("volume_lots", 0.0)
+            if (side == "BUY" || side == "SELL") {
+                if (entry > 0 && mobileEngine != null && !prefs.getBoolean("position_active", false)) {
+                    activePositionId = UUID.randomUUID().toString()
+                    prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId).putString("active_position_side", side).apply()
+                    mobileEngine?.setPosition(side, entry)
+                    journal.record("POSITION_OPENED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD",
+                        JSONObject().put("positionId", activePositionId).put("side", side).put("entryPrice", entry)
+                            .put("volumeLots", volume).put("source", "manual_mt5_journal_entry"), side)
+                    latestText = "POSITION JOURNALED · " + side
+                } else { latestText = "POSITION NOT JOURNALED · CHECK ENGINE OR EXISTING POSITION" }
+                updateNotification(latestText)
+            }
+        }
+        if (intent?.action == "JOURNAL_POSITION_CLOSE") {
+            if (prefs.getBoolean("position_active", false)) {
+                val exitPrice = intent.getDoubleExtra("exit_price", 0.0)
+                val realizedR = intent.getDoubleExtra("realized_r", Double.NaN)
+                val side = prefs.getString("active_position_side", null)
+                val positionId = activePositionId ?: prefs.getString("active_position_id", null)
+                val payload = JSONObject().put("positionId", positionId ?: JSONObject.NULL)
+                    .put("source", "manual_mt5_journal_entry").put("exitPrice", if (exitPrice > 0) exitPrice else JSONObject.NULL)
+                journal.record("POSITION_CLOSED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", payload, if (side == "BUY" || side == "SELL") side else null)
+                if (realizedR.isFinite() && positionId != null) {
+                    journal.record("POSITION_OUTCOME_RECORDED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD",
+                        JSONObject().put("positionId", positionId).put("realizedR", realizedR).put("exitPrice", if (exitPrice > 0) exitPrice else JSONObject.NULL),
+                        if (side == "BUY" || side == "SELL") side else null)
+                }
+                mobileEngine?.clearPosition()
+                prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side").apply()
+                activePositionId = null; lastPositionSignature = null
+                latestText = "POSITION JOURNALED CLOSED"
+                updateNotification(latestText)
+            }
+        }
         if (intent?.action == "VERIFY_QUOTES") {
             val bid = intent.getDoubleExtra("exness_bid", 0.0)
             val ask = intent.getDoubleExtra("exness_ask", 0.0)
