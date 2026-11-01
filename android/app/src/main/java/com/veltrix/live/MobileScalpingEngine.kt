@@ -176,7 +176,6 @@ class MobileScalpingEngine(
     @Synchronized
     fun onFeedStale() {
         brokerQuoteVerifiedUntil = 0L
-        lastBrokerQuoteMatch = null
         if (!feedRevoked) {
             feedRevoked = true
             onEvent("ENGINE_STATE", null, JSONObject().put("brokerQuoteVerification", "REVOKED_FEED_STALE").put("signalGenerationEnabled", false))
@@ -246,8 +245,7 @@ class MobileScalpingEngine(
         if (validationError != null) {
             latestTick = tick.copy(live = false)
             brokerQuoteVerifiedUntil = 0L
-            lastBrokerQuoteMatch = null
-            feedRevoked = true
+                feedRevoked = true
             val validationFingerprint = "REJECTED|$validationError"
             if (lastQuoteValidationFingerprint != validationFingerprint) {
                 lastQuoteValidationFingerprint = validationFingerprint
@@ -322,7 +320,6 @@ class MobileScalpingEngine(
         refreshMt5ReferenceQuoteVerification()
         if (requireBrokerQuoteParity && brokerQuoteVerifiedUntil > 0 && System.currentTimeMillis() > brokerQuoteVerifiedUntil) {
             brokerQuoteVerifiedUntil = 0L
-            lastBrokerQuoteMatch = false
             onEvent("ENGINE_STATE", null, JSONObject().put("brokerQuoteVerification", "EXPIRED").put("signalGenerationEnabled", false))
         }
         val now = tick.timestampMillis
