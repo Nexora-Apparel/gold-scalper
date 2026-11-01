@@ -90,7 +90,8 @@ object Mt5ScreenParser {
         val bid = labelledNumber(listOf("bid"))
         val ask = labelledNumber(listOf("ask"))
         val quoteDetected = symbol != null && bid != null && ask != null && bid > 0 && ask > bid
-        val detected = tradeTab && symbol != null && side != null && entry != null && entry > 0
+        val minimumMetalPrice = if (symbol == "XAUUSD") 100.0 else 1.0
+        val detected = tradeTab && symbol != null && side != null && entry != null && entry.isFinite() && entry >= minimumMetalPrice
         val noOpenPositions = tradeTab && Regex("NO\\s+(OPEN\\s+)?POSITIONS?").containsMatchIn(all)
         val confidence = when {
             detected -> 0.92
