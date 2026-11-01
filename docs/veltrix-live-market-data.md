@@ -64,3 +64,7 @@ When the user authorizes Android screen capture, the foreground companion locall
 ## MT5 quote agreement gate
 
 When a fresh MT5 screen OCR quote is available, the Android engine compares both Bid and Ask, plus spread, against the latest Biquote reference tick. Current provisional tolerances are 0.05 quoted price units for XAUUSD and 0.01 for XAGUSD; these are engineering thresholds, not broker specifications, and must be calibrated against real device observations. A fresh observed mismatch blocks new BUY/SELL signals and is surfaced in the companion status. A match is recorded as corroboration, not proof of executable-price parity or a fill. When no fresh MT5 quote is visible, the engine remains in clearly labelled reference-feed mode; this does not imply MT5 verification. All comparison events store numeric quotes and source metadata, never screen images.
+
+## Android quote integrity gate
+
+Before a tick enters the Android signal calculations, the engine rejects non-finite Bid/Ask/Mid/Spread values, non-positive Bid/Mid, Ask less than or equal to Bid, negative spread, and Mid outside the observed Bid/Ask interval (with a small rounding tolerance). Rejected ticks cannot update momentum windows or generate BUY/SELL recommendations. The engine records a structured rejection reason, deduplicates repeated validation-state events, and returns to an accepted state only after a valid quote arrives. If a position is recorded, invalid reference data produces an unverified manual-check recommendation rather than a fabricated exit price.
