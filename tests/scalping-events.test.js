@@ -21,8 +21,8 @@ test("validates batches atomically and rejects duplicate IDs", () => {
   assert.equal(validateScalpingEventBatch([{ eventId: "a", type: "NO_TRADE", symbol: "XAUUSD" }, { eventId: "b", type: "INVALID", symbol: "XAUUSD" }]).ok, false);
 });
 test("summarizes closed positions separately from signals", () => {
-  const result = summarizeScalpingEvents([{ type: "SIGNAL" }, { type: "POSITION_CLOSED", payload: { realizedR: 1.5 } }, { type: "POSITION_CLOSED", payload: { realizedR: -1 } }]);
-  assert.equal(result.totalEvents, 3);
+  const result = summarizeScalpingEvents([{ type: "SIGNAL" }, { type: "POSITION_CLOSED" }, { type: "POSITION_CLOSED" }, { type: "POSITION_OUTCOME_RECORDED", payload: { realizedR: 1.5 } }, { type: "POSITION_OUTCOME_RECORDED", payload: { realizedR: -1 } }]);
+  assert.equal(result.totalEvents, 5);
   assert.equal(result.closedPositions, 2);
   assert.equal(result.netR, 0.5);
 });
