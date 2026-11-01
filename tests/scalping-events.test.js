@@ -8,6 +8,10 @@ test("validates and normalizes a scalping event", () => {
   assert.equal(result.value.type, "SIGNAL");
   assert.equal(result.value.symbol, "XAUUSD");
 });
+test("accepts MT5 spread observations as auditable journal events", () => {
+  const result = validateScalpingEvent({ eventId: "spread-1", type: "MT5_SPREAD_OBSERVED", symbol: "XAUUSD", payload: { bid: 4172.5, ask: 4172.7, spreadPriceDelta: 0.2, spreadUnit: "raw_price_delta" } });
+  assert.equal(result.ok, true);
+});
 test("rejects unknown types, symbols, future timestamps and oversized payloads", () => {
   const base = { eventId: "evt", type: "SIGNAL", symbol: "XAUUSD" };
   assert.equal(validateScalpingEvent({ ...base, type: "TICK" }).ok, false);
