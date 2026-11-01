@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <application android:allowBackup="false" android:label="VELTRIX LIVE" android:icon="@drawable/ic_veltrix_notification" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false">
+    <application android:allowBackup="false" android:label="VELTRIX LIVE" android:icon="@drawable/ic_veltrix_launcher" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity>
