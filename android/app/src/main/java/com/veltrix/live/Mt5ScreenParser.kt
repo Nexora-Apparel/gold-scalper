@@ -59,8 +59,33 @@ object Mt5ScreenParser {
             }
             return null
         }
-        val entry = labelledNumber(listOf("open price", "price open", "entry price"))
-        val volume = labelledNumber(listOf("volume", "lots", "lot"))
+        fun parseNumber(token: String): Double? {
+            val commaAt = token.lastIndexOf(',')
+            val dotAt = token.lastIndexOf('.')
+            val normalizedToken = when {
+                commaAt >= 0 && dotAt >= 0 && commaAt > dotAt -> token.replace(".", "").replace(",", ".")
+                commaAt >= 0 && dotAt >= 0 -> token.replace(",", "")
+                commaAt >= 0 && dotAt < 0 && token.length - commaAt - 1 == 3 -> token.replace(",", "")
+                commaAt >= 0 -> token.replace(",", ".")
+                else -> token
+            }
+            return normalizedToken.toDoubleOrNull()
+        }
+        val sideToken = if (side == "BUY") Regex("\\bBUY\\b") else Regex("\\bSELL\\b")
+        val rowLine = lines.firstOrNull { line ->
+            sideToken.containsMatchIn(line.uppercase()) &&
+                (if (symbol == "XAUUSD") Regex("\\bXAUUSD\\b|\\bGOLD\\b") else Regex("\\bXAGUSD\\b|\\bSILVER\\b")).containsMatchIn(line.uppercase())
+        }
+        val rowNumbers = rowLine?.let { line ->
+            val symbolMatch = (if (symbol == "XAUUSD") Regex("\\bXAUUSD\\b|\\bGOLD\\b") else Regex("\\bXAGUSD\\b|\\bSILVER\\b")).find(line.uppercase())
+            if (symbolMatch == null) emptyList() else numberPattern.findAll(line.substring(symbolMatch.range.last + 1)).mapNotNull { parseNumber(it.value) }.toList()
+        } ?: emptyList()
+        val sideLine = lines.firstOrNull { sideToken.containsMatchIn(it.uppercase()) }
+        val sideLineNumbers = sideLine?.let { numberPattern.findAll(it).mapNotNull { match -> parseNumber(match.value) }.toList() } ?: emptyList()
+        val labelledEntry = labelledNumber(listOf("open price", "price open", "entry price"))
+        val entry = labelledEntry ?: rowNumbers.firstOrNull { it >= 100.0 }
+        val labelledVolume = labelledNumber(listOf("volume", "lots", "lot"))
+        val volume = labelledVolume ?: sideLineNumbers.firstOrNull { it in 0.001..100.0 }
         val profit = labelledNumber(listOf("profit", "p/l"))
         val bid = labelledNumber(listOf("bid"))
         val ask = labelledNumber(listOf("ask"))
