@@ -60,6 +60,7 @@ class FloatingAssistantService : Service() {
     private var ocrThread: HandlerThread? = null
     private var lastOcrAt = 0L
     private var lastPositionSignature: String? = null
+    @Volatile private var pendingSignalEventId: String? = null
     private var activePositionId: String? = null
     private var missingPositionFrames = 0
     private val textRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
@@ -117,14 +118,26 @@ class FloatingAssistantService : Service() {
 
     private fun connectSelectedMarket() {
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
+        pendingSignalEventId = prefs.getString("pending_signal_event_id", null)
         val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
-            journal.record(eventType, symbol, payload, side)
+            val journalEventId = journal.record(eventType, symbol, payload, side)
             if (eventType == "SIGNAL" && side != null) {
-                prefs.edit().putString("pending_signal_side", side)
+                pendingSignalEventId = journalEventId
+                prefs.edit().putString("pending_signal_event_id", journalEventId)
+                    .putString("pending_signal_side", side)
                     .putLong("pending_signal_at", payload.optLong("signalAt", System.currentTimeMillis()))
                     .putFloat("pending_signal_confidence", payload.optDouble("confidence", 0.0).toFloat()).apply()
-            } else if (eventType == "MISSED_OPPORTUNITY" || (eventType == "ENGINE_STATE" && payload.optBoolean("signalAccepted"))) {
-                prefs.edit().remove("pending_signal_side").remove("pending_signal_at").remove("pending_signal_confidence").apply()
+            } else if (eventType == "MISSED_OPPORTUNITY") {
+                pendingSignalEventId = null
+                prefs.edit().remove("pending_signal_event_id").remove("pending_signal_side")
+                    .remove("pending_signal_at").remove("pending_signal_confidence").apply()
+            } else if (eventType == "ENGINE_STATE" && payload.optBoolean("signalAccepted")) {
+                val acceptedSignalId = pendingSignalEventId ?: prefs.getString("pending_signal_event_id", null)
+                val editor = prefs.edit().remove("pending_signal_event_id").remove("pending_signal_side")
+                    .remove("pending_signal_at").remove("pending_signal_confidence")
+                if (acceptedSignalId != null) editor.putString("active_position_signal_event_id", acceptedSignalId)
+                editor.apply()
+                pendingSignalEventId = null
             }
             if (eventType == "POSITION_OPENED" || eventType == "POSITION_CLOSED") { criticalExitAlert = false; currentDecisionText = null }
             if (eventType == "EXIT_RECOMMENDED") {
