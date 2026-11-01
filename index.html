@@ -165,7 +165,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <p class="notice">After you decide what happened to a signal you manually traded (or chose not to take), record it here. This is for forward-testing statistics only; it does not place, modify, or close orders.</p>
 <div class="settings">
 <div class="field wide"><label for="outcomeSignal">Signal reference</label><select id="outcomeSignal"><option value="">Load signal history first</option></select></div>
-<div class="field"><label for="outcomeValue">Outcome</label><select id="outcomeValue"><option value="TAKEN">Taken / currently open</option><option value="WIN">Win</option><option value="LOSS">Loss</option><option value="BREAKEVEN">Breakeven</option><option value="NOT_TAKEN">Not taken</option><option value="CANCELLED">Cancelled</option></select></div>
+<div class="field"><label for="outcomeValue">Outcome</label><select id="outcomeValue"><option value="" disabled selected>Choose a journal status</option><option value="TAKEN">Taken / currently open</option><option value="WIN">Win</option><option value="LOSS">Loss</option><option value="BREAKEVEN">Breakeven</option><option value="NOT_TAKEN">Not taken</option><option value="CANCELLED">Cancelled</option></select></div>
 <div class="field"><label for="realizedR">Realized R (optional)</label><input id="realizedR" type="number" step="0.1" min="-20" max="20" placeholder="e.g. 2 or -1"></div>
 <div class="field wide"><label for="outcomeNotes">Notes (optional)</label><input id="outcomeNotes" type="text" maxlength="500" placeholder="e.g. spread, slippage, early exit"></div>
 </div>
