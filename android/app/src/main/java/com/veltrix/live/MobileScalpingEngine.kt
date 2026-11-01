@@ -266,7 +266,7 @@ class MobileScalpingEngine(
                 onEvent("ENGINE_STATE", null, JSONObject()
                     .put("quoteValidation", "REJECTED")
                     .put("quoteValidationReason", validationError)
-                    .put("signalGenerationEnabled", false)
+                    .put("quoteStreamValid", false)
                     .put("providerSource", tick.source))
             }
             val invalidFingerprint = "NO_TRADE|invalid_quote|$validationError"
@@ -297,7 +297,7 @@ class MobileScalpingEngine(
             lastQuoteValidationFingerprint = ""
             onEvent("ENGINE_STATE", null, JSONObject()
                 .put("quoteValidation", "ACCEPTED")
-                .put("signalGenerationEnabled", tick.live &&
+                .put("quoteStreamValid", tick.live &&
                     (System.currentTimeMillis() - tick.timestampMillis) in -1000L..1500L)
                 .put("providerSource", tick.source))
         }
