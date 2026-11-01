@@ -62,5 +62,7 @@ test("reports results by requested horizon and does not label estimates as prove
   assert.equal(result.summary.length, 2);
   assert.equal(result.summary[0].evaluated, 1);
   assert.equal(result.summary[1].evaluated, 1);
+  assert.equal(result.summaryBySide.length, 4);
+  assert.equal(result.summaryBySide[0].side, "BUY");
   assert.match(result.validationNotice, /research estimate/);
 });
