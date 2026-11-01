@@ -47,12 +47,13 @@ test("isolates symbols and rejects old-minute ticks",()=>{
   assert.equal(agg.snapshot("XAGUSD").tickCount,1);
 });
 
-test("flush emits only current partial candle and labels it complete for explicit close",()=>{
+test("flush emits only current partial candle and labels it incomplete after stream interruption",()=>{
   const agg=new TickCandleAggregator();
   const t=Date.parse("2026-11-01T08:01:02Z");
   agg.ingest(q("XAGUSD",t,31));
   const [c]=agg.flush();
-  assert.equal(c.complete,true);
+  assert.equal(c.complete,false);
+  assert.equal(c.partial,true);
   assert.equal(c.source,"biquote_ticks");
   assert.equal(agg.snapshot("XAGUSD"),null);
 });
