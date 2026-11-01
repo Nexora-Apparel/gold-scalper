@@ -97,6 +97,28 @@ main{width:auto;max-width:none;margin:0;padding:94px 30px 42px 282px;min-height:
 @media(max-width:760px){main{padding:88px 14px calc(92px + env(safe-area-inset-bottom))}.top{left:0;height:68px;padding:0 13px}.brand{font-size:12px;letter-spacing:.7px}.sub{font-size:9px}.top-actions{gap:5px}.pill{padding:7px 7px;font-size:8px}.install-btn{padding:8px 9px;font-size:9px}.nav-tabs{left:0;right:0;top:auto;bottom:0;width:auto;height:auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:7px 5px calc(7px + env(safe-area-inset-bottom));background:rgba(10,16,27,.97);border-top:1px solid #2a394d;border-right:0;box-shadow:0 -8px 25px #0008}.nav-brand,.nav-section-label,.nav-footer{display:none}.nav-tab{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;min-height:49px;padding:5px 1px;font-size:9px;line-height:1.1;text-align:center;white-space:nowrap}.nav-icon{font-size:16px;width:auto}.nav-tab.active{box-shadow:inset 0 2px #d9b45a;background:#d9b45a12}.card{padding:15px}.settings{grid-template-columns:1fr 1fr}#marketChart>div[style*="height:calc"]{height:calc(100dvh - 185px)!important;min-height:390px!important}}
 @media(max-width:390px){.top-actions .pill{display:none}.settings{grid-template-columns:1fr}.nav-tab{font-size:8px}.nav-icon{font-size:15px}}
 @media(max-width:760px){main{padding-bottom:calc(154px + env(safe-area-inset-bottom))}.nav-tabs{grid-auto-rows:minmax(48px,auto)}}
+
+/* 7-workspace bottom dock: compact, persistent and consistent on desktop/mobile. */
+.nav-tabs{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:100%!important;height:auto!important;display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;flex-direction:row!important;align-items:stretch!important;justify-content:stretch!important;gap:6px!important;padding:9px 12px calc(9px + env(safe-area-inset-bottom))!important;background:rgba(9,14,23,.97)!important;border-top:1px solid #2b3a4e!important;border-right:0!important;box-shadow:0 -10px 30px #0008!important;backdrop-filter:blur(18px)!important}
+.nav-brand,.nav-section-label,.nav-footer{display:none!important}
+.nav-tab{min-width:0!important;min-height:52px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;gap:5px!important;padding:6px 3px!important;font-size:10px!important;line-height:1.12!important;text-align:center!important;white-space:normal!important;border-radius:10px!important}
+.nav-icon{width:auto!important;font-size:17px!important}
+.nav-tab.active{box-shadow:inset 0 2px var(--gold),0 0 16px #d9b45a10!important;background:#d9b45a12!important}
+body{padding-bottom:calc(92px + env(safe-area-inset-bottom))!important}
+main{padding-bottom:calc(112px + env(safe-area-inset-bottom))!important}
+.field textarea{width:100%;min-height:76px;resize:vertical;background:#0d1522;border:1px solid #304057;border-radius:8px;color:var(--text);padding:12px;font:inherit}
+.field input:disabled,.field select:disabled{opacity:.42;cursor:not-allowed}
+#activityResults .settings{grid-template-columns:1fr 1fr}
+#activityResults #scalpingEventSummary{text-align:center;padding:18px}
+#activityResults #refreshScalpingEvents{margin-inline:auto;min-width:min(100%,330px)}
+#marketChart .chart-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+#marketChart .chart-toolbar input{min-width:145px;flex:1;background:#0d1522;border:1px solid #304057;color:#fff;border-radius:8px;padding:10px}
+#marketChart .chart-toolbar button{background:#202d40;color:#e8eef7;border:1px solid #35465e;border-radius:8px;padding:9px 12px;font-weight:750}
+#marketChart .chart-toolbar .selected{border-color:#d9b45a;color:#f4d88e;background:#d9b45a16}
+@media(max-width:760px){.nav-tabs{gap:3px!important;padding-left:5px!important;padding-right:5px!important}.nav-tab{font-size:8px!important;min-height:50px!important;padding:5px 1px!important}.nav-icon{font-size:15px!important}main{padding:88px 12px calc(110px + env(safe-area-inset-bottom))!important}#activityResults .settings{grid-template-columns:1fr 1fr}}
+@media(max-width:390px){.nav-tab{font-size:7px!important;letter-spacing:-.15px}.nav-icon{font-size:14px!important}.top-actions .pill{display:inline-flex!important;font-size:7px!important;padding:6px 5px!important}.install-btn{font-size:8px!important;padding:7px 7px!important}}
+@media(prefers-reduced-motion:reduce){.nav-tab,.card{animation:none!important;transition:none!important}}
+
 </style></head>
 <body><main>
 <header class="top"><div class="top-heading"><div class="brand"><span class="gold">◆</span> AUTOMATON <span class="brand-divider">/</span> VELTRIX LIVE</div><div class="sub">Metals intelligence · execution oversight</div></div><div class="top-actions"><button class="install-btn" id="installApp" type="button" aria-label="Install Gold Scalper app">＋ INSTALL</button><a class="pill" href="/tick-archive.html" aria-label="Open historical tick archive lab" style="text-decoration:none;color:var(--gold)">TICK DATA</a><a class="pill" href="/historical-replay.html" aria-label="Open historical replay console" style="text-decoration:none;color:var(--gold)">REPLAY</a><div class="pill safe-mode-pill" id="modePill"><span class="safe-mode-dot"></span> SAFE MODE</div></div></header>
@@ -135,7 +157,7 @@ main{width:auto;max-width:none;margin:0;padding:94px 30px 42px 282px;min-height:
 <p class="notice">This panel shows scheduled USD economic releases that can move Gold and Silver—not live geopolitical headlines. Times are shown in Nigeria time (WAT). High-impact USD events are shown as risk information. The economic calendar may be unavailable or rate-limited; this warning does not block signal generation. Review upcoming high-impact USD releases manually before acting on any signal.</p>
 </section>
 <div class="actions" data-view="dashboard" style="margin:-2px 0 12px"><button class="btn primary wide" id="openFullChart" type="button">▣ OPEN FULL CHART</button></div>
-<section class="card" id="marketChart" data-view="chart"><div class="actions" style="margin-bottom:12px"><button class="btn" id="backToDashboard" type="button">← BACK TO DASHBOARD</button></div><h2>Full market chart</h2>
+<section class="card" id="marketChart" data-view="chart"><div class="actions" style="margin-bottom:12px"><button class="btn" id="backToDashboard" type="button">← BACK TO DASHBOARD</button></div><h2>Full market chart</h2><div class="chart-toolbar" aria-label="Chart controls"><input aria-label="Chart symbol" value="Q XAUUSD" readonly><button type="button" aria-label="Add symbol">＋</button><button type="button" class="selected">1m</button><button type="button">30m</button><button type="button">1h ⌵</button><button type="button" aria-label="Indicators">ƒx</button><button type="button" aria-label="Chart settings">⚙</button></div>
 <div style="width:100%;height:calc(100dvh - 190px);min-height:420px;border-radius:12px;overflow:hidden;background:#050506">
   <div class="tradingview-widget-container" style="height:100%;width:100%">
     <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
@@ -156,12 +178,12 @@ main{width:auto;max-width:none;margin:0;padding:94px 30px 42px 282px;min-height:
 <div class="field wide"><label for="scalpInstrument">Chart symbol (visual reference only)</label><select id="scalpInstrument"><option value="XAUUSD">XAUUSD · Gold</option><option value="XAGUSD">XAGUSD · Silver</option></select></div>
 <div class="field"><label for="balance">Account balance</label><input id="balance" type="number" min="0" step="0.01" value="1000"></div>
 <div class="field"><label for="currency">Account currency</label><select id="currency"><option>USD</option><option>NGN</option><option>EUR</option><option>GBP</option></select></div>
-<div class="field"><label for="riskPct">Risk per trade (%)</label><input id="riskPct" type="number" min="0.1" max="1" step="0.1" value="0.5"></div>
+<div class="field"><label for="riskPct">Risk per trade (%)</label><input id="riskPct" type="number" min="0.1" max="1" step="0.1" value="1"></div>
 <div class="field"><label for="minQuality">Minimum signal quality</label><select id="minQuality"><option value="65">65 / 100</option><option value="70" selected>70 / 100</option><option value="75">75 / 100</option><option value="80">80 / 100</option></select></div>
 
-<div class="field"><label for="strategyMode">Strategy model</label><select id="strategyMode"><option value="MSNR_SMC">MSNR + SMC (H1/M15 structure)</option><option value="EMA_RIBBON_RSI">EMA Ribbon + RSI (intraday)</option></select><p class="notice">EMA Ribbon + RSI: EMA 9/21/50 alignment, completed candle crosses EMA9, RSI(14) confirms above/below 50, ATR(14) sets risk.</p></div>
-<div class="field"><label for="timeframe">Setup timeframe</label><select id="timeframe"><option value="M15">M15</option><option value="M5">M5</option></select></div>
-<div class="field"><label for="atrTargetMultiple">EMA Ribbon target</label><select id="atrTargetMultiple"><option value="3">3× ATR (1.5R)</option><option value="4" selected>4× ATR (2R)</option></select></div>
+<div class="field"><label for="strategyMode">Strategy model</label><select id="strategyMode"><option value="MSNR_SMC">MSNR + SMC (H1/M15 structure)</option><option value="EMA_RIBBON_RSI" selected>EMA Ribbon + RSI (intraday)</option></select><p class="notice">EMA Ribbon + RSI: EMA 9/21/50 alignment, completed candle crosses EMA9, RSI(14) confirms above/below 50, ATR(14) sets risk.</p></div>
+<div class="field"><label for="timeframe">Setup timeframe</label><select id="timeframe"><option value="M15" selected>M15</option><option value="M5">M5</option></select></div>
+<div class="field"><label for="atrTargetMultiple">EMA Ribbon target</label><select id="atrTargetMultiple"><option value="3" selected>3× ATR (1.5R)</option><option value="4">4× ATR (2R)</option></select></div>
 <div class="field"><label for="mode">Signal handling</label><select id="mode"><option value="manual" selected>Manual review only</option></select></div>
 <div class="field"><label for="scanMode">Monitoring schedule</label><select id="scanMode"><option value="session">Selected hours</option><option value="24h" selected>24-hour monitoring</option></select></div>
 <div class="field"><label for="sessionStart">Session starts (Lagos time)</label><input id="sessionStart" type="time" value="08:00"></div>
@@ -179,17 +201,17 @@ main{width:auto;max-width:none;margin:0;padding:94px 30px 42px 282px;min-height:
 <div class="field wide"><label for="outcomeSignal">Signal reference</label><select id="outcomeSignal"><option value="">Load signal history first</option></select></div>
 <div class="field"><label for="outcomeValue">Outcome</label><select id="outcomeValue"><option value="" disabled selected>Choose a journal status</option><option value="TAKEN">Taken / currently open</option><option value="WIN">Win</option><option value="LOSS">Loss</option><option value="BREAKEVEN">Breakeven</option><option value="NOT_TAKEN">Not taken</option><option value="CANCELLED">Cancelled</option></select></div>
 <div class="field"><label for="realizedR">Realized R (optional)</label><input id="realizedR" type="number" step="0.1" min="-20" max="20" placeholder="e.g. 2 or -1"></div>
-<div class="field wide"><label for="outcomeNotes">Notes (optional)</label><input id="outcomeNotes" type="text" maxlength="500" placeholder="e.g. spread, slippage, early exit"></div>
+<div class="field wide"><label for="outcomeNotes">Notes (optional)</label><textarea id="outcomeNotes" maxlength="500" rows="3" placeholder="e.g. spread, slippage, early exit"></textarea></div>
 </div>
 <div class="actions"><button class="btn" id="loadOutcomes">LOAD SIGNAL HISTORY</button><button class="btn primary" id="saveOutcome">SAVE OUTCOME</button></div>
 <div class="log" id="outcomeStats">No forward-test outcome statistics loaded.</div>
 </section>
 <section class="card" id="activityResults" data-view="activity"><h2>Activity / results</h2><div class="actions" style="margin-bottom:10px"><button class="btn" id="refreshScalpingEvents" type="button">↻ REFRESH LIVE EVENT JOURNAL</button></div><div class="log" id="scalpingEventSummary">Live scalping event journal has not been loaded.</div>
-<div class="actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0">
+<div class="settings" style="margin:10px 0">
 <select id="outcomeSymbol"><option value="XAUUSD">Gold · XAUUSD</option><option value="XAGUSD">Silver · XAGUSD</option></select>
-<input id="outcomePositionId" type="text" placeholder="MT5 position ID from POSITION_OPENED event" style="min-width:260px;max-width:100%">
+<input id="outcomePositionId" type="text" placeholder="MT5 position ID from POSITION_OPENED 📄" style="min-width:260px;max-width:100%">
 <input id="outcomeRealizedR" type="number" step="0.01" placeholder="Realized R after costs" style="max-width:190px">
-<button class="btn" id="saveScalpingOutcome" type="button">RECORD CLOSED TRADE RESULT</button>
+<button class="btn wide" id="saveScalpingOutcome" type="button">RECORD CLOSED TRADE RESULT</button>
 </div>
 <div class="log" id="outcomeSaveStatus">Record the final net R multiple after the MT5 position is closed.</div>
 <div id="scalpingEventList" class="news-events"><div class="news-empty">No journal events loaded.</div></div><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
