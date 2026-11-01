@@ -512,8 +512,9 @@ class FloatingAssistantService : Service() {
         virtualDisplay = null
         try { imageReader?.setOnImageAvailableListener(null, null); imageReader?.close() } catch (_: Exception) {}
         imageReader = null
-        try { mediaProjection?.stop() } catch (_: Exception) {}
+        val projection = mediaProjection
         mediaProjection = null
+        try { projection?.stop() } catch (_: Exception) {}
         try { ocrThread?.quitSafely() } catch (_: Exception) {}
         ocrThread = null
     }
