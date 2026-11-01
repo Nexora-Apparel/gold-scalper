@@ -66,6 +66,7 @@ class FloatingAssistantService : Service() {
         worker.execute {
             var lastSyncAt = 0L
             while (!Thread.currentThread().isInterrupted) {
+                mobileEngine?.checkTimeouts()
                 val fresh = feedHealthy && System.currentTimeMillis() - lastTickAt <= 5000
                 if (ownerSession.hasSession() && System.currentTimeMillis() - lastSyncAt >= 10000) {
                     lastSyncAt = System.currentTimeMillis()
