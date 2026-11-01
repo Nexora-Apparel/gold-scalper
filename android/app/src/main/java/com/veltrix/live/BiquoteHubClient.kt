@@ -36,7 +36,7 @@ class BiquoteHubClient(
                     }
                 }
                 hub.start().blockingAwait(15, TimeUnit.SECONDS)
-                hub.invoke(Void::class.java, "Subscribe", listOf(symbol)).blockingAwait(10, TimeUnit.SECONDS)
+                hub.invoke("Subscribe", listOf(symbol)).blockingAwait(10, TimeUnit.SECONDS)
                 retrySeconds = 1L
                 onState("Subscribed to " + symbol)
             } catch (error: Exception) {
