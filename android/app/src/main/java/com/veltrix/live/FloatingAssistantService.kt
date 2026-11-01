@@ -160,6 +160,7 @@ class FloatingAssistantService : Service() {
             }
         }
         hub = BiquoteHubClient(symbol, { tick ->
+            if (!tick.live) engine.onFeedStale()
             engine.onTick(tick)
             lastTickAt = System.currentTimeMillis()
             feedHealthy = tick.live
