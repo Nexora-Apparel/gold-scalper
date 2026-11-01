@@ -65,3 +65,24 @@ test("performance metrics include drawdown and symbol/session/quality breakdowns
   assert.ok(result.bySession.some((x) => x.key === "Asia (00–08 WAT)"));
   assert.ok(result.byQualityBand.some((x) => x.key === "90+"));
 });
+
+
+test("accepts TAKEN as an open trade journal state without counting it as a closed performance result", () => {
+  const saved = validateOutcomeInput({ signalRef: "gold-open-1", outcome: "TAKEN", notes: "Entered manually; awaiting exit." });
+  assert.equal(saved.ok, true);
+  assert.equal(saved.value.outcome, "TAKEN");
+  assert.equal(summarizeOutcomes([{ outcome: "TAKEN", realizedR: null }]).openTrades, 1);
+  assert.equal(summarizeOutcomes([{ outcome: "TAKEN", realizedR: null }]).performanceSampleSize, 0);
+});
+
+test("counts skipped signals separately from open and closed trades", () => {
+  const summary = summarizeOutcomes([
+    { outcome: "TAKEN", realizedR: null },
+    { outcome: "NOT_TAKEN", realizedR: null },
+    { outcome: "WIN", realizedR: 2 }
+  ]);
+  assert.equal(summary.openTrades, 1);
+  assert.equal(summary.notTaken, 1);
+  assert.equal(summary.decided, 1);
+  assert.equal(summary.netR, 2);
+});
