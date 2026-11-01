@@ -7,7 +7,7 @@ import java.time.Instant
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-data class LiveTick(val bid: Double, val ask: Double, val live: Boolean)
+data class LiveTick(val symbol: String, val bid: Double, val ask: Double, val mid: Double, val spread: Double, val timestampMillis: Long, val live: Boolean)
 
 class BiquoteHubClient(
     private val symbol: String,
@@ -55,8 +55,10 @@ class BiquoteHubClient(
             val marketState = json.get("marketState")?.asString ?: "unknown"
             val timestamp = json.get("timestamp")?.asString ?: return
             val age = System.currentTimeMillis() - Instant.parse(timestamp).toEpochMilli()
-            val live = bid > 0 && ask > bid && !stale && marketState == "open" && age in -1000..1500
-            onTick(LiveTick(bid, ask, live))
+            val mid = json.get("mid")?.asDouble ?: (bid + ask) / 2.0
+            val spread = json.get("spread")?.asDouble ?: (ask - bid)
+            val live = bid > 0 && ask > bid && mid > 0 && spread >= 0 && !stale && marketState == "open" && age in -1000..1500
+            onTick(LiveTick(symbol, bid, ask, mid, spread, Instant.parse(timestamp).toEpochMilli(), live))
         } catch (_: Exception) {
             onState("Invalid tick payload · feed rejected")
         }
