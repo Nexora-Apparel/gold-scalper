@@ -143,11 +143,14 @@ class FloatingAssistantService : Service() {
                 prefs.edit().putString("pending_signal_event_id", journalEventId)
                     .putString("pending_signal_side", side)
                     .putLong("pending_signal_at", payload.optLong("signalAt", System.currentTimeMillis()))
-                    .putFloat("pending_signal_confidence", payload.optDouble("confidence", 0.0).toFloat()).apply()
+                    .putFloat("pending_signal_confidence", payload.optDouble("confidence", 0.0).toFloat())
+                    .putFloat("pending_signal_mid", payload.optDouble("signalMid", 0.0).toFloat())
+                    .putFloat("pending_signal_spread", payload.optDouble("signalSpread", 0.0).toFloat()).apply()
             } else if (eventType == "MISSED_OPPORTUNITY") {
                 pendingSignalEventId = null
                 prefs.edit().remove("pending_signal_event_id").remove("pending_signal_side")
-                    .remove("pending_signal_at").remove("pending_signal_confidence").apply()
+                    .remove("pending_signal_at").remove("pending_signal_confidence")
+                    .remove("pending_signal_mid").remove("pending_signal_spread").apply()
             } else if (eventType == "ENGINE_STATE" && payload.optBoolean("signalAccepted")) {
                 val acceptedSignalId = pendingSignalEventId ?: prefs.getString("pending_signal_event_id", null)
                 val editor = prefs.edit().remove("pending_signal_event_id").remove("pending_signal_side")
@@ -213,7 +216,9 @@ class FloatingAssistantService : Service() {
         engine.restorePendingSignal(
             prefs.getString("pending_signal_side", null),
             prefs.getLong("pending_signal_at", 0L),
-            prefs.getFloat("pending_signal_confidence", 0f).toDouble()
+            prefs.getFloat("pending_signal_confidence", 0f).toDouble(),
+            prefs.getFloat("pending_signal_mid", 0f).toDouble(),
+            prefs.getFloat("pending_signal_spread", 0f).toDouble()
         )
         engine.restorePendingExit(
             prefs.getLong("pending_exit_at", 0L),
