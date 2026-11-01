@@ -22,7 +22,7 @@ The GitHub Actions validation workflow uploads this APK as the artifact named `v
 4. Grant Android's overlay permission.
 5. Approve Android's MediaProjection screen-capture prompt. Screen frames are processed locally with ML Kit; full-screen images are not uploaded.
 6. Start the floating assistant and open Exness MT5.
-7. Keep the Exness MT5 chart or Market Watch visible with the selected symbol and labelled Bid/Ask values. Local OCR attempts to match both sides and spread against the fresh provider quote. If the MT5 layout does not expose labelled Bid/Ask text, enter the current values in the manual verification fields. Signals remain blocked until a match is confirmed; verification expires after five minutes and is revoked on feed loss.
+7. Keep the Exness MT5 chart or Market Watch visible with the selected symbol and labelled Bid/Ask values. Local OCR attempts to match both sides and spread against the fresh provider quote. If the MT5 layout does not expose labelled Bid/Ask text, enter the current values in the manual verification fields. Signals remain blocked until a match is confirmed; verification expires after ten seconds without a fresh matching quote and is revoked on feed loss.
 8. Keep only one selected market and do not switch instruments while an MT5 position is detected.
 9. Any BUY/SELL/CLOSE recommendation is manual-review-only. The app never sends broker orders.
 
