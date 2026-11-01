@@ -391,6 +391,9 @@ class FloatingAssistantService : Service() {
             else intent?.getParcelableExtra("projection_data")
         if (resultCode == Activity.RESULT_OK && projectionData != null && mediaProjection == null) {
             startScreenObservation(resultCode, projectionData)
+        } else if (mediaProjection == null && intent?.action == null) {
+            latestText = "SCREEN OCR REQUIRES USER RE-AUTHORIZATION"
+            journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenObservation", "permission_reauthorization_required"))
         }
         return START_STICKY
     }
