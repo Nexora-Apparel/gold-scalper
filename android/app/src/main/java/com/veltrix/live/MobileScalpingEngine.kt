@@ -87,6 +87,15 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
+    fun restorePendingExit(at: Long, reason: String?) {
+        if (at > 0L && !reason.isNullOrBlank()) {
+            pendingExitAt = at
+            pendingExitReason = reason
+            pendingExitLogged = false
+        }
+    }
+
+    @Synchronized
     fun checkTimeouts(now: Long = System.currentTimeMillis()) {
         val pending = pendingSignal
         if (pending != null && now - pending.at >= 10000L) {
