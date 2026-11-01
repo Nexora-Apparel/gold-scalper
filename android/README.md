@@ -1,6 +1,22 @@
-# VELTRIX LIVE Android Companion
+# VELTRIX LIVE Android companion
+
+## Purpose
+
+VELTRIX LIVE is a manual-execution scalping copilot for XAUUSD and XAGUSD. It does not connect to an Exness trading account, submit orders, modify orders, or close orders. All recommendations require the user to act and confirm in Exness MT5.
+
+## Runtime
+
+- Android application ID: `com.veltrix.live`
+- Minimum Android: 8.0 (API 26); developed for the user's Android 11 device.
+- One selected instrument at a time: XAUUSD or XAGUSD.
+- Persistent market stream: biquote SignalR, running in a foreground service.
+- On-device tick engine: short-window momentum, rolling M1/M5/M15 context, spread and volatility gates.
+- Exness parity: new signals are blocked until the current biquote bid/ask matches the bid/ask read locally from MT5. Parity expires quickly and must be refreshed.
+- MT5 screen reading: user-authorized Android MediaProjection plus on-device ML Kit OCR. Captured frames are not uploaded.
+- Journal: local SQLite outbox, synced to the existing Vercel monolith after owner login.
 
 ## Build
+
 Requirements: JDK 17, Android SDK Platform 35, Gradle 8.9.
 
 From the repository root:
@@ -9,43 +25,32 @@ From the repository root:
 gradle -p android assembleDebug testDebugUnitTest
 ```
 
-The debug APK is generated at:
+The debug APK is generated at `android/app/build/outputs/apk/debug/app-debug.apk`. GitHub Actions builds and unit-tests the APK and uploads it as the `veltrix-live-android-debug` workflow artifact.
 
-`android/app/build/outputs/apk/debug/app-debug.apk`
+## First-run setup
 
-The GitHub Actions validation workflow uploads this APK as the artifact named `veltrix-live-android-debug` after a successful build.
+1. Install the debug APK and open VELTRIX LIVE.
+2. Select one market. The selected instrument is locked while a position is tracked.
+3. Connect the dashboard owner session using the existing dashboard password. This enables journal sync; local journaling works without it.
+4. Grant Android's “Display over other apps” permission for the floating dot.
+5. Start the assistant and approve Android's screen-capture prompt. Frames are processed locally.
+6. Open Exness MT5 and select the same symbol as the companion.
+7. Keep the MT5 bid/ask visible long enough for OCR to verify parity. Signals remain blocked if the prices do not match.
+8. Optional: allow unrestricted background running in Android battery settings. This can increase battery consumption.
+9. Use the companion only alongside an Exness demo account during validation.
 
-## First-run flow
-1. Install the debug APK on Android 8.0 or later.
-2. Enter the existing dashboard owner password to establish an encrypted session for journal upload.
-3. Select one instrument: XAUUSD or XAGUSD.
-4. Grant Android's overlay permission.
-5. Approve Android's MediaProjection screen-capture prompt. Screen frames are processed locally with ML Kit; full-screen images are not uploaded.
-6. Start the floating assistant and open Exness MT5.
-7. Keep the Exness MT5 chart or Market Watch visible with the selected symbol and labelled Bid/Ask values. Local OCR attempts to match both sides and spread against the fresh provider quote. If the MT5 layout does not expose labelled Bid/Ask text, enter the current values in the manual verification fields. Signals remain blocked until a match is confirmed; OCR-based verification expires after 2.5 seconds without a fresh match; manual checks expire after ten seconds; all verification is revoked on feed loss.
-8. Keep only one selected market and do not switch instruments while an MT5 position is detected.
-9. Use the MT5 trade journal controls to register a position if OCR misses it, then record its exit price and realized R when closed. The journal does not submit broker orders.
-10. On Android 11, set battery use to Unrestricted/Don't optimize and allow background activity or auto-start if the device offers those controls; OEM battery managers can still stop foreground services.
-11. Any BUY/SELL/CLOSE recommendation is manual-review-only. The app never sends broker orders.
+## Operating rules
 
-## Floating indicator
-- Pulsing red: fresh stream and analysis active.
-- Yellow: feed stale, disconnected or unavailable.
-- Grey: decision engine paused.
-- Tap the dot to open/close the panel. Tap the panel to pause/resume decisions.
+- Red dot: feed active; pulsing indicates analysis. Amber: feed or verification issue. Grey: paused.
+- BUY NOW / SELL NOW are manual-review recommendations, not orders.
+- CLOSE NOW is a high-priority manual MT5 alert. The assistant never closes the trade itself.
+- A stale or mismatched feed blocks new entries and produces an unverified-position warning.
+- A position is not marked closed merely because OCR fails to see it. The parser requires three consecutive explicit “no open positions” frames.
+- Signals, no-trade states, missed opportunities, positions, exit recommendations, unconfirmed exits, feed issues and manually entered outcomes are journaled locally.
+- Manual position open/close controls are available if MT5 OCR cannot confidently read a trade.
+- Do not switch instruments while a position is open. The companion enforces this lock.
+- Stop the assistant only when you are ready to stop live monitoring. If a position remains tracked, shutdown raises a critical warning to check MT5 manually.
 
-## Data handling
-- SQLite stores structured events locally until the authenticated dashboard session can upload them.
-- OCR runs on-device. The app sends parsed position fields and event metadata, never the screen image.
-- The owner session cookie is stored using Android EncryptedSharedPreferences.
-- If Android restarts the service and invalidates MediaProjection, screen observation requires fresh user consent.
+## Validation boundary
 
-## Known constraints
-- biquote is a provisional external feed, not verified as the user's exact Exness execution feed. Manual spot verification is required and does not prove continuous feed parity.
-- OCR parsing must be physically validated against the installed Exness MT5 layout. Quote matching depends on visible, labelled Bid/Ask text or the manual verification fallback. The current parser tracks one detected position; multiple simultaneous positions are not yet supported.
-- Signal logic is experimental and intentionally fail-closed. It requires at least 15 completed contiguous M1 bars for M15 context plus completed M1 structure; early runtime may show NO_TRADE.
-- No 90% accuracy or profitability is claimed. Run at least two months on demo and record every closed trade's net realized R after fees and slippage before considering live reliance.
-- A human must physically test overlay, MediaProjection, OCR accuracy, Exness quote matching, background behavior and reconnection on the target Android device.
-
-
-MT5 OCR reads visible symbol/timeframe and rejects screen observations that conflict with the selected instrument. It only confirms positions when the Trade tab, side and entry price are explicit.
+CI compilation and unit tests do not establish live feed availability, broker quote parity, OCR reliability on every MT5 layout, trading profitability or accuracy. Run the full two-month demo validation before relying on recommendations. Track net R after spread/commission/slippage, win rate, false positives, missed exits, latency, feed uptime and drawdown. No target accuracy is guaranteed.
