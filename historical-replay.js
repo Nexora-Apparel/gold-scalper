@@ -40,16 +40,19 @@ function parseSignals(text, filename, symbol) {
     const lines = text.replace(/^\uFEFF/, "").trim().split(/\r?\n/);
     const headers = lines.shift().split(",").map((v) => v.trim().toLowerCase());
     const indexes = Object.fromEntries(headers.map((v, i) => [v, i]));
-    if (["timestamp", "symbol", "side"].some((key) => indexes[key] === undefined)) throw new Error("Signal CSV requires timestamp,symbol,side columns; id is optional.");
+    if (["timestamp", "symbol", "side", "provider"].some((key) => indexes[key] === undefined)) throw new Error("Signal CSV requires timestamp,symbol,side,provider columns; id is optional.");
     signals = lines.filter(Boolean).map((line, index) => {
       if (line.includes('"')) throw new Error("Quoted CSV fields are not supported in signal logs; use plain comma-separated fields.");
       const cells = line.split(",");
       if (cells.length !== headers.length) throw new Error("Signal CSV column mismatch at data row " + (index + 1) + ".");
-      return { id: indexes.id === undefined ? null : cells[indexes.id].trim(), timestamp: cells[indexes.timestamp].trim(), symbol: cells[indexes.symbol].trim(), side: cells[indexes.side].trim().toUpperCase() };
+      return { id: indexes.id === undefined ? null : cells[indexes.id].trim(), timestamp: cells[indexes.timestamp].trim(), symbol: cells[indexes.symbol].trim(), side: cells[indexes.side].trim().toUpperCase(), provider: cells[indexes.provider].trim() };
     });
-    metadata = { sourceReference: filename, strategy: "imported_signal_log" };
+    const providers = [...new Set(signals.map((signal) => signal.provider).filter(Boolean))];
+    if (providers.length !== 1 || signals.some((signal) => !signal.provider)) throw new Error("All signal CSV rows must identify one consistent provider.");
+    metadata = { sourceReference: filename, strategy: "imported_signal_log", provider: providers[0] };
   } else throw new Error("Import a .json or .csv signal log.");
   if (!metadata || typeof metadata.sourceReference !== "string" || !metadata.sourceReference.trim()) throw new Error("Signal-log provenance is required in metadata.sourceReference.");
+  if (typeof metadata.provider !== "string" || !metadata.provider.trim()) throw new Error("Signal-log provider is required so cross-provider replay can be blocked.");
   if (!Array.isArray(signals) || !signals.length || signals.length > 5000) throw new Error("Signal log must contain 1–5,000 signals.");
   const clean = [];
   for (let i = 0; i < signals.length; i++) {
@@ -63,7 +66,7 @@ function parseSignals(text, filename, symbol) {
     clean.push({ id: typeof item.id === "string" ? item.id : "signal-" + (i + 1), symbol, side, timestamp: new Date(timestampMs).toISOString(), timestampMs });
   }
   clean.sort((a, b) => a.timestampMs - b.timestampMs);
-  return { metadata: { sourceReference: metadata.sourceReference, strategy: metadata.strategy || "unspecified", provider: typeof metadata.provider === "string" ? metadata.provider : null }, signals: clean };
+  return { metadata: { sourceReference: metadata.sourceReference, strategy: metadata.strategy || "unspecified", provider: metadata.provider.trim() }, signals: clean };
 }
 function partitionQuotes(quotes, start, end) {
   return quotes.filter((q) => {
