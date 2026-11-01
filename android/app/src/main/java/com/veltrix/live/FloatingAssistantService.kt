@@ -79,6 +79,7 @@ class FloatingAssistantService : Service() {
         worker.execute {
             var lastSyncAt = 0L
             while (!Thread.currentThread().isInterrupted) {
+                try {
                 mobileEngine?.checkTimeouts()
                 val fresh = feedHealthy && System.currentTimeMillis() - lastTickAt <= 5000
                 if (feedHealthy && !fresh) {
@@ -114,7 +115,15 @@ class FloatingAssistantService : Service() {
                     }
                     panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
                 }
-                Thread.sleep(1000)
+                } catch (error: Exception) {
+                    if (Thread.currentThread().isInterrupted) break
+                    latestText = "WATCHDOG RECOVERING · " + (error.message ?: "internal monitoring error")
+                    Handler(Looper.getMainLooper()).post { updateNotification(latestText) }
+                }
+                try { Thread.sleep(1000) } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    break
+                }
             }
         }
     }
