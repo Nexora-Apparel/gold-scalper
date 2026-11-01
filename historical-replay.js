@@ -85,9 +85,11 @@ async function loadArchives() {
     archiveSelect.append(option);
   }
   selectedArchive = await exportArchive(archiveSelect.value);
+  journalSignalBundle = null;
   runButton.disabled = false;
 }
 archiveSelect.addEventListener("change", async () => {
+  journalSignalBundle = null;
   selectedArchive = await exportArchive(archiveSelect.value);
   message(selectedArchive ? "Selected immutable local archive " + archiveSelect.value.slice(0, 16) + "…" : "Archive unavailable.", !selectedArchive);
 });
