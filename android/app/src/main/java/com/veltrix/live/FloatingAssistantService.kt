@@ -158,7 +158,7 @@ class FloatingAssistantService : Service() {
                     .putString("pending_signal_side", side)
                     .putLong("pending_signal_at", payload.optLong("signalAt", System.currentTimeMillis()))
                     .putFloat("pending_signal_confidence", payload.optDouble("confidence", 0.0).toFloat())
-                    .putFloat("pending_signal_mid", payload.optDouble("signalMid", 0.0).toFloat())
+                    .putFloat("pending_signal_mid", payload.optDouble("signalEntryPrice", payload.optDouble("signalMid", 0.0)).toFloat())
                     .putFloat("pending_signal_spread", payload.optDouble("signalSpread", 0.0).toFloat()).apply()
             } else if (eventType == "MISSED_OPPORTUNITY") {
                 pendingSignalEventId = null
