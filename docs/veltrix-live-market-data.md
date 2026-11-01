@@ -102,3 +102,5 @@ lib/scalping-historical-replay.js evaluates timestamped signals against chronolo
 ## Production signal eligibility
 
 The Android production foreground service now instantiates the mobile engine with broker-quote parity required. BUY/SELL generation is blocked unless a fresh user-authorised MT5 OCR Bid/Ask observation is corroborated against the independent Biquote reference within the instrument tolerance. Missing, expired, or mismatched observations fail closed. The signal's indicative entry reference uses Ask for BUY and Bid for SELL; reference-feed-only development mode remains separate and is not enabled by the production service. This corroboration is not proof of an executable fill, so execution remains manual.
+
+Signal events also carry the MT5 observation timestamp, quote age, executable-side entry reference (Ask for BUY, Bid for SELL) and source label. The Android notification displays that side-specific reference and still requires the user to confirm the live quote in MT5 before acting.
