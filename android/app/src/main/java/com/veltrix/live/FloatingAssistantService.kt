@@ -60,6 +60,7 @@ class FloatingAssistantService : Service() {
     private var ocrThread: HandlerThread? = null
     private var lastOcrAt = 0L
     private var lastPositionSignature: String? = null
+    private var lastScreenTimeframe: String? = null
     @Volatile private var pendingSignalEventId: String? = null
     private var activePositionId: String? = null
     private var missingPositionFrames = 0
@@ -363,7 +364,12 @@ class FloatingAssistantService : Service() {
             latestText = "MT5 SCREEN SYMBOL MISMATCH · SELECT " + symbol
             return
         }
-        if (snapshot.quoteDetected && snapshot.symbol == (prefs.getString("symbol", "XAUUSD") ?: "XAUUSD") && snapshot.bid != null && snapshot.ask != null) {
+        if (snapshot.timeframe != null && snapshot.timeframe != lastScreenTimeframe) {
+            lastScreenTimeframe = snapshot.timeframe
+            journal.record("ENGINE_STATE", symbol, JSONObject().put("mt5ScreenSymbol", symbol)
+                .put("mt5ScreenTimeframe", snapshot.timeframe).put("rawScreenUploaded", false))
+        }
+        if (snapshot.quoteDetected && snapshot.symbol == symbol && snapshot.bid != null && snapshot.ask != null) {
             val matched = mobileEngine?.verifyExnessQuote(snapshot.bid, snapshot.ask) == true
             if (matched) latestText = "EXNESS MT5 QUOTE MATCHED · SIGNAL GATE OPEN"
             else if (feedHealthy) latestText = "EXNESS QUOTE MISMATCH · NO SIGNAL"
