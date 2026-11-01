@@ -263,13 +263,15 @@ class FloatingAssistantService : Service() {
     private fun handleScreenText(text: String) {
         val snapshot = Mt5ScreenParser.parse(text)
         val symbol = snapshot.symbol ?: (prefs.getString("symbol", "XAUUSD") ?: "XAUUSD")
-        if (snapshot.noOpenPositions && lastPositionSignature != null) {
-            val fields = lastPositionSignature!!.split("|")
-            val closedSide = fields.getOrNull(1)
-            val payload = JSONObject().put("source", "user_authorized_local_mt5_screen_ocr")
-                .put("closureEvidence", "explicit_no_open_positions_text")
-                .put("confidence", 0.9).put("rawScreenUploaded", false)
-            journal.record("POSITION_CLOSED", symbol, payload, if (closedSide == "BUY" || closedSide == "SELL") closedSide else null)
+        if (snapshot.noOpenPositions) {
+            if (lastPositionSignature != null) {
+                val fields = lastPositionSignature!!.split("|")
+                val closedSide = fields.getOrNull(1)
+                val payload = JSONObject().put("source", "user_authorized_local_mt5_screen_ocr")
+                    .put("closureEvidence", "explicit_no_open_positions_text")
+                    .put("confidence", 0.9).put("rawScreenUploaded", false)
+                journal.record("POSITION_CLOSED", symbol, payload, if (closedSide == "BUY" || closedSide == "SELL") closedSide else null)
+            }
             mobileEngine?.clearPosition()
             prefs.edit().putBoolean("position_active", false).apply()
             lastPositionSignature = null
