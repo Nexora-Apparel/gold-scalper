@@ -123,9 +123,12 @@ class MobileScalpingEngine(
     fun onTick(tick: LiveTick) {
         checkTimeouts()
         if (tick.symbol != symbol) return
-        if (!tick.live) {
-            latestTick = tick
-            evaluatePositionExit(tick, "QUIET", 1.0, null, 0.0)
+        val incomingAge = System.currentTimeMillis() - tick.timestampMillis
+        if (!tick.live || incomingAge !in -1000L..1500L) {
+            if (tick.live) onFeedStale()
+            val staleTick = tick.copy(live = false)
+            latestTick = staleTick
+            evaluatePositionExit(staleTick, "QUIET", 1.0, null, 0.0)
             val staleFingerprint = "NO_TRADE|quote_not_live_or_fresh"
             if (staleFingerprint != lastFingerprint) {
                 lastFingerprint = staleFingerprint
