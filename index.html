@@ -330,5 +330,5 @@ installButton.addEventListener('click',async()=>{
 });
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}
 
-loadSettings();refresh();refreshNews();updateSessionFields();setInterval(()=>{if(!currentTask)refresh()},15000);setInterval(()=>{if(!currentTask)refreshNews()},300000);
+loadSettings().then(renderTradingViewChart);refresh();refreshNews();updateSessionFields();setInterval(()=>{if(!currentTask)refresh()},15000);setInterval(()=>{if(!currentTask)refreshNews()},300000);
 </script></body></html>
