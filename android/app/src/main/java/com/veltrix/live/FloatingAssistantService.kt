@@ -144,7 +144,7 @@ class FloatingAssistantService : Service() {
         }
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
         pendingSignalEventId = prefs.getString("pending_signal_event_id", null)
-        val engine = MobileScalpingEngine(symbol) { eventType, side, payload ->
+        val engine = MobileScalpingEngine(symbol, requireBrokerQuoteParity = true) { eventType, side, payload ->
             if (eventType == "EXIT_NOT_CONFIRMED" || eventType == "EXIT_RECOMMENDATION_CLEARED") {
                 payload.put("positionId", activePositionId ?: prefs.getString("active_position_id", null) ?: JSONObject.NULL)
                 payload.put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
