@@ -97,3 +97,37 @@ test("MFE and MAE include the initial Bid/Ask spread at entry", () => {
   assert.equal(result.results[0].maxFavourableMovePriceUnits, 0.3);
   assert.equal(result.results[0].maxAdverseMovePriceUnits, -0.2);
 });
+
+test("reports gross and net outcomes when an additional round-trip cost is supplied", () => {
+  const result = replayScalpingSignals({
+    symbol: "XAUUSD",
+    quotes: [q(0, 2650, 2650.2), q(5000, 2650.5, 2650.7)],
+    signals: [{ symbol: "XAUUSD", side: "BUY", timestamp: new Date(base).toISOString() }],
+    horizonsSeconds: [5],
+    roundTripAdditionalCostPriceUnits: 0.35
+  });
+  const row = result.results[0];
+  assert.equal(row.grossOutcome, "WIN");
+  assert.equal(row.grossMovePriceUnits, 0.3);
+  assert.equal(row.netMovePriceUnits, -0.05);
+  assert.equal(row.netOutcome, "LOSS");
+  assert.equal(result.summary[0].netHitRatePercent, 0);
+});
+
+test("leaves net results unavailable when additional round-trip costs are not supplied", () => {
+  const result = replayScalpingSignals({
+    symbol: "XAUUSD",
+    quotes: [q(0, 2650, 2650.2), q(5000, 2650.5, 2650.7)],
+    signals: [{ symbol: "XAUUSD", side: "BUY", timestamp: new Date(base).toISOString() }],
+    horizonsSeconds: [5]
+  });
+  assert.equal(result.results[0].netMovePriceUnits, null);
+  assert.equal(result.summary[0].netHitRatePercent, null);
+});
+
+test("rejects negative or non-finite additional round-trip costs", () => {
+  assert.throws(() => replayScalpingSignals({
+    symbol: "XAUUSD", quotes: [q(0, 2650, 2650.2), q(5000, 2650.5, 2650.7)],
+    signals: [], roundTripAdditionalCostPriceUnits: -0.1
+  }), /non-negative price-unit/);
+});
