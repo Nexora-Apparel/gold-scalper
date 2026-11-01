@@ -119,7 +119,8 @@ class FloatingAssistantService : Service() {
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             } else if (eventType == "ENGINE_STATE" && payload.has("exnessQuoteVerification")) {
-                currentDecisionText = "EXNESS QUOTE " + payload.optString("exnessQuoteVerification") + " · SIGNALS BLOCKED UNTIL VERIFIED"
+                val verification = payload.optString("exnessQuoteVerification")
+                currentDecisionText = if (verification == "MATCHED") "EXNESS QUOTE MATCHED · SIGNAL GATE OPEN" else "EXNESS QUOTE " + verification + " · SIGNALS BLOCKED"
                 latestText = currentDecisionText ?: latestText
                 updateNotification(latestText)
             }
