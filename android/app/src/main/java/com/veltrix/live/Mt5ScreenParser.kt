@@ -3,6 +3,7 @@ package com.veltrix.live
 data class Mt5ScreenSnapshot(
     val tradeTabVisible: Boolean,
     val symbol: String?,
+    val timeframe: String?,
     val side: String?,
     val volumeLots: Double?,
     val entryPrice: Double?,
@@ -29,6 +30,7 @@ object Mt5ScreenParser {
             Regex("\\bXAGUSD\\b|\\bSILVER\\b").containsMatchIn(all) -> "XAGUSD"
             else -> null
         }
+        val timeframe = Regex("\\b(M1|M5|M15|M30|H1|H4|D1|W1|MN1)\\b").find(all)?.groupValues?.get(1)
         val side = when {
             Regex("\\bBUY\\b").containsMatchIn(all) -> "BUY"
             Regex("\\bSELL\\b").containsMatchIn(all) -> "SELL"
@@ -63,6 +65,6 @@ object Mt5ScreenParser {
             tradeTab -> 0.35
             else -> 0.0
         }
-        return Mt5ScreenSnapshot(tradeTab, symbol, side, volume, entry, profit, bid, ask, quoteDetected, detected, noOpenPositions, confidence)
+        return Mt5ScreenSnapshot(tradeTab, symbol, timeframe, side, volume, entry, profit, bid, ask, quoteDetected, detected, noOpenPositions, confidence)
     }
 }
