@@ -6,10 +6,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="application-name" content="Gold Scalper">
+<meta name="application-name" content="VELTRIX LIVE">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
-<title>Gold Scalper · Signal Desk</title>
+<title>VELTRIX LIVE · Metals Scalping Copilot</title>
 <style>
 :root{color-scheme:dark;--bg:#000000;--card:#0b0b0e;--line:#27272d;--muted:#a1a1aa;--text:#f5f5f7;--gold:#e7bd55;--green:#35d49a;--red:#ff647c}
 *{box-sizing:border-box}body{margin:0;background:#000;font:15px system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);min-height:100vh}
@@ -113,22 +113,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <div style="width:100%;height:calc(100dvh - 190px);min-height:420px;border-radius:12px;overflow:hidden;background:#050506">
   <div class="tradingview-widget-container" style="height:100%;width:100%">
     <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-    <div class="tradingview-widget-copyright" style="font-size:10px;padding:4px 8px;color:#9aabc7"><a href="https://www.tradingview.com/symbols/XAUUSD/" rel="noopener nofollow" target="_blank" style="color:#9aabc7">XAUUSD chart by TradingView</a></div>
-    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-    {
-      "autosize": true,
-      "symbol": "FX_IDC:XAUUSD",
-      "interval": "15",
-      "timezone": "Etc/UTC",
-      "theme": "dark",
-      "style": "1",
-      "locale": "en",
-      "allow_symbol_change": true,
-      "studies": ["STD;EMA", "STD;RSI", "STD;ATR"],
-      "calendar": false,
-      "support_host": "https://www.tradingview.com"
-    }
-    </script>
+    <div class="tradingview-widget-copyright" id="tradingViewCopyright" style="font-size:10px;padding:4px 8px;color:#9aabc7"></div>
   </div>
 </div>
 <p class="notice">Use the symbol selector to switch between XAUUSD (Gold) and XAGUSD (Silver). EMA, RSI and ATR are visual chart indicators; the bot independently validates its own strategy inputs and market feed.</p>
@@ -142,6 +127,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <button class="btn wide" id="telegramTest">TEST BUY / SELL CARD PREVIEWS</button>
 </div><p class="notice">Telegram sends validated signal candidates when configured. No broker order execution or automatic trading is connected.</p></section>
 <section class="card" id="strategySettings" data-view="strategy"><h2>Strategy settings</h2><div class="settings">
+<div class="field wide"><label for="scalpInstrument">Market to scalp (one at a time)</label><select id="scalpInstrument"><option value="XAUUSD">XAUUSD · Gold</option><option value="XAGUSD">XAGUSD · Silver</option></select></div>
 <div class="field"><label for="balance">Account balance</label><input id="balance" type="number" min="0" step="0.01" value="1000"></div>
 <div class="field"><label for="currency">Account currency</label><select id="currency"><option>USD</option><option>NGN</option><option>EUR</option><option>GBP</option></select></div>
 <div class="field"><label for="riskPct">Risk per trade (%)</label><input id="riskPct" type="number" min="0.1" max="1" step="0.1" value="0.5"></div>
@@ -172,7 +158,15 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 <div class="actions"><button class="btn" id="loadOutcomes">LOAD SIGNAL HISTORY</button><button class="btn primary" id="saveOutcome">SAVE OUTCOME</button></div>
 <div class="log" id="outcomeStats">No forward-test outcome statistics loaded.</div>
 </section>
-<section class="card" id="activityResults" data-view="activity"><h2>Activity / results</h2><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
+<section class="card" id="activityResults" data-view="activity"><h2>Activity / results</h2><div class="actions" style="margin-bottom:10px"><button class="btn" id="refreshScalpingEvents" type="button">↻ REFRESH LIVE EVENT JOURNAL</button></div><div class="log" id="scalpingEventSummary">Live scalping event journal has not been loaded.</div>
+<div class="actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0">
+<select id="outcomeSymbol"><option value="XAUUSD">Gold · XAUUSD</option><option value="XAGUSD">Silver · XAGUSD</option></select>
+<input id="outcomePositionId" type="text" placeholder="MT5 position ID from POSITION_OPENED event" style="min-width:260px;max-width:100%">
+<input id="outcomeRealizedR" type="number" step="0.01" placeholder="Realized R after costs" style="max-width:190px">
+<button class="btn" id="saveScalpingOutcome" type="button">RECORD CLOSED TRADE RESULT</button>
+</div>
+<div class="log" id="outcomeSaveStatus">Record the final net R multiple after the MT5 position is closed.</div>
+<div id="scalpingEventList" class="news-events"><div class="news-empty">No journal events loaded.</div></div><div class="log" id="activity">Dashboard loaded. Backend status has not yet been verified.</div><p class="notice" id="footnote">Fail-closed mode: no fabricated quotes, signals, or connection states.</p></section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
@@ -234,7 +228,25 @@ async function refreshNews(){
 }
 $('refreshNews')?.addEventListener('click',async()=>{const b=$('refreshNews');b.disabled=true;try{await refreshNews()}finally{b.disabled=false}});
 function setStatus(id,text,ok=false){$(id).innerHTML='<i class="dot" style="background:'+(ok?'#4ade80':'#64748b')+'"></i>'+text}
-function settings(){return {balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),strategyMode:$('strategyMode').value,atrTargetMultiple:Number($('atrTargetMultiple').value),timeframe:$('timeframe').value,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:true}}
+function renderTradingViewChart(){
+ const symbol=$('scalpInstrument')?.value==='XAGUSD'?'XAGUSD':'XAUUSD';
+ const host=document.querySelector('#marketChart .tradingview-widget-container');
+ if(!host)return;
+ const widget=host.querySelector('.tradingview-widget-container__widget');
+ if(!widget)return;
+ widget.innerHTML='';
+ host.querySelectorAll('script[data-veltrix-tradingview]').forEach(node=>node.remove());
+ const config={autosize:true,symbol:'FX_IDC:'+symbol,interval:'1',timezone:'Etc/UTC',theme:'dark',style:'1',locale:'en',allow_symbol_change:true,studies:['STD;EMA','STD;RSI','STD;ATR'],calendar:false,support_host:'https://www.tradingview.com'};
+ const script=document.createElement('script');
+ script.type='text/javascript';script.async=true;script.dataset.veltrixTradingview='true';
+ script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+ script.textContent=JSON.stringify(config);
+ host.appendChild(script);
+ const credit=$('tradingViewCopyright');
+ if(credit)credit.innerHTML='<a href="https://www.tradingview.com/symbols/'+symbol+'/" rel="noopener nofollow" target="_blank" style="color:#9aabc7">'+symbol+' chart by TradingView</a>';
+}
+$('scalpInstrument')?.addEventListener('change',renderTradingViewChart);
+function settings(){return {scalpInstrument:$('scalpInstrument').value,balance:Number($('balance').value),currency:$('currency').value,riskPercent:Number($('riskPct').value),minQuality:Number($('minQuality').value),maxSignals:Number($('maxSignals').value),strategyMode:$('strategyMode').value,atrTargetMultiple:Number($('atrTargetMultiple').value),timeframe:$('timeframe').value,mode:'manual',scanMode:$('scanMode').value,sessionStart:$('sessionStart').value,sessionEnd:$('sessionEnd').value,goldEnabled:$('goldEnabled').checked,btcEnabled:$('btcEnabled').checked,majorsEnabled:$('majorsEnabled').checked,newsEnabled:true}}
 let lastAnalysisVerification=null;
 let currentTask=null;
 function setActivityState(label,state){const el=$("activityStatus");if(!el)return;el.innerHTML='<span class="activity-badge" data-state="'+state+'"><i class="dot '+(state==="working"?"pulse":"")+'"></i>'+label+"</span>"}
@@ -267,10 +279,47 @@ async function loadOutcomeHistory(){
 }
 $('loadOutcomes').addEventListener('click',async()=>{const b=$('loadOutcomes');b.disabled=true;$('outcomeStats').textContent='Loading recorded signals…';try{await loadOutcomeHistory()}catch(e){$('outcomeStats').textContent='Could not load outcome history: '+e.message}finally{b.disabled=false}});
 $('saveOutcome').addEventListener('click',async()=>{const signalRef=$('outcomeSignal').value;if(!signalRef){$('outcomeStats').textContent='Select a signal reference first.';return}const raw=$('realizedR').value;const body={signalRef,outcome:$('outcomeValue').value,realizedR:raw===''?null:Number(raw),notes:$('outcomeNotes').value};const b=$('saveOutcome');b.disabled=true;try{const r=await api('/api/outcomes',body);$('outcomeStats').textContent=r.message||'Outcome saved.';await loadOutcomeHistory()}catch(e){$('outcomeStats').textContent='Outcome not saved: '+e.message}finally{b.disabled=false}});
-async function loadSettings(){try{const r=await api('/api/settings');const s=r.settings||{};if(s.balance!==undefined)$('balance').value=s.balance;if(s.currency)$('currency').value=s.currency;if(s.riskPercent!==undefined)$('riskPct').value=s.riskPercent;if(s.minQuality!==undefined)$('minQuality').value=s.minQuality;if(s.maxSignals!==undefined)$('maxSignals').value=s.maxSignals;if(s.timeframe)$('timeframe').value=s.timeframe;if(s.strategyMode)$('strategyMode').value=s.strategyMode;if(s.atrTargetMultiple)$('atrTargetMultiple').value=String(s.atrTargetMultiple);if(s.scanMode)$('scanMode').value=s.scanMode;if(s.sessionStart)$('sessionStart').value=s.sessionStart;if(s.sessionEnd)$('sessionEnd').value=s.sessionEnd;updateSessionFields();if(s.goldEnabled!==undefined)$('goldEnabled').checked=s.goldEnabled;if(s.majorsEnabled!==undefined)$('majorsEnabled').checked=s.majorsEnabled;if(s.btcEnabled!==undefined)$('btcEnabled').checked=s.btcEnabled;if(s.newsEnabled!==undefined)$('newsEnabled').checked=s.newsEnabled}catch(e){$('activity').textContent='Could not load saved settings: '+e.message}}
+async function loadSettings(){try{const r=await api('/api/settings');const s=r.settings||{};if(s.scalpInstrument)$('scalpInstrument').value=s.scalpInstrument;if(s.balance!==undefined)$('balance').value=s.balance;if(s.currency)$('currency').value=s.currency;if(s.riskPercent!==undefined)$('riskPct').value=s.riskPercent;if(s.minQuality!==undefined)$('minQuality').value=s.minQuality;if(s.maxSignals!==undefined)$('maxSignals').value=s.maxSignals;if(s.timeframe)$('timeframe').value=s.timeframe;if(s.strategyMode)$('strategyMode').value=s.strategyMode;if(s.atrTargetMultiple)$('atrTargetMultiple').value=String(s.atrTargetMultiple);if(s.scanMode)$('scanMode').value=s.scanMode;if(s.sessionStart)$('sessionStart').value=s.sessionStart;if(s.sessionEnd)$('sessionEnd').value=s.sessionEnd;updateSessionFields();if(s.goldEnabled!==undefined)$('goldEnabled').checked=s.goldEnabled;if(s.majorsEnabled!==undefined)$('majorsEnabled').checked=s.majorsEnabled;if(s.btcEnabled!==undefined)$('btcEnabled').checked=s.btcEnabled;if(s.newsEnabled!==undefined)$('newsEnabled').checked=s.newsEnabled}catch(e){$('activity').textContent='Could not load saved settings: '+e.message}}
 function updateSessionFields(){const allDay=$('scanMode').value==='24h';$('sessionStart').disabled=allDay;$('sessionEnd').disabled=allDay;$('sessionStart').style.opacity=allDay?'.5':'1';$('sessionEnd').style.opacity=allDay?'.5':'1'}
 $('scanMode').addEventListener('change',updateSessionFields);
 
+async function refreshScalpingEvents(){
+ const summary=$('scalpingEventSummary'),list=$('scalpingEventList');
+ if(!summary||!list)return;
+ try{
+  const result=await api('/api/scalping-events?limit=50');
+  const events=Array.isArray(result.events)?result.events:[];
+  const stats=result.summary||{};
+  const counts=stats.counts||{};
+  summary.textContent='Lifetime events: '+(stats.totalEvents??events.length)+' · Closed positions: '+(stats.closedPositions??0)+' · Missed: '+(stats.missedOpportunities??0)+' · Unconfirmed closes: '+(stats.missedExitConfirmations??0)+' · Settled: '+(stats.settledTrades??0)+' · W/L/BE: '+(stats.wins??0)+'/'+(stats.losses??0)+'/'+(stats.breakevens??0)+' · Win rate: '+(stats.winRate==null?'n/a':stats.winRate+'%')+' · Net R: '+(stats.netR??0)+' · Avg R: '+(stats.averageR??'n/a')+' · Max DD: '+(stats.maxDrawdownR??0)+'R · '+(stats.bySymbol||[]).map(x=>x.symbol+': '+x.settled+' trades / '+x.netR+'R').join(' · ')+' · '+Object.entries(counts).map(([type,count])=>type+': '+count).join(' · ');
+  if(!events.length){list.innerHTML='<div class="news-empty">No live scalping events recorded yet. The Android stream runtime must be connected before live events appear.</div>';return}
+  list.innerHTML=events.map(event=>{
+   const detail=event.payload&&typeof event.payload==='object'?JSON.stringify(event.payload):'';
+   const time=event.occurredAt?new Date(event.occurredAt).toLocaleString('en-GB',{timeZone:'Africa/Lagos'}):'Time unavailable';
+   const recordButton=event.type==='POSITION_CLOSED'&&event.payload?.positionId?'<button class="btn" data-record-position="'+escapeHtml(event.payload.positionId)+'" data-symbol="'+escapeHtml(event.symbol)+'" type="button">RECORD THIS TRADE RESULT</button>':'';
+   return '<article class="news-event"><div class="news-event-top"><div class="news-event-title">'+escapeHtml(event.type)+' · '+escapeHtml(event.symbol)+(event.side?' · '+escapeHtml(event.side):'')+'</div><span class="news-impact">'+escapeHtml(event.type.replaceAll('_',' '))+'</span></div><div class="news-event-time">'+escapeHtml(time)+' WAT</div><div class="news-event-data">'+escapeHtml(detail.slice(0,900))+'</div>'+recordButton+'</article>';
+  }).join('');
+  list.querySelectorAll('[data-record-position]').forEach(button=>button.addEventListener('click',()=>{$('outcomePositionId').value=button.dataset.recordPosition;$('outcomeSymbol').value=button.dataset.symbol; $('outcomeRealizedR').focus();$('outcomeSaveStatus').textContent='Enter the final net realized R for this exact MT5 position.';}));
+ }catch(error){summary.textContent='Event journal unavailable: '+error.message;list.innerHTML='<div class="news-empty">No journal data was assumed. Verify owner session and database connection.</div>'}
+}
+$('refreshScalpingEvents')?.addEventListener('click',async()=>{const button=$('refreshScalpingEvents');button.disabled=true;try{await refreshScalpingEvents()}finally{button.disabled=false}});
+async function saveScalpingOutcome(){
+ const input=$('outcomeRealizedR'),status=$('outcomeSaveStatus'),button=$('saveScalpingOutcome');
+ const realizedR=Number(input?.value),positionId=$('outcomePositionId')?.value.trim();
+ if(!positionId){status.textContent='Enter the positionId shown in the matching POSITION_OPENED journal event.';return}
+ if(!Number.isFinite(realizedR)||input.value.trim()===''){status.textContent='Enter a valid realized R multiple.';return}
+ button.disabled=true;
+ try{
+  const symbol=$('outcomeSymbol')?.value||'XAUUSD';
+  const eventId='manual-outcome-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
+  const saved=await api('/api/scalping-events',[{eventId,type:'POSITION_OUTCOME_RECORDED',symbol,side:null,payload:{positionId,realizedR,outcomeSource:'manual_after_fees_and_slippage'}}]);
+  input.value='';$('outcomePositionId').value='';
+  status.textContent=saved.duplicateOutcomes>0?'An outcome is already recorded for position '+positionId+'. No duplicate was added.':'Closed-trade result saved for position '+positionId+'. Win rate and net R have been updated.';
+  await refreshScalpingEvents();
+ }catch(error){status.textContent='Outcome was not confirmed saved: '+error.message}
+ finally{button.disabled=false}
+}
+$('saveScalpingOutcome')?.addEventListener('click',saveScalpingOutcome);
 let deferredInstallPrompt=null;
 const installButton=$('installApp');
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;installButton.textContent='＋ INSTALL APP';});
@@ -281,5 +330,5 @@ installButton.addEventListener('click',async()=>{
 });
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}
 
-loadSettings();refresh();refreshNews();updateSessionFields();setInterval(()=>{if(!currentTask)refresh()},15000);setInterval(()=>{if(!currentTask)refreshNews()},300000);
+loadSettings().then(renderTradingViewChart);refresh();refreshNews();updateSessionFields();setInterval(()=>{if(!currentTask)refresh()},15000);setInterval(()=>{if(!currentTask)refreshNews()},300000);
 </script></body></html>
