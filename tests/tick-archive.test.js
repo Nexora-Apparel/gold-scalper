@@ -50,7 +50,7 @@ test("imports strict CSV with timestamp,bid,ask columns",()=>{
  const csv="timestamp,bid,ask\n2026-10-31T09:00:00Z,4000.1,4000.2\n2026-10-31T09:00:01Z,4000.2,4000.3\n2026-10-31T09:00:02Z,4000.3,4000.4\n2026-10-31T09:00:03Z,4000.4,4000.5\n2026-10-31T09:00:04Z,4000.5,4000.6\n2026-10-31T09:00:05Z,4000.6,4000.7\n2026-10-31T09:00:06Z,4000.7,4000.8\n2026-10-31T09:00:07Z,4000.8,4000.9\n2026-10-31T09:00:08Z,4000.9,4001.0\n2026-10-31T09:00:09Z,4001.0,4001.1";
  const result=parseArchiveFile({name:"sample.csv",text:csv,metadata});
  assert.equal(result.ok,true);
- assert.equal(result.manifest.tickCount,5);
+ assert.equal(result.manifest.tickCount,10);
 });
 
 test("rejects malformed CSV and missing provenance",()=>{
