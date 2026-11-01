@@ -41,13 +41,18 @@ test("validated archive output feeds the chronological replay engine directly", 
 });
 
 test("imports standard CSV tick exports and rejects malformed CSV", () => {
-  const csv = "timestamp,bid,ask,symbol\\n2026-10-01T10:00:00.000Z,2650.10,2650.20,XAUUSD\\n2026-10-01T10:00:00.250Z,2650.20,2650.30,XAUUSD\\n";
+  const csv = `timestamp,bid,ask,symbol
+2026-10-01T10:00:00.000Z,2650.10,2650.20,XAUUSD
+2026-10-01T10:00:00.250Z,2650.20,2650.30,XAUUSD
+`;
   const result = importHistoricalTickCsv({ metadata, csv });
   assert.equal(result.ok, true);
   assert.equal(result.manifest.tickCount, 2);
   assert.equal(result.quotes[1].provider, metadata.provider);
-  assert.equal(importHistoricalTickCsv({ metadata, csv: "timestamp,bid,ask\\n\\"unterminated,1,2" }).ok, false);
-  assert.equal(importHistoricalTickCsv({ metadata, csv: "timestamp,bid,ask\\n2026-10-01T10:00:00.000Z,1.2,1.3" }).ok, false);
+  assert.equal(importHistoricalTickCsv({ metadata, csv: `timestamp,bid,ask
+"unterminated,1,2` }).ok, false);
+  assert.equal(importHistoricalTickCsv({ metadata, csv: `timestamp,bid,ask
+2026-10-01T10:00:00.000Z,1.2,1.3` }).ok, false);
 });
 
 test("rejects OHLC data and missing provenance", () => {
