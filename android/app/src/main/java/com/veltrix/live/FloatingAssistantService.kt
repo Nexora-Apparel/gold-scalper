@@ -68,11 +68,17 @@ class FloatingAssistantService : Service() {
             while (!Thread.currentThread().isInterrupted) {
                 mobileEngine?.checkTimeouts()
                 val fresh = feedHealthy && System.currentTimeMillis() - lastTickAt <= 5000
+                if (feedHealthy && !fresh) {
+                    feedHealthy = false
+                    latestText = "STALE FEED · NO SIGNAL"
+                    val selected = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
+                    journal.record("FEED_ERROR", selected, JSONObject().put("reason", "tick_stream_stale").put("lastTickAt", lastTickAt))
+                    mobileEngine?.onFeedStale()
+                }
                 if (ownerSession.hasSession() && System.currentTimeMillis() - lastSyncAt >= 10000) {
                     lastSyncAt = System.currentTimeMillis()
                     try { ownerSession.syncJournal(journal) } catch (_: Exception) { }
                 }
-                if (feedHealthy && !fresh) latestText = "STALE FEED · NO SIGNAL"
                 Handler(Looper.getMainLooper()).post {
                     (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
                     panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE")
