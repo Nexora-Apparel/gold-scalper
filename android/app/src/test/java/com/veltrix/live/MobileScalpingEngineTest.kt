@@ -182,4 +182,28 @@ class MobileScalpingEngineTest {
     }
 
 
+
+    @Test fun repeatedMalformedQuotesDoNotSpamValidationState() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        repeat(3) {
+            engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4173.00, 0.15, System.currentTimeMillis(), true))
+        }
+        val rejectedStates = events.count {
+            it.first == "ENGINE_STATE" && it.second.optString("quoteValidation") == "REJECTED"
+        }
+        assertEquals(1, rejectedStates)
+    }
+
+    @Test fun validQuoteClearsPreviousQuoteValidationFailure() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4173.00, 0.15, System.currentTimeMillis(), true))
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, System.currentTimeMillis(), true))
+        val accepted = events.last { it.first == "ENGINE_STATE" && it.second.has("quoteValidation") }.second
+        assertEquals("ACCEPTED", accepted.getString("quoteValidation"))
+        assertTrue(accepted.getBoolean("signalGenerationEnabled"))
+    }
+
+
 }
