@@ -355,7 +355,7 @@ class FloatingAssistantService : Service() {
     }
 
     private fun handleScreenText(text: String) {
-        val snapshot = Mt5ScreenParser.parse(text)
+        val snapshot = Mt5ScreenParser.parse(text, prefs.getString("symbol", "XAUUSD"))
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
         if (snapshot.symbol != null && snapshot.symbol != symbol) {
             journal.record("ENGINE_STATE", symbol, JSONObject().put("screenSymbolMismatch", true)
