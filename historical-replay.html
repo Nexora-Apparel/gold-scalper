@@ -7,6 +7,7 @@
 <header class="top"><div><div class="brand"><span>◆</span> VELTRIX LIVE</div><div class="sub">Chronological Historical Replay Console</div></div><a class="back" href="/tick-archive.html">← TICK DATA</a></header>
 <section class="card"><h2>Replay configuration</h2>
 <label for="archiveSelect">Validated tick archive</label><select id="archiveSelect"></select><button id="refreshArchives" class="quiet">REFRESH ARCHIVES</button>
+<button id="loadJournalSignals" class="quiet" type="button">LOAD RECORDED SIGNALS FROM JOURNAL</button>
 <label for="signalFile">Historical signal log (.json or .csv · max 5 MB)</label><input id="signalFile" type="file" accept=".json,.csv,application/json,text/csv">
 <p class="notice">JSON format: {"metadata":{"sourceReference":"immutable signal export ID","strategy":"strategy version"},"signals":[{"id":"…","timestamp":"2026-10-31T09:30:00.123Z","symbol":"XAUUSD","side":"BUY"}]}. CSV columns: timestamp,symbol,side (optional id). These must be genuine timestamped outputs from the strategy being evaluated. The console does not manufacture signals.</p>
 <div class="row"><button id="runReplay">RUN CHRONOLOGICAL REPLAY</button><button id="exportReplay" class="quiet">EXPORT REPORT JSON</button></div></section>
