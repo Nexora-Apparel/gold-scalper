@@ -16,6 +16,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.graphics.Bitmap
 import android.graphics.Typeface
@@ -72,7 +73,11 @@ class FloatingAssistantService : Service() {
         super.onCreate()
         createNotificationChannel()
         prefs.edit().putBoolean("assistant_active", true).apply()
-        startForeground(7101, notification("Connecting to biquote market data"))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(7101, notification("Connecting to biquote market data"), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(7101, notification("Connecting to biquote market data"))
+        }
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         showFloatingDot()
         connectSelectedMarket()
@@ -355,6 +360,10 @@ class FloatingAssistantService : Service() {
             val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             val projection = manager.getMediaProjection(resultCode, data) ?: return
             mediaProjection = projection
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(7101, notification("Local MT5 screen observation active"),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+            }
             projection.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
                     stopScreenObservation()
