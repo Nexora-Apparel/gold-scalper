@@ -21,6 +21,21 @@ class MobileScalpingEngine(
     private var lastFingerprint = ""
     private var lastSignalAt = 0L
     private var lastMarketFingerprint = ""
+    private var activePosition: Pair<String, Double>? = null
+    private var lastExitFingerprint = ""
+
+    @Synchronized
+    fun setPosition(side: String, entryPrice: Double) {
+        if (side !in setOf("BUY", "SELL") || !entryPrice.isFinite() || entryPrice <= 0) return
+        activePosition = Pair(side, entryPrice)
+        lastExitFingerprint = ""
+    }
+
+    @Synchronized
+    fun clearPosition() {
+        activePosition = null
+        lastExitFingerprint = ""
+    }
 
     @Synchronized
     fun onTick(tick: LiveTick) {
@@ -91,6 +106,8 @@ class MobileScalpingEngine(
             }
         } else if (confidence < 0.72) reasons.add("confidence_below_threshold")
 
+        evaluatePositionExit(tick, volatility, spreadMultiple, direction, pressure)
+
         val marketFingerprint = listOf(tick.live, volatility, direction, reasons.joinToString(",")).joinToString("|")
         if (marketFingerprint != lastMarketFingerprint) {
             lastMarketFingerprint = marketFingerprint
@@ -118,6 +135,36 @@ class MobileScalpingEngine(
                 .put("executionEnabled", false)
                 .put("requiresManualMT5Confirmation", side != null)
             onEvent(if (side == null) "NO_TRADE" else "SIGNAL", side, payload)
+        }
+    }
+
+
+    private fun evaluatePositionExit(tick: LiveTick, volatility: String, spreadMultiple: Double, direction: String?, pressure: Double) {
+        val position = activePosition ?: return
+        val side = position.first
+        val entry = position.second
+        val opposite = if (side == "BUY") "DOWN" else "UP"
+        val exitPrice = if (side == "BUY") tick.bid else tick.ask
+        val move = if (side == "BUY") exitPrice - entry else entry - exitPrice
+        val action: String
+        val reason: String
+        when {
+            !tick.live -> { action = "HOLD_UNVERIFIED"; reason = "Live quote unavailable; refresh MT5 manually." }
+            volatility == "SPIKE" -> { action = "CLOSE_NOW"; reason = "Short-window volatility spike detected." }
+            spreadMultiple >= 3.0 -> { action = "CLOSE_NOW"; reason = "Spread expanded to at least three times its recent baseline." }
+            direction == opposite && abs(pressure) >= 0.35 && ((side == "BUY" && pressure < 0) || (side == "SELL" && pressure > 0)) -> {
+                action = "CLOSE_NOW"; reason = "Short-term momentum and tick pressure reversed against the position."
+            }
+            else -> { action = "HOLD"; reason = "No emergency exit condition confirmed." }
+        }
+        val fingerprint = action + "|" + reason
+        if (fingerprint == lastExitFingerprint) return
+        lastExitFingerprint = fingerprint
+        if (action == "CLOSE_NOW" || action == "HOLD_UNVERIFIED") {
+            onEvent("EXIT_RECOMMENDED", side, JSONObject()
+                .put("action", action).put("reason", reason).put("entryPrice", entry)
+                .put("indicativeExitPrice", exitPrice).put("move", move)
+                .put("executionEnabled", false).put("manualMT5ActionRequired", action == "CLOSE_NOW"))
         }
     }
 
