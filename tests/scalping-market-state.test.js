@@ -48,3 +48,12 @@ test("does not treat conflicting momentum as directional confirmation",()=>{
   });
   assert.equal(state.momentumDirection,"UNALIGNED");
 });
+
+
+test("rejects non-finite bid ask and midpoint values",()=>{
+  for (const field of ["bid","ask","mid"]) {
+    const state=evaluateScalpingMarketState({quote:{...quote,[field]:Infinity},...windows,now,exnessQuoteVerified:true});
+    assert.equal(state.ready,false);
+    assert.ok(state.reasons.includes("invalid_quote"));
+  }
+});
