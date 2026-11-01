@@ -75,6 +75,8 @@ async function loadArchives() {
   const archives = await listArchives();
   archiveSelect.replaceChildren();
   if (!archives.length) {
+    selectedArchive = null;
+    journalSignalBundle = null;
     const option = document.createElement("option"); option.textContent = "No local tick archives"; option.value = ""; archiveSelect.append(option);
     runButton.disabled = true; return;
   }
