@@ -39,4 +39,19 @@ class MobileScalpingEngineTest {
         engine.onFeedStale()
         assertEquals(1, events.count { it == "ENGINE_STATE" })
     }
+    @Test fun delayedAcknowledgementIsLogged() {
+        val events = mutableListOf<String>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, _ -> events.add(type) }
+        engine.setPosition("BUY", 4172.50)
+        repeat(3) {
+            val now = System.currentTimeMillis()
+            engine.onTick(LiveTick("XAUUSD", 4172.45, 4172.55, 4172.50, 0.10, now, true))
+            Thread.sleep(3)
+        }
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.00, 4173.00, 4172.50, 1.00, now, true))
+        assertTrue(events.contains("EXIT_RECOMMENDED"))
+        engine.checkTimeouts(System.currentTimeMillis() + 5001L)
+        assertTrue(events.contains("EXIT_NOT_CONFIRMED"))
+    }
 }
