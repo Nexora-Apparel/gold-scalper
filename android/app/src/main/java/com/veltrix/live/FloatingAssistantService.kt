@@ -127,7 +127,7 @@ class FloatingAssistantService : Service() {
         lastScreenTimeframe = null
         lastScreenMismatch = null
         if (prefs.getBoolean("position_active", false)) {
-            val lockedSymbol = prefs.getString("active_position_symbol", null)
+            val lockedSymbol = prefs.getString("active_market_lock", null)
             if (lockedSymbol == "XAUUSD" || lockedSymbol == "XAGUSD") prefs.edit().putString("symbol", lockedSymbol).apply()
         }
         val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
@@ -498,7 +498,7 @@ class FloatingAssistantService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "CHANGE_SYMBOL") {
             if (prefs.getBoolean("position_active", false)) {
-                val lockedSymbol = prefs.getString("active_position_symbol", null)
+                val lockedSymbol = prefs.getString("active_market_lock", null)
                 if (lockedSymbol == "XAUUSD" || lockedSymbol == "XAGUSD") prefs.edit().putString("symbol", lockedSymbol).apply()
                 latestText = "MARKET SWITCH BLOCKED · CLOSE MT5 POSITION FIRST"
                 journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("marketSelectionChangeBlocked", true).put("reason", "position_active"))
@@ -517,7 +517,7 @@ class FloatingAssistantService : Service() {
                     activePositionId = UUID.randomUUID().toString()
                     lastPositionSignature = listOf(prefs.getString("symbol", "XAUUSD"), side, entry.toString()).joinToString("|")
                     prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId)
-                        .putString("active_position_side", side).putString("active_position_symbol", prefs.getString("symbol", "XAUUSD"))
+                        .putString("active_position_side", side).putString("active_market_lock", prefs.getString("symbol", "XAUUSD"))
                         .putString("active_position_entry", entry.toString())
                         .putString("active_position_volume", volume.toString()).apply()
                     mobileEngine?.setPosition(side, entry)
