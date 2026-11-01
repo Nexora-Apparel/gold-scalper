@@ -52,16 +52,16 @@ class MobileScalpingEngine(
     fun verifyExnessQuote(exnessBid: Double, exnessAsk: Double): Boolean {
         val tick = latestTick
         val now = System.currentTimeMillis()
-        val tolerance = if (symbol == "XAUUSD") 0.15 else 0.02
+        val tolerance = if (symbol == "XAUUSD") 0.05 else 0.01
         val matched = tick != null && tick.live && tick.timestampMillis - now in -1000L..1500L && exnessBid > 0 && exnessAsk > exnessBid &&
             abs(exnessBid - tick.bid) <= tolerance && abs(exnessAsk - tick.ask) <= tolerance &&
             abs((exnessAsk - exnessBid) - tick.spread) <= max(tolerance, tick.spread * 0.20)
-        exnessVerifiedUntil = if (matched) now + 300000L else 0L
+        exnessVerifiedUntil = if (matched) now + 10000L else 0L
         if (lastExnessMatch != matched) {
             lastExnessMatch = matched
             onEvent("ENGINE_STATE", null, JSONObject()
                 .put("exnessQuoteVerification", if (matched) "MATCHED" else "NOT_MATCHED")
-                .put("tolerance", tolerance).put("validForSeconds", if (matched) 300 else 0)
+                .put("tolerance", tolerance).put("validForSeconds", if (matched) 10 else 0)
                 .put("rawScreenUploaded", false))
         }
         return matched
