@@ -369,6 +369,7 @@ class FloatingAssistantService : Service() {
                 val positionId = activePositionId ?: prefs.getString("active_position_id", null)
                 val payload = JSONObject().put("source", "user_authorized_local_mt5_screen_ocr")
                     .put("positionId", positionId ?: JSONObject.NULL)
+                    .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
                     .put("closureEvidence", "explicit_no_open_positions_text")
                     .put("confidence", 0.9).put("rawScreenUploaded", false)
                 journal.record("POSITION_CLOSED", symbol, payload, if (closedSide == "BUY" || closedSide == "SELL") closedSide else null)
