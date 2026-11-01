@@ -28,10 +28,19 @@ class MainActivity : Activity() {
         selector.setSelection(if (prefs.getString("symbol", "XAUUSD") == "XAGUSD") 1 else 0)
         selector.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) { prefs.edit().putString("symbol", if (position == 1) "XAGUSD" else "XAUUSD").apply()
-                if (prefs.getBoolean("assistant_active", false)) {
-                    startService(Intent(this@MainActivity, FloatingAssistantService::class.java).setAction("CHANGE_SYMBOL"))
-                } }
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                val nextSymbol = if (position == 1) "XAGUSD" else "XAUUSD"
+                val currentSymbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
+                if (prefs.getBoolean("position_active", false) && currentSymbol != nextSymbol) {
+                    parent?.setSelection(if (currentSymbol == "XAGUSD") 1 else 0)
+                    Toast.makeText(this@MainActivity, "Close the detected MT5 position before switching markets.", Toast.LENGTH_LONG).show()
+                } else {
+                    prefs.edit().putString("symbol", nextSymbol).apply()
+                    if (prefs.getBoolean("assistant_active", false)) {
+                        startService(Intent(this@MainActivity, FloatingAssistantService::class.java).setAction("CHANGE_SYMBOL"))
+                    }
+                }
+            }
         }
         root.addView(selector, LinearLayout.LayoutParams(-1, -2))
         val passwordInput = EditText(this).apply {
