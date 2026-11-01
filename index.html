@@ -288,7 +288,7 @@ async function refreshScalpingEvents(){
   const events=Array.isArray(result.events)?result.events:[];
   const stats=result.summary||{};
   const counts=stats.counts||{};
-  summary.textContent='Lifetime events: '+(stats.totalEvents??events.length)+' · Closed positions: '+(stats.closedPositions??0)+' · Missed opportunities: '+(stats.missedOpportunities??0)+' · Settled outcomes: '+(stats.settledTrades??0)+' · Win rate: '+(stats.winRate==null?'n/a':stats.winRate+'%')+' · Net R: '+(stats.netR??0)+' · '+Object.entries(counts).map(([type,count])=>type+': '+count).join(' · ');
+  summary.textContent='Lifetime events: '+(stats.totalEvents??events.length)+' · Closed positions: '+(stats.closedPositions??0)+' · Missed: '+(stats.missedOpportunities??0)+' · Settled: '+(stats.settledTrades??0)+' · W/L/BE: '+(stats.wins??0)+'/'+(stats.losses??0)+'/'+(stats.breakevens??0)+' · Win rate: '+(stats.winRate==null?'n/a':stats.winRate+'%')+' · Net R: '+(stats.netR??0)+' · Avg R: '+(stats.averageR??'n/a')+' · Max DD: '+(stats.maxDrawdownR??0)+'R · '+(stats.bySymbol||[]).map(x=>x.symbol+': '+x.settled+' trades / '+x.netR+'R').join(' · ')+' · '+Object.entries(counts).map(([type,count])=>type+': '+count).join(' · ');
   if(!events.length){list.innerHTML='<div class="news-empty">No live scalping events recorded yet. The Android stream runtime must be connected before live events appear.</div>';return}
   list.innerHTML=events.map(event=>{
    const detail=event.payload&&typeof event.payload==='object'?JSON.stringify(event.payload):'';
