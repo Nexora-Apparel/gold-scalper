@@ -43,6 +43,33 @@ class OwnerSessionStore(context: Context) {
         }
     }
 
+
+    @Synchronized
+    fun publishBrokerQuote(symbol: String, bid: Double, ask: Double, observedAtMillis: Long): Boolean {
+        val cookie = prefs.getString("cookie", null) ?: return false
+        if (symbol != "XAUUSD" && symbol != "XAGUSD") return false
+        if (!bid.isFinite() || !ask.isFinite() || bid <= 0.0 || ask <= bid) return false
+        val sequence = prefs.getLong("broker_quote_sequence", 0L) + 1L
+        prefs.edit().putLong("broker_quote_sequence", sequence).apply()
+        val body = JSONObject()
+            .put("sequence", sequence)
+            .put("source", "mt5_android")
+            .put("symbol", symbol)
+            .put("bid", bid)
+            .put("ask", ask)
+            .put("observedAt", java.time.Instant.ofEpochMilli(observedAtMillis).toString())
+            .put("observationMethod", "user_authorized_local_mt5_screen_ocr")
+            .toString()
+            .toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder().url(baseUrl + "/api/broker-quote-observation")
+            .addHeader("Cookie", cookie).post(body).build()
+        client.newCall(request).execute().use { response ->
+            if (response.code == 401) prefs.edit().remove("cookie").apply()
+            if (!response.isSuccessful) return false
+            return JSONObject(response.body?.string() ?: "{}").optBoolean("accepted")
+        }
+    }
+
     @Synchronized
     fun syncJournal(database: EventJournalDb): Int {
         val cookie = prefs.getString("cookie", null) ?: return 0
