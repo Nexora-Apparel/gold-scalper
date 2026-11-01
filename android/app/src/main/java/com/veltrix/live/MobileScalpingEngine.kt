@@ -27,6 +27,7 @@ class MobileScalpingEngine(
     private var pendingSignal: PendingSignal? = null
     private var latestTick: LiveTick? = null
     private var exnessVerifiedUntil = 0L
+    private var lastExnessMatch: Boolean? = null
     @Volatile private var paused = false
 
     @Synchronized
@@ -56,10 +57,13 @@ class MobileScalpingEngine(
             abs(exnessBid - tick.bid) <= tolerance && abs(exnessAsk - tick.ask) <= tolerance &&
             abs((exnessAsk - exnessBid) - tick.spread) <= max(tolerance, tick.spread * 0.20)
         exnessVerifiedUntil = if (matched) now + 300000L else 0L
-        onEvent("ENGINE_STATE", null, JSONObject()
-            .put("exnessQuoteVerification", if (matched) "MATCHED" else "NOT_MATCHED")
-            .put("tolerance", tolerance).put("validForSeconds", if (matched) 300 else 0)
-            .put("rawScreenUploaded", false))
+        if (lastExnessMatch != matched) {
+            lastExnessMatch = matched
+            onEvent("ENGINE_STATE", null, JSONObject()
+                .put("exnessQuoteVerification", if (matched) "MATCHED" else "NOT_MATCHED")
+                .put("tolerance", tolerance).put("validForSeconds", if (matched) 300 else 0)
+                .put("rawScreenUploaded", false))
+        }
         return matched
     }
 
