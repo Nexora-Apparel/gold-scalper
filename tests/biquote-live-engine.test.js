@@ -34,3 +34,15 @@ test("composes stream and M1 aggregation without enabling trade execution",async
   assert.equal(status.signalGenerationEnabled,false);
   await engine.stop();
 });
+
+test("subscribes to only the user-selected metal",async()=>{
+  const connection=new FakeConnection();
+  const engine=new BiquoteLiveEngine({
+    connection,selectedSymbol:"XAGUSD",
+    fetchSnapshot:async({symbols})=>{assert.deepEqual(symbols,["XAGUSD"]);return {quotes:{}};}
+  });
+  await engine.start();
+  assert.deepEqual(connection.calls.find(call=>call.method==="Subscribe").symbols,["XAGUSD"]);
+  assert.equal(engine.getStatus().selectedSymbol,"XAGUSD");
+  await engine.stop();
+});
