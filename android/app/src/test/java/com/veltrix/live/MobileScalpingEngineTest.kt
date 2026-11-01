@@ -94,6 +94,16 @@ class MobileScalpingEngineTest {
         assertTrue(!engine.hasFreshBrokerQuoteVerification(now))
     }
 
+    @Test fun outOfOrderOcrFramesCannotReplaceNewerBrokerQuote() {
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { _, _, _ -> }
+        val now = System.currentTimeMillis()
+        val tick = LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true)
+        engine.onTick(tick)
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", tick.bid, tick.ask, now))
+        assertTrue(!engine.updateMt5ObservedQuote("XAUUSD", tick.bid, tick.ask, now - 1L))
+        assertTrue(engine.hasFreshBrokerQuoteVerification(now))
+    }
+
     @Test fun productionQuoteStatusRequiresBrokerVerification() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
         val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { type, _, payload -> events.add(type to payload) }
