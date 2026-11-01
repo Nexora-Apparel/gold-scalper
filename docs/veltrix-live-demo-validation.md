@@ -66,3 +66,7 @@ Pause the assistant and investigate if any of the following occurs:
 ## Ultra-short scalping lifecycle policy
 
 The on-device position manager records the first detected position time and preserves it across repeated OCR observations of the same side and entry price. It evaluates exit conditions continuously on fresh market ticks. The normal momentum-reversal exit condition is not eligible before 5 seconds; emergency volatility and spread-expansion exits can occur earlier. At 60 seconds, a fresh quote triggers a manual `CLOSE_NOW` recommendation. This is a recommendation only: no broker order is submitted. If market data is stale at the deadline, the engine reports an unverified state rather than pretending it can price an exit. Actual position closure and realized outcome still require MT5 confirmation and journal recording.
+
+## Executable-side exit valuation
+
+For an open BUY, the indicative close side is Bid; for an open SELL, it is Ask. The Android engine prefers a fresh MT5-screen quote (maximum age 2.5 seconds) and otherwise labels the Biquote value as a reference-feed estimate. The recorded price movement is expressed only in instrument price units. Because Bid/Ask are executable sides that already embed the spread, the engine marks spread as included and does not subtract it again. Currency P/L remains unavailable until verified contract size, position volume and account-currency conversion are known. These values are decision-support estimates, not broker fills; actual realized outcomes must come from the MT5 journal.
