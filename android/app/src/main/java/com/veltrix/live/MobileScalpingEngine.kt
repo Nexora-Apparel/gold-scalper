@@ -151,7 +151,7 @@ class MobileScalpingEngine(
         lastExitFingerprint = fingerprint
         onEvent("EXIT_RECOMMENDED", position.first, JSONObject()
             .put("action", "HOLD_UNVERIFIED")
-            .put("reason", "Market-data stream is stale or disconnected. Verify the position directly in Exness MT5.")
+            .put("reason", "Market-data stream is stale or disconnected. Verify the position directly in MT5.")
             .put("entryPrice", position.second)
             .put("executionEnabled", false))
     }
@@ -260,7 +260,7 @@ class MobileScalpingEngine(
         if (tickRate < 0.2) reasons.add("tick_activity_insufficient")
 
         val baselineSpread = if (context.isNotEmpty()) context.map { it.spread }.average() else 0.0
-        val spreadMultiple = if (baselineSpread > 0) tick.spread / baselineSpread else 1.0
+        val spreadMultiple = if (baselineSpread > 0) effectiveSpread / baselineSpread else 1.0
         val spreadPercent = if (tick.mid > 0) effectiveSpread / tick.mid * 100.0 else Double.POSITIVE_INFINITY
         val maxSpreadPercent = if (symbol == "XAUUSD") 0.02 else 0.12
         if (spreadMultiple > 2.5) reasons.add("spread_anomaly")
@@ -313,7 +313,7 @@ class MobileScalpingEngine(
                 action = if (direction == "UP") "BUY_NOW" else "SELL_NOW"
                 side = if (direction == "UP") "BUY" else "SELL"
                 lastSignalAt = now
-                pendingSignal = PendingSignal(side!!, System.currentTimeMillis(), confidence, tick.mid, tick.spread)
+                pendingSignal = PendingSignal(side!!, System.currentTimeMillis(), confidence, tick.mid, effectiveSpread)
             }
         } else if (confidence < 0.72) reasons.add("confidence_below_threshold")
 
