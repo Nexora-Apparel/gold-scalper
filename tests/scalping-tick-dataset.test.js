@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateHistoricalTickDataset } from "../lib/scalping-tick-dataset.js";
+import { replayScalpingSignals } from "../lib/scalping-historical-replay.js";
 
 const metadata = {
   symbol: "XAUUSD",
@@ -21,6 +22,22 @@ test("validates provenance-labelled chronological tick archive and reports cover
   assert.equal(result.manifest.medianIntervalMs, 250);
   assert.equal(result.manifest.maxGapMs, 750);
   assert.ok(Math.abs(result.quotes[0].spread - 0.1) < 1e-9);
+});
+
+test("validated archive output feeds the chronological replay engine directly", () => {
+  const dataset = validateHistoricalTickDataset({ metadata, quotes });
+  assert.equal(dataset.ok, true);
+  const replay = replayScalpingSignals({
+    symbol: "XAUUSD",
+    quotes: dataset.quotes,
+    signals: [{ id: "sample-1", symbol: "XAUUSD", side: "BUY", timestamp: quotes[0].timestamp }],
+    horizonsSeconds: [1],
+    maxEntryDelayMs: 0,
+    maxExitWaitMs: 0
+  });
+  assert.equal(replay.evaluatedRows, 1);
+  assert.equal(replay.results[0].entryPrice, quotes[0].ask);
+  assert.equal(replay.results[0].exitPrice, quotes[2].bid);
 });
 
 test("rejects OHLC data and missing provenance", () => {
