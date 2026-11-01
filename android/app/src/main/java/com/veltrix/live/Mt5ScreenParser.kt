@@ -66,7 +66,8 @@ object Mt5ScreenParser {
         val bid = labelledNumber(listOf("bid"))
         val ask = labelledNumber(listOf("ask"))
         val mt5ScreenContext = tradeTab || all.contains("METATRADER") || all.contains("MT5")
-        val quoteDetected = mt5ScreenContext && symbol != null && bid != null && ask != null && bid > 0 && ask > bid
+        val quoteSymbolUnambiguous = hasGold.xor(hasSilver)
+        val quoteDetected = mt5ScreenContext && quoteSymbolUnambiguous && symbol != null && bid != null && ask != null && bid > 0 && ask > bid
         val spread = if (quoteDetected) ask!! - bid!! else null
         val positionEvidence = Regex("\\b(PROFIT|SWAP|COMMISSION)\\b").containsMatchIn(all)
         val detected = tradeTab && positionEvidence && symbol != null && side != null && entry != null && entry > 0
