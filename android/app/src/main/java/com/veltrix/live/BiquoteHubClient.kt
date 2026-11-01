@@ -43,6 +43,7 @@ class BiquoteHubClient(
                             onState("Subscribed to " + symbol)
                         }, { subscribeError ->
                             onState("Feed subscription failed: " + (subscribeError.message ?: "unknown"))
+                            try { hub.stop().subscribe({}, {}) } catch (_: Exception) {}
                             scheduleReconnect()
                         })
                     } catch (error: Exception) {
@@ -51,6 +52,7 @@ class BiquoteHubClient(
                     }
                 }, { error ->
                     onState("Feed start failed: " + (error.message ?: "unknown"))
+                    try { hub.stop().subscribe({}, {}) } catch (_: Exception) {}
                     scheduleReconnect()
                 })
             } catch (error: Exception) {
