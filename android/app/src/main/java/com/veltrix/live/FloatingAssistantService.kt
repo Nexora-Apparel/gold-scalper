@@ -117,6 +117,7 @@ class FloatingAssistantService : Service() {
             engine.onTick(tick)
             lastTickAt = System.currentTimeMillis()
             feedHealthy = tick.live
+            if (tick.live && currentDecisionText?.startsWith("HOLD_UNVERIFIED") == true) currentDecisionText = null
             latestText = if (!tick.live) "Market closed or quote stale" else currentDecisionText ?: ("Bid " + tick.bid + " · Ask " + tick.ask)
             if (lastQuoteState != tick.live) {
                 lastQuoteState = tick.live
@@ -292,6 +293,7 @@ class FloatingAssistantService : Service() {
                 journal.record("POSITION_CLOSED", symbol, payload, if (closedSide == "BUY" || closedSide == "SELL") closedSide else null)
             }
             mobileEngine?.clearPosition()
+            currentDecisionText = null
             prefs.edit().putBoolean("position_active", false).apply()
             lastPositionSignature = null
             missingPositionFrames = 0
