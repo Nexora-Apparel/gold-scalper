@@ -44,3 +44,47 @@ test("rejects multiple outcome events for the same position in one batch",()=>{
   ]);
   assert.equal(result.ok,false);
 });
+
+test("accepts structurally valid Android MT5 broker quote observations", () => {
+  const observedAt = new Date().toISOString();
+  const result = validateScalpingEvent({
+    eventId: "broker-quote-1",
+    type: "BROKER_QUOTE_OBSERVED",
+    symbol: "XAUUSD",
+    payload: {
+      source: "mt5_android",
+      observationMethod: "user_authorized_local_mt5_screen_ocr",
+      bid: 2650.1,
+      ask: 2650.3,
+      spreadPriceDelta: 0.2,
+      spreadUnit: "raw_price_delta",
+      observedAt,
+      rawScreenUploaded: false
+    }
+  });
+  assert.equal(result.ok, true);
+});
+
+test("rejects malformed or mislabelled Android broker quote observations", () => {
+  const observedAt = new Date().toISOString();
+  const base = {
+    eventId: "broker-quote-invalid",
+    type: "BROKER_QUOTE_OBSERVED",
+    symbol: "XAUUSD",
+    payload: {
+      source: "mt5_android",
+      observationMethod: "user_authorized_local_mt5_screen_ocr",
+      bid: 2650.3,
+      ask: 2650.1,
+      observedAt,
+      rawScreenUploaded: false
+    }
+  };
+  assert.equal(validateScalpingEvent(base).ok, false);
+  assert.equal(validateScalpingEvent({
+    ...base, payload: { ...base.payload, bid: 2650.1, ask: 2650.3, source: "biquote" }
+  }).ok, false);
+  assert.equal(validateScalpingEvent({
+    ...base, payload: { ...base.payload, bid: 2650.1, ask: 2650.3, rawScreenUploaded: true }
+  }).ok, false);
+});
