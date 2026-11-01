@@ -27,8 +27,9 @@ REST is best-effort bootstrap only. It does not build M1 candles and is not a su
 - `lib/biquote-live-engine.js`: composes REST bootstrap, streaming and M1 aggregation.
 - `api/biquote-quotes.js`: no-cache REST snapshot endpoint; returns 503 when fresh data cannot be verified.
 - `android/app/src/main/java/com/veltrix/live/BiquoteHubClient.kt`: persistent Android SignalR client, strict symbol/freshness checks, confirmed subscription and reconnect backoff.
-- `android/app/src/main/java/com/veltrix/live/MobileScalpingEngine.kt`: on-device tick decision, M1/M5/M15 context, Exness quote-parity gate and dynamic exit recommendations.
-- `android/app/src/main/java/com/veltrix/live/FloatingAssistantService.kt`: foreground runtime, floating overlay, user-authorized local OCR and durable journal sync.
+- `android/app/src/main/java/com/veltrix/live/MobileScalpingEngine.kt`: on-device tick decision, M1/M5/M15 context, fresh MT5-screen spread override and dynamic exit recommendations. Broker quote parity is an optional future gate and is disabled in the current reference-feed development mode.
+- `android/app/src/main/java/com/veltrix/live/Mt5ScreenParser.kt`: local OCR extraction of MT5 bid/ask and raw price-delta spread; no pip conversion is assumed without instrument contract metadata.
+- `android/app/src/main/java/com/veltrix/live/FloatingAssistantService.kt`: foreground runtime, floating overlay, user-authorized local OCR, MT5 spread monitoring and durable journal sync.
 - Tests cover normalization, stream lifecycle, stale data, reordered ticks, M1/M5/M15 aggregation, microstructure metrics and REST endpoint failure handling.
 
 ## Runtime constraint
@@ -40,7 +41,7 @@ The next integration stage is the Android companion runtime and its authenticate
 ## Safety invariants
 
 - No order execution is implemented.
-- The server-side data adapter does not autonomously generate or execute orders. The Android companion can issue manual-review recommendations only after its additional market-quality and Exness quote-parity gates pass.
+- The server-side data adapter does not autonomously generate or execute orders. The Android companion can issue manual-review recommendations in reference-feed development mode after market-quality gates pass. A fresh MT5 OCR spread, when available, is used as the spread input; otherwise the Biquote spread is explicitly labelled reference-only. Broker quote parity is reserved for a future broker-integration mode.
 - Quotes older than five seconds, future-dated quotes, provider-stale quotes, closed-market quotes and malformed quotes are rejected.
 - A stream disconnect or stale watchdog state must invalidate live decisions.
 - Interrupted M1 candles remain marked partial and must not be passed to closed-candle strategy logic.
@@ -55,3 +56,7 @@ Run `npm run check` on Node.js 20 or later. CI runs Node engine tests and Androi
 ## Single-market selection
 
 The Android companion stores one selected instrument (`XAUUSD` or `XAGUSD`, default `XAUUSD`) and subscribes to that symbol only. The user changes the selection in the companion before a session; changing markets is blocked while a position is recorded as open. The selector does not change Exness MT5's chart automatically and does not enable broker execution. The app must pass the saved `settings.scalpInstrument` into the persistent Android/live-engine runtime when that runtime is integrated.
+
+## MT5 spread observation
+
+When the user authorizes Android screen capture, the foreground companion locally OCRs the visible screen. It accepts bid/ask only when the parsed content also contains MT5 context, matches the currently selected instrument, and has `ask > bid`. The raw spread is `ask - bid` in the instrument's quoted price units. The observation expires after 2.5 seconds; after expiry the decision engine falls back to the Biquote reference spread and records the source. The companion journals spread observations at a throttled interval and never uploads screen images. Pip conversion is intentionally deferred until the instrument's digits/point specification is known.
