@@ -59,7 +59,7 @@ class Mt5ScreenParserTest {
         assertNull(result.spread)
     }
     @Test fun rejectsAmbiguousSpreadWhenBothMetalsAppearOnScreen() {
-        val result = Mt5ScreenParser.parse("Trade\\nXAUUSD\\nXAGUSD\\nBid 4172.50\\nAsk 4172.70", "XAUUSD")
+        val result = Mt5ScreenParser.parse("Trade\nXAUUSD\nXAGUSD\nBid 4172.50\nAsk 4172.70", "XAUUSD")
         assertFalse(result.quoteDetected)
         assertNull(result.spread)
     }
