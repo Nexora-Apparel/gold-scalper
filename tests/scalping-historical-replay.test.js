@@ -67,3 +67,21 @@ test("reports results by requested horizon and does not label estimates as prove
   assert.equal(result.summaryBySide[0].side, "BUY");
   assert.match(result.validationNotice, /research estimate/);
 });
+
+test("rejects timezone-ambiguous tick and signal timestamps", () => {
+  const signal = [{ symbol: "XAUUSD", side: "BUY", timestamp: "2026-10-01T10:00:00" }];
+  assert.throws(() => replayScalpingSignals({ symbol: "XAUUSD", quotes: [q(0, 2650, 2650.2), q(5000, 2650.3, 2650.5)], signals: signal }), /timezone-explicit/);
+  const ambiguousTape = [q(0, 2650, 2650.2), { ...q(5000, 2650.3, 2650.5), timestamp: "2026-10-01T10:00:05" }];
+  assert.throws(() => replayScalpingSignals({ symbol: "XAUUSD", quotes: ambiguousTape, signals: [] }), /timezone-explicit/);
+});
+
+test("skips signals that occur after the final available tick", () => {
+  const result = replayScalpingSignals({
+    symbol: "XAUUSD",
+    quotes: [q(0, 2650, 2650.2), q(5000, 2650.3, 2650.5)],
+    signals: [{ symbol: "XAUUSD", side: "BUY", timestamp: new Date(base + 10000).toISOString() }],
+    horizonsSeconds: [5]
+  });
+  assert.equal(result.results.length, 0);
+  assert.equal(result.skipped.entry_quote_unavailable, 1);
+});
