@@ -32,6 +32,7 @@ class FloatingAssistantService : Service() {
     @Volatile private var latestText = "Connecting to market feed…"
     private val prefs by lazy { getSharedPreferences("veltrix_live", MODE_PRIVATE) }
     private val journal by lazy { EventJournalDb(this) }
+    private val ownerSession by lazy { OwnerSessionStore(this) }
     @Volatile private var lastQuoteState: Boolean? = null
 
     override fun onCreate() {
@@ -42,8 +43,13 @@ class FloatingAssistantService : Service() {
         showFloatingDot()
         connectSelectedMarket()
         worker.execute {
+            var lastSyncAt = 0L
             while (!Thread.currentThread().isInterrupted) {
                 val fresh = feedHealthy && System.currentTimeMillis() - lastTickAt <= 5000
+                if (ownerSession.hasSession() && System.currentTimeMillis() - lastSyncAt >= 10000) {
+                    lastSyncAt = System.currentTimeMillis()
+                    try { ownerSession.syncJournal(journal) } catch (_: Exception) { }
+                }
                 if (feedHealthy && !fresh) latestText = "STALE FEED · NO SIGNAL"
                 Handler(Looper.getMainLooper()).post {
                     (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
