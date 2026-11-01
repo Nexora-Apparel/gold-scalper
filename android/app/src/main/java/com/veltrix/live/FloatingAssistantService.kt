@@ -167,6 +167,12 @@ class FloatingAssistantService : Service() {
                 setColor(0xFF111318.toInt()); cornerRadius = 18f; setStroke(1, 0xFF555555.toInt())
             }
         }
+        panel?.setOnClickListener {
+            paused = !paused
+            mobileEngine?.setPaused(paused)
+            latestText = if (paused) "PAUSED · NO NEW SIGNALS" else "RESUMED · MONITORING"
+            updateNotification(latestText)
+        }
         val params = WindowManager.LayoutParams(
             260, WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
