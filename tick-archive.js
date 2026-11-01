@@ -8,7 +8,7 @@ const SYMBOLS = new Set(["XAUUSD", "XAGUSD"]);
 export function parseTimestamp(value) {
   if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return value;
   if (typeof value !== "string") return NaN;
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.(\\d{1,3}))?(Z|[+-]\\d{2}:\\d{2})$/i.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\\.(\d{1,3}))?(Z|[+-]\d{2}:\d{2})$/i.exec(value);
   if (!match) return NaN;
   const [, y, m, d, h, min, sec, , zone] = match;
   const year = Number(y), month = Number(m), day = Number(d);
@@ -105,7 +105,7 @@ export function parseArchiveFile({name,text,metadata}) {
     let rows;
     try { rows=csvRows(text); } catch(e) { return {ok:false,errors:[e.message]}; }
     if (rows.length<3) return {ok:false,errors:["CSV requires a header and at least two tick rows."]};
-    const headers=rows[0].map(v=>v.trim().replace(/^\\uFEFF/,"").toLowerCase());
+    const headers=rows[0].map(v=>v.trim().replace(/^\uFEFF/,"").toLowerCase());
     if (new Set(headers).size!==headers.length) return {ok:false,errors:["Duplicate CSV column names."]};
     const ti=headers.indexOf("timestamp"), bi=headers.indexOf("bid"), ai=headers.indexOf("ask"), si=headers.indexOf("symbol");
     if ([ti,bi,ai].some(i=>i<0)) return {ok:false,errors:["CSV must contain timestamp,bid,ask columns."]};
@@ -113,8 +113,8 @@ export function parseArchiveFile({name,text,metadata}) {
     for(let i=1;i<rows.length;i++){
       if(rows[i].length!==headers.length) return {ok:false,errors:[`CSV column count mismatch at row ${i+1}.`]};
       const b=rows[i][bi].trim(), a=rows[i][ai].trim();
-      if(!/^\\d+(?:\\.\\d+)?$/.test(b)||!/^\\d+(?:\\.\\d+)?$/.test(a)) return {ok:false,errors:[`Prices must be plain decimal values at row ${i+1}.`]};
-      quotes.push({timestamp:/^\\d+$/.test(rows[i][ti].trim())?Number(rows[i][ti].trim()):rows[i][ti].trim(),bid:Number(b),ask:Number(a),symbol:si>=0?rows[i][si].trim():metadata.symbol});
+      if(!/^\d+(?:\\.\d+)?$/.test(b)||!/^\d+(?:\\.\d+)?$/.test(a)) return {ok:false,errors:[`Prices must be plain decimal values at row ${i+1}.`]};
+      quotes.push({timestamp:/^\d+$/.test(rows[i][ti].trim())?Number(rows[i][ti].trim()):rows[i][ti].trim(),bid:Number(b),ask:Number(a),symbol:si>=0?rows[i][si].trim():metadata.symbol});
     }
     return validateArchive({metadata:{...metadata,dataKind:"tick"},quotes});
   }
