@@ -54,7 +54,7 @@ class Mt5ScreenParserTest {
         assertEquals(4172.70, result.ask!!, 0.0001)
     }
     @Test fun rejectsBidAskTextWithoutMt5ScreenContext() {
-        val result = Mt5ScreenParser.parse("XAUUSD\\nBid 4172.50\\nAsk 4172.70")
+        val result = Mt5ScreenParser.parse("XAUUSD\nBid 4172.50\nAsk 4172.70")
         assertFalse(result.quoteDetected)
         assertNull(result.spread)
     }
