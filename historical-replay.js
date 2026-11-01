@@ -10,6 +10,7 @@ const report = $("replayReport");
 const HORIZONS = [5, 15, 30, 60];
 let selectedArchive = null;
 let lastReport = null;
+let journalSignalBundle = null;
 
 function message(text, error = false) {
   status.textContent = text;
@@ -135,16 +136,34 @@ archiveSelect.addEventListener("change", async () => {
   message(selectedArchive ? "Selected immutable local archive " + archiveSelect.value.slice(0, 16) + "…" : "Archive unavailable.", !selectedArchive);
 });
 $("refreshArchives").addEventListener("click", () => loadArchives().then(() => message("Archive list refreshed.")).catch((e) => message(e.message, true)));
+signalFile.addEventListener("change", () => { journalSignalBundle = null; });
+$("loadJournalSignals").addEventListener("click", async () => {
+  try {
+    if (!selectedArchive) throw new Error("Select a validated tick archive first.");
+    const m = selectedArchive.manifest;
+    message("Loading genuine SIGNAL events from the authenticated journal…");
+    const query = new URLSearchParams({ type: "SIGNAL", symbol: m.symbol, from: m.startAt, to: m.endAt, limit: "1000" });
+    const response = await fetch("/api/scalping-events?" + query.toString(), { credentials: "same-origin", cache: "no-store" });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "Signal journal request failed (HTTP " + response.status + "). Sign in to the dashboard first.");
+    if (body.truncated) throw new Error("The journal returned more than 1,000 signals for this archive. Narrow the archive period before replay; partial signal histories are not accepted.");
+    const signals = (body.events || []).filter((event) => event.side === "BUY" || event.side === "SELL").map((event) => ({ id: event.eventId, timestamp: event.occurredAt, symbol: event.symbol, side: event.side }));
+    if (!signals.length) throw new Error("No recorded BUY/SELL SIGNAL events were found inside this archive period.");
+    journalSignalBundle = { metadata: { sourceReference: "authenticated_veltrix_scalping_events:" + m.symbol + ":" + m.startAt + ":" + m.endAt, strategy: "mobile_scalping_engine" }, signals };
+    signalFile.value = "";
+    message("Loaded " + signals.length + " recorded signals from the authenticated journal. These are original engine events, not generated replay inputs.");
+  } catch (error) { journalSignalBundle = null; message(error.message || "Signal journal load failed.", true); }
+});
 $("runReplay").addEventListener("click", async () => {
   try {
     if (!selectedArchive) throw new Error("Import a tick archive first.");
     const file = signalFile.files[0];
-    if (!file) throw new Error("Import a timestamped signal log. The replay does not invent BUY/SELL signals.");
-    if (file.size > 5 * 1024 * 1024) throw new Error("Signal log exceeds the 5 MB limit.");
+    if (!file && !journalSignalBundle) throw new Error("Load recorded journal signals or import a timestamped signal log. The replay does not invent BUY/SELL signals.");
+    if (file && file.size > 5 * 1024 * 1024) throw new Error("Signal log exceeds the 5 MB limit.");
     runButton.disabled = true;
     message("Validating signal provenance and running isolated chronological replays…");
-    const signalText = await file.text();
-    const parsed = parseSignals(signalText, file.name, selectedArchive.manifest.symbol);
+    const signalText = file ? await file.text() : JSON.stringify(journalSignalBundle);
+    const parsed = file ? parseSignals(signalText, file.name, selectedArchive.manifest.symbol) : parseSignals(signalText, "journal.json", selectedArchive.manifest.symbol);
     const signalDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signalText));
     const signalFileSha256 = [...new Uint8Array(signalDigest)].map((value) => value.toString(16).padStart(2, "0")).join("");
     const manifest = selectedArchive.manifest;
