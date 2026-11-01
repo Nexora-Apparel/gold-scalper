@@ -33,6 +33,7 @@ class MobileScalpingEngine(
     private var pendingExitReason = ""
     private var latestTick: LiveTick? = null
     private var latestMt5Quote: Mt5Quote? = null
+    private var mt5ReferenceQuoteMatch: Boolean? = null
     private var lastAcceptedTickAt = 0L
     private var exnessVerifiedUntil = 0L
     private var lastExnessMatch: Boolean? = null
@@ -79,7 +80,32 @@ class MobileScalpingEngine(
         val age = System.currentTimeMillis() - observedAt
         if (age !in -1000L..2500L) return false
         latestMt5Quote = Mt5Quote(bid, ask, ask - bid, observedAt)
+        refreshMt5ReferenceQuoteVerification()
         return true
+    }
+
+    private fun refreshMt5ReferenceQuoteVerification() {
+        val quote = latestMt5Quote ?: return
+        val now = System.currentTimeMillis()
+        if (now - quote.observedAt !in -1000L..2500L) return
+        val tick = latestTick
+        val tolerance = if (symbol == "XAUUSD") 0.05 else 0.01
+        val matched = tick != null && tick.live &&
+            now - tick.timestampMillis in -1000L..1500L &&
+            abs(quote.bid - tick.bid) <= tolerance &&
+            abs(quote.ask - tick.ask) <= tolerance &&
+            abs(quote.spread - tick.spread) <= max(tolerance, tick.spread * 0.20)
+        if (mt5ReferenceQuoteMatch != matched) {
+            mt5ReferenceQuoteMatch = matched
+            onEvent("ENGINE_STATE", null, JSONObject()
+                .put("mt5ReferenceQuoteVerification", if (matched) "MATCHED" else "MISMATCHED")
+                .put("tolerancePriceUnits", tolerance)
+                .put("mt5Bid", quote.bid).put("mt5Ask", quote.ask)
+                .put("referenceBid", tick?.bid ?: JSONObject.NULL)
+                .put("referenceAsk", tick?.ask ?: JSONObject.NULL)
+                .put("quoteSource", "mt5_screen_ocr_vs_biquote_reference")
+                .put("rawScreenUploaded", false))
+        }
     }
 
     @Synchronized
@@ -228,6 +254,7 @@ class MobileScalpingEngine(
         lastAcceptedTickAt = tick.timestampMillis
         feedRevoked = false
         latestTick = tick
+        refreshMt5ReferenceQuoteVerification()
         if (requireBrokerQuoteParity && exnessVerifiedUntil > 0 && System.currentTimeMillis() > exnessVerifiedUntil) {
             exnessVerifiedUntil = 0L
             lastExnessMatch = false
@@ -252,6 +279,8 @@ class MobileScalpingEngine(
         val age = System.currentTimeMillis() - now
         if (!tick.live || age !in -1000..1500) reasons.add("quote_not_live_or_fresh")
         if (requireBrokerQuoteParity && System.currentTimeMillis() > exnessVerifiedUntil) reasons.add("broker_quote_parity_not_verified")
+        val freshMt5Quote = latestMt5Quote?.takeIf { System.currentTimeMillis() - it.observedAt in -1000L..2500L }
+        if (freshMt5Quote != null && mt5ReferenceQuoteMatch != true) reasons.add("mt5_reference_quote_mismatch")
         if (short.size < 3) reasons.add("short_window_not_ready")
         if (context.size < 3) reasons.add("context_window_not_ready")
 
@@ -353,6 +382,11 @@ class MobileScalpingEngine(
                 .put("mt5ObservedAsk", observedMt5Quote?.ask ?: JSONObject.NULL)
                 .put("mt5ObservedSpread", observedMt5Quote?.spread ?: JSONObject.NULL)
                 .put("spreadSource", spreadSource).put("spreadPercent", spreadPercent)
+                .put("mt5ReferenceQuoteVerification", when {
+                    freshMt5Quote == null -> "NOT_OBSERVED"
+                    mt5ReferenceQuoteMatch == true -> "MATCHED"
+                    else -> "MISMATCHED"
+                })
                 .put("volatilityRegime", volatility)
                 .put("momentumDirection", direction ?: JSONObject.NULL)
                 .put("m5Direction", m5Direction ?: JSONObject.NULL)
