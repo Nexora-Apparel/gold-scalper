@@ -504,7 +504,9 @@ class FloatingAssistantService : Service() {
                 journal.record("POSITION_CLOSED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", payload, if (side == "BUY" || side == "SELL") side else null)
                 if (realizedR.isFinite() && positionId != null) {
                     journal.record("POSITION_OUTCOME_RECORDED", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD",
-                        JSONObject().put("positionId", positionId).put("realizedR", realizedR).put("exitPrice", if (exitPrice > 0) exitPrice else JSONObject.NULL),
+                        JSONObject().put("positionId", positionId)
+                            .put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
+                            .put("realizedR", realizedR).put("exitPrice", if (exitPrice > 0) exitPrice else JSONObject.NULL),
                         if (side == "BUY" || side == "SELL") side else null)
                 }
                 mobileEngine?.clearPosition()
