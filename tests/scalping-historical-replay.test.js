@@ -70,7 +70,8 @@ test("reports results by requested horizon and does not label estimates as prove
 
 test("rejects timezone-ambiguous tick and signal timestamps", () => {
   const signal = [{ symbol: "XAUUSD", side: "BUY", timestamp: "2026-10-01T10:00:00" }];
-  assert.throws(() => replayScalpingSignals({ symbol: "XAUUSD", quotes: [q(0, 2650, 2650.2), q(5000, 2650.3, 2650.5)], signals: signal }), /timezone-explicit/);
+  const invalidSignalResult = replayScalpingSignals({ symbol: "XAUUSD", quotes: [q(0, 2650, 2650.2), q(5000, 2650.3, 2650.5)], signals: signal });
+  assert.equal(invalidSignalResult.skipped.invalid_signal, 1);
   const ambiguousTape = [q(0, 2650, 2650.2), { ...q(5000, 2650.3, 2650.5), timestamp: "2026-10-01T10:00:05" }];
   assert.throws(() => replayScalpingSignals({ symbol: "XAUUSD", quotes: ambiguousTape, signals: [] }), /timezone-explicit/);
 });
