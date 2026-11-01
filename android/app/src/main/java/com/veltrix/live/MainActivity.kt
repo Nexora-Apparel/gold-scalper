@@ -31,7 +31,8 @@ class MainActivity : Activity() {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
                 val nextSymbol = if (position == 1) "XAGUSD" else "XAUUSD"
                 val currentSymbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
-                if (prefs.getBoolean("position_active", false) && currentSymbol != nextSymbol) {
+                if (currentSymbol == nextSymbol) return
+                if (prefs.getBoolean("position_active", false)) {
                     parent?.setSelection(if (currentSymbol == "XAGUSD") 1 else 0)
                     Toast.makeText(this@MainActivity, "Close the detected MT5 position before switching markets.", Toast.LENGTH_LONG).show()
                 } else {
