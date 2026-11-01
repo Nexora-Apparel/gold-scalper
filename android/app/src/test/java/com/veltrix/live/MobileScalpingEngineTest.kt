@@ -167,7 +167,7 @@ class MobileScalpingEngineTest {
         assertTrue(noTrade.getJSONArray("reasons").toString().contains("mid_outside_bid_ask"))
         val state = events.last { it.first == "ENGINE_STATE" }.second
         assertEquals("REJECTED", state.getString("quoteValidation"))
-        assertTrue(!state.getBoolean("signalGenerationEnabled"))
+        assertTrue(!state.getBoolean("quoteStreamValid"))
         assertTrue(events.none { it.first == "SIGNAL" })
     }
 
@@ -202,7 +202,7 @@ class MobileScalpingEngineTest {
         engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, System.currentTimeMillis(), true))
         val accepted = events.last { it.first == "ENGINE_STATE" && it.second.has("quoteValidation") }.second
         assertEquals("ACCEPTED", accepted.getString("quoteValidation"))
-        assertTrue(accepted.getBoolean("signalGenerationEnabled"))
+        assertTrue(accepted.getBoolean("quoteStreamValid"))
     }
 
 
