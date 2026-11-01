@@ -86,3 +86,14 @@ test("skips signals that occur after the final available tick", () => {
   assert.equal(result.results.length, 0);
   assert.equal(result.skipped.entry_quote_unavailable, 1);
 });
+
+test("MFE and MAE include the initial Bid/Ask spread at entry", () => {
+  const result = replayScalpingSignals({
+    symbol: "XAUUSD",
+    quotes: [q(0, 2650, 2650.2), q(5000, 2650.5, 2650.7)],
+    signals: [{ symbol: "XAUUSD", side: "BUY", timestamp: new Date(base).toISOString() }],
+    horizonsSeconds: [5]
+  });
+  assert.equal(result.results[0].maxFavourableMovePriceUnits, 0.3);
+  assert.equal(result.results[0].maxAdverseMovePriceUnits, -0.2);
+});
