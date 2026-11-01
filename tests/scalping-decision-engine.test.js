@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { evaluateScalpingDecision, evaluateDynamicExit } from "../lib/scalping-decision-engine.js";
 
-const marketState={ready:true,exnessQuoteVerified:true,symbol:"XAUUSD",momentumDirection:"UP",volatilityRegime:"NORMAL",shortMovePercent:0.03,contextMovePercent:0.025,reasons:[]};
+const marketState={ready:true,brokerQuoteVerified:true,symbol:"XAUUSD",momentumDirection:"UP",volatilityRegime:"NORMAL",shortMovePercent:0.03,contextMovePercent:0.025,reasons:[]};
 const quote={symbol:"XAUUSD",bid:2650,ask:2650.2,spread:0.2,timestamp:"2026-11-01T10:00:00.000Z",marketState:"open",stale:false};
 const microstructure={pressure:0.8,ticksPerSecond:3};
 const structure={direction:"UP",strength:1};
@@ -36,10 +36,10 @@ test("dynamic exit closes on extreme spread expansion and rejects mismatched pos
  assert.equal(evaluateDynamicExit({...base,position:{...base.position,symbol:"XAGUSD"}}).action,"HOLD_UNVERIFIED");
 });
 
-test("blocks signals until the Exness quote has been explicitly verified",()=>{
- const unverified=evaluateScalpingDecision({marketState:{...marketState,exnessQuoteVerified:false},quote,microstructure,structure,now:Date.parse(quote.timestamp)});
+test("blocks signals until an authorised Android broker quote has been verified",()=>{
+ const unverified=evaluateScalpingDecision({marketState:{...marketState,brokerQuoteVerified:false},quote,microstructure,structure,now:Date.parse(quote.timestamp)});
  assert.equal(unverified.action,"NO_TRADE");
- assert.ok(unverified.reasons.includes("exness_quote_not_verified"));
+ assert.ok(unverified.reasons.includes("broker_quote_not_verified"));
 });
 
 
