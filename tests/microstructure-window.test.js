@@ -15,7 +15,7 @@ test("computes short-window price movement, tick rate and spread statistics",()=
   assert.equal(s.ready,true);
   assert.equal(s.priceChange,1);
   assert.equal(s.ticksPerSecond,1);
-  assert.equal(s.averageSpread,0.3);
+  assert.ok(Math.abs(s.averageSpread-0.3)<1e-12);
   assert.equal(s.maxSpread,0.4);
   assert.equal(s.quoteAgeMs,0);
 });
