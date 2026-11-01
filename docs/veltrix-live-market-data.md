@@ -88,3 +88,12 @@ Before a tick enters the Android signal calculations, the engine rejects non-fin
 - Server validation rejects unsupported sources, wrong symbols, malformed prices, invalid observation timestamps, missing local-OCR provenance labels and any event claiming raw screen upload.
 - Because journal sync is batched and may occur several seconds after OCR, the journal validator validates the quote at its recorded observation time. It does **not** treat a delayed journal event as a fresh live quote.
 - This is an auditable history/transport integration only. The server does not yet use these journal rows as a live decision feed. Live decision eligibility still requires a fresh broker verification object at evaluation time; Biquote remains reference-only.
+
+
+## Fresh broker quote transport
+
+The Android foreground service now sends structured MT5 OCR Bid/Ask observations to the owner-authenticated /api/broker-quote-observation endpoint, independently of the delayed journal batch. The endpoint validates the observation timestamp (2.5-second maximum age), source, instrument, Bid/Ask shape, OCR method and sequence, then atomically stores the latest value in Neon. Authenticated GET requests return a quote only while it remains fresh; missing or stale observations return HTTP 503. This is a request-scoped API backed by durable Neon state, not a persistent Vercel process or WebSocket. Accepted observations remain OCR-derived and are not proof of executable broker prices or fills. The server-side decision engine is not yet wired to consume this state.
+
+## Historical replay
+
+lib/scalping-historical-replay.js evaluates timestamped signals against chronological tick tapes only. BUY entry/exit use Ask/Bid; SELL entry/exit use Bid/Ask. It evaluates 5/15/30/60-second horizons, reports favourable/adverse excursion, and skips missing entry/exit quotes rather than fabricating results. It rejects OHLC input, malformed quotes, mixed providers and unordered tapes. Commission, slippage and latency beyond the recorded quote timestamps are not modelled; results are research estimates, not proof of future performance.
