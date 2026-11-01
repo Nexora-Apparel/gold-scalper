@@ -36,7 +36,6 @@ class MobileScalpingEngine(
     private var mt5ReferenceQuoteMatch: Boolean? = null
     private var lastAcceptedTickAt = 0L
     private var brokerQuoteVerifiedUntil = 0L
-    private var lastBrokerQuoteMatch: Boolean? = null
     private var feedRevoked = false
     private var lastQuoteValidationFingerprint = ""
     @Volatile private var paused = false
@@ -94,7 +93,6 @@ class MobileScalpingEngine(
         val quote = latestMt5Quote
         if (quote == null || now - quote.observedAt !in -1000L..2500L) {
             brokerQuoteVerifiedUntil = 0L
-            lastBrokerQuoteMatch = null
             if (mt5ReferenceQuoteMatch != null) {
                 mt5ReferenceQuoteMatch = null
                 onEvent("ENGINE_STATE", null, JSONObject()
@@ -123,7 +121,6 @@ class MobileScalpingEngine(
         // A fresh OCR observation only opens the production signal gate while
         // both Bid and Ask remain corroborated by the independent reference.
         brokerQuoteVerifiedUntil = if (matched) quote.observedAt + 2500L else 0L
-        lastBrokerQuoteMatch = matched
         if (mt5ReferenceQuoteMatch != nextMatch) {
             mt5ReferenceQuoteMatch = nextMatch
             onEvent("ENGINE_STATE", null, JSONObject()
