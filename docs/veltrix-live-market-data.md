@@ -60,3 +60,7 @@ The Android companion stores one selected instrument (`XAUUSD` or `XAGUSD`, defa
 ## MT5 spread observation
 
 When the user authorizes Android screen capture, the foreground companion locally OCRs the visible screen. It accepts bid/ask only when the parsed content also contains MT5 context, matches the currently selected instrument, and has `ask > bid`. The raw spread is `ask - bid` in the instrument's quoted price units. The observation expires after 2.5 seconds; after expiry the decision engine falls back to the Biquote reference spread and records the source. The companion journals spread observations at a throttled interval and never uploads screen images. Pip conversion is intentionally deferred until the instrument's digits/point specification is known.
+
+## MT5 quote agreement gate
+
+When a fresh MT5 screen OCR quote is available, the Android engine compares both Bid and Ask, plus spread, against the latest Biquote reference tick. Current provisional tolerances are 0.05 quoted price units for XAUUSD and 0.01 for XAGUSD; these are engineering thresholds, not broker specifications, and must be calibrated against real device observations. A fresh observed mismatch blocks new BUY/SELL signals and is surfaced in the companion status. A match is recorded as corroboration, not proof of executable-price parity or a fill. When no fresh MT5 quote is visible, the engine remains in clearly labelled reference-feed mode; this does not imply MT5 verification. All comparison events store numeric quotes and source metadata, never screen images.
