@@ -40,6 +40,8 @@ class FloatingAssistantService : Service() {
     private var panel: TextView? = null
     private var dotParams: WindowManager.LayoutParams? = null
     private val worker = Executors.newSingleThreadExecutor()
+    private val syncWorker = Executors.newSingleThreadExecutor()
+    @Volatile private var syncInFlight = false
     private var hub: BiquoteHubClient? = null
     private var mobileEngine: MobileScalpingEngine? = null
     @Volatile private var paused = false
@@ -82,9 +84,17 @@ class FloatingAssistantService : Service() {
                     journal.record("FEED_ERROR", selected, JSONObject().put("reason", "tick_stream_stale").put("lastTickAt", lastTickAt))
                     mobileEngine?.onFeedStale()
                 }
-                if (ownerSession.hasSession() && System.currentTimeMillis() - lastSyncAt >= 10000) {
+                if (ownerSession.hasSession() && !syncInFlight && System.currentTimeMillis() - lastSyncAt >= 10000) {
                     lastSyncAt = System.currentTimeMillis()
-                    try { ownerSession.syncJournal(journal) } catch (_: Exception) { }
+                    syncInFlight = true
+                    try {
+                        syncWorker.execute {
+                            try { ownerSession.syncJournal(journal) } catch (_: Exception) { }
+                            finally { syncInFlight = false }
+                        }
+                    } catch (_: java.util.concurrent.RejectedExecutionException) {
+                        syncInFlight = false
+                    }
                 }
                 Handler(Looper.getMainLooper()).post {
                     (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
@@ -490,6 +500,7 @@ class FloatingAssistantService : Service() {
         stopScreenObservation()
         try { textRecognizer.close() } catch (_: Exception) {}
         worker.shutdownNow()
+        syncWorker.shutdownNow()
         try { panel?.let { windowManager.removeView(it) } } catch (_: Exception) {}
         try { dot?.let { windowManager.removeView(it) } } catch (_: Exception) {}
         super.onDestroy()
