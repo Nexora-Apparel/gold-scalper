@@ -330,6 +330,7 @@ class MobileScalpingEngine(
         val reason: String
         when {
             !tick.live -> { action = "HOLD_UNVERIFIED"; reason = "Live quote unavailable; refresh MT5 manually." }
+            System.currentTimeMillis() > exnessVerifiedUntil -> { action = "HOLD_UNVERIFIED"; reason = "Exness quote parity expired; verify MT5 before acting." }
             volatility == "SPIKE" -> { action = "CLOSE_NOW"; reason = "Short-window volatility spike detected." }
             spreadMultiple >= 3.0 -> { action = "CLOSE_NOW"; reason = "Spread expanded to at least three times its recent baseline." }
             direction == opposite && abs(pressure) >= 0.35 && ((side == "BUY" && pressure < 0) || (side == "SELL" && pressure > 0)) -> {
