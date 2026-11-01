@@ -13,10 +13,10 @@ data class Mt5ScreenSnapshot(
 )
 
 object Mt5ScreenParser {
-    private val numberPattern = Regex("-?\\d+(?:[.,]\\d+)?")
+    private val numberPattern = Regex("-?\\d[\\d,.]*")
 
     fun parse(text: String): Mt5ScreenSnapshot {
-        val normalized = text.replace(',', '.')
+        val normalized = text
         val lines = normalized.lines().map { it.trim() }.filter { it.isNotEmpty() }
         val all = normalized.uppercase()
         val tradeTab = all.contains("TRADE") || all.contains("POSITIONS")
@@ -32,7 +32,16 @@ object Mt5ScreenParser {
         }
         fun labelledNumber(labels: List<String>): Double? {
             val line = lines.firstOrNull { value -> labels.any { value.lowercase().contains(it) } } ?: return null
-            val numbers = numberPattern.findAll(line).mapNotNull { it.value.toDoubleOrNull() }.toList()
+            val numbers = numberPattern.findAll(line).mapNotNull { match ->
+                val token = match.value
+                val value = when {
+                    token.contains(",") && token.contains(".") -> token.replace(",", "")
+                    Regex("-?\\d{1,3}(,\\d{3})+").matches(token) -> token.replace(",", "")
+                    token.contains(",") -> token.replace(",", ".")
+                    else -> token
+                }
+                value.toDoubleOrNull()
+            }.toList()
             return numbers.lastOrNull()
         }
         val entry = labelledNumber(listOf("open price", "price open", "entry price"))
