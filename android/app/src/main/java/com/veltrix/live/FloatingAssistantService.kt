@@ -4,6 +4,17 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.app.Activity
+import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
+import android.media.ImageReader
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
+import android.util.DisplayMetrics
+import android.os.HandlerThread
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -34,6 +45,14 @@ class FloatingAssistantService : Service() {
     private val journal by lazy { EventJournalDb(this) }
     private val ownerSession by lazy { OwnerSessionStore(this) }
     @Volatile private var lastQuoteState: Boolean? = null
+    private var mediaProjection: MediaProjection? = null
+    private var virtualDisplay: VirtualDisplay? = null
+    private var imageReader: ImageReader? = null
+    private var ocrThread: HandlerThread? = null
+    private var lastOcrAt = 0L
+    private var lastPositionSignature: String? = null
+    private var missingPositionFrames = 0
+    private val textRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
     override fun onCreate() {
         super.onCreate()
@@ -156,6 +175,98 @@ class FloatingAssistantService : Service() {
         try { windowManager.addView(panel, params) } catch (_: Exception) { panel = null }
     }
 
+    private fun startScreenObservation(resultCode: Int, data: Intent) {
+        try {
+            val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            val projection = manager.getMediaProjection(resultCode, data) ?: return
+            mediaProjection = projection
+            projection.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    stopScreenObservation()
+                    journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenObservation", "stopped_by_system_or_user"))
+                }
+            }, Handler(Looper.getMainLooper()))
+            val metrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealMetrics(metrics)
+            val reader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2)
+            imageReader = reader
+            val thread = HandlerThread("veltrix-local-screen-ocr")
+            thread.start()
+            ocrThread = thread
+            val handler = Handler(thread.looper)
+            reader.setOnImageAvailableListener({ source ->
+                val now = System.currentTimeMillis()
+                if (now - lastOcrAt < 1200) {
+                    source.acquireLatestImage()?.close()
+                    return@setOnImageAvailableListener
+                }
+                lastOcrAt = now
+                val frame = source.acquireLatestImage() ?: return@setOnImageAvailableListener
+                try {
+                    val input = InputImage.fromMediaImage(frame, 0)
+                    textRecognizer.process(input)
+                        .addOnSuccessListener { result -> handleScreenText(result.text) }
+                        .addOnFailureListener { error ->
+                            latestText = "Local screen reading unavailable"
+                            journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenOcrError", error.message ?: "unknown"))
+                        }
+                        .addOnCompleteListener { frame.close() }
+                } catch (error: Exception) {
+                    frame.close()
+                    latestText = "Screen frame rejected"
+                }
+            }, handler)
+            virtualDisplay = projection.createVirtualDisplay(
+                "VELTRIX LIVE screen observer", metrics.widthPixels, metrics.heightPixels,
+                metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                reader.surface, null, handler
+            )
+            journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenObservation", "user_authorized_local_ocr_active"))
+        } catch (error: Exception) {
+            latestText = "Screen observation unavailable"
+            journal.record("FEED_ERROR", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenCaptureError", error.message ?: "unknown"))
+        }
+    }
+
+    private fun handleScreenText(text: String) {
+        val snapshot = Mt5ScreenParser.parse(text)
+        val symbol = snapshot.symbol ?: (prefs.getString("symbol", "XAUUSD") ?: "XAUUSD")
+        if (snapshot.positionDetected && snapshot.side != null && snapshot.entryPrice != null) {
+            val signature = listOf(symbol, snapshot.side, snapshot.entryPrice.toString(), snapshot.volumeLots?.toString() ?: "").joinToString("|")
+            missingPositionFrames = 0
+            if (signature != lastPositionSignature) {
+                lastPositionSignature = signature
+                val payload = JSONObject()
+                    .put("side", snapshot.side)
+                    .put("entryPrice", snapshot.entryPrice)
+                    .put("volumeLots", snapshot.volumeLots ?: JSONObject.NULL)
+                    .put("floatingProfit", snapshot.floatingProfit ?: JSONObject.NULL)
+                    .put("source", "user_authorized_local_mt5_screen_ocr")
+                    .put("confidence", snapshot.confidence)
+                    .put("rawScreenUploaded", false)
+                journal.record("POSITION_OPENED", symbol, payload, snapshot.side)
+            }
+            latestText = "MT5 " + snapshot.side + " " + symbol + " @ " + snapshot.entryPrice
+        } else if (snapshot.tradeTabVisible && lastPositionSignature != null) {
+            missingPositionFrames += 1
+            if (missingPositionFrames == 3) {
+                journal.record("ENGINE_STATE", symbol, JSONObject().put("positionVisibility", "not_visible").put("note", "OCR absence is not proof of closure; confirm the MT5 Trade tab manually."))
+            }
+        }
+    }
+
+    private fun stopScreenObservation() {
+        try { virtualDisplay?.release() } catch (_: Exception) {}
+        virtualDisplay = null
+        try { imageReader?.setOnImageAvailableListener(null, null); imageReader?.close() } catch (_: Exception) {}
+        imageReader = null
+        try { mediaProjection?.stop() } catch (_: Exception) {}
+        mediaProjection = null
+        try { ocrThread?.quitSafely() } catch (_: Exception) {}
+        ocrThread = null
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel("veltrix_live", "VELTRIX LIVE", NotificationManager.IMPORTANCE_LOW)
@@ -178,11 +289,22 @@ class FloatingAssistantService : Service() {
         getSystemService(NotificationManager::class.java).notify(7101, notification(text))
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    @Suppress("DEPRECATION")
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val resultCode = intent?.getIntExtra("projection_result_code", Activity.RESULT_CANCELED) ?: Activity.RESULT_CANCELED
+        val projectionData: Intent? = if (Build.VERSION.SDK_INT >= 33) intent?.getParcelableExtra("projection_data", Intent::class.java)
+            else intent?.getParcelableExtra("projection_data")
+        if (resultCode == Activity.RESULT_OK && projectionData != null && mediaProjection == null) {
+            startScreenObservation(resultCode, projectionData)
+        }
+        return START_STICKY
+    }
 
     override fun onDestroy() {
         paused = true
         hub?.stop()
+        stopScreenObservation()
+        try { textRecognizer.close() } catch (_: Exception) {}
         worker.shutdownNow()
         try { panel?.let { windowManager.removeView(it) } } catch (_: Exception) {}
         try { dot?.let { windowManager.removeView(it) } } catch (_: Exception) {}
