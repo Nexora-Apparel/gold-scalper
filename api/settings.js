@@ -20,6 +20,7 @@ export default async function handler(req, res) {
     const b = req.body || {};
     const s = {
       balance: Number(b.balance),
+      scalpInstrument: b.scalpInstrument === "XAGUSD" ? "XAGUSD" : "XAUUSD",
       currency: b.currency,
       riskPercent: Number(b.riskPercent),
       minQuality: Number(b.minQuality),
