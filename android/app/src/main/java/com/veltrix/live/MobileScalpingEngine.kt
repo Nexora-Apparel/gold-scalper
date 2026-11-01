@@ -82,6 +82,9 @@ class MobileScalpingEngine(
 
     @Synchronized
     fun onFeedStale() {
+        exnessVerifiedUntil = 0L
+        lastExnessMatch = null
+        onEvent("ENGINE_STATE", null, JSONObject().put("exnessQuoteVerification", "REVOKED_FEED_STALE").put("signalGenerationEnabled", false))
         val position = activePosition ?: return
         val fingerprint = "HOLD_UNVERIFIED|feed_stale"
         if (lastExitFingerprint == fingerprint) return
