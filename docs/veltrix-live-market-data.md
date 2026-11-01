@@ -110,3 +110,5 @@ The Android floating indicator now distinguishes a fresh reference stream from a
 Broker quote verification is also the mobile engine's constructor default. Reference-feed-only operation must be explicitly selected by a development/test caller; production code cannot accidentally fall back to Biquote-only signal generation by omitting the broker-verification option.
 
 The repository currently contains live Biquote streaming and derived M1/M5/M15 aggregation, but no verified historical tick archive for XAUUSD/XAGUSD. The replay engine is implemented and tested against synthetic fixtures only; it is not yet a real-market backtest. Do not publish win-rate or accuracy claims until a provenance-labelled chronological tick dataset is available and replayed out of sample.
+
+The legacy manual Bid/Ask entry path has been removed. Production broker verification can only be established by the user-authorised local MT5 OCR observation and its fresh reference-feed corroboration; manually typed prices cannot open the signal gate.
