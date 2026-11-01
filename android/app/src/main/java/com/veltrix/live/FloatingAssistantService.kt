@@ -116,7 +116,7 @@ class FloatingAssistantService : Service() {
                             repeatMode = Animation.REVERSE
                             repeatCount = Animation.INFINITE
                         })
-                    } else if ((paused || !fresh) && dot?.animation != null) {
+                    } else if ((paused || !fresh || !exnessVerified) && dot?.animation != null) {
                         dot?.clearAnimation()
                     }
                     panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh && exnessVerified) "LIVE · EXNESS VERIFIED" else if (fresh) "FEED LIVE · EXNESS CHECK" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
