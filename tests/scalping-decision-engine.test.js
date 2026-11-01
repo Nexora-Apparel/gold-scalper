@@ -41,4 +41,3 @@ test("blocks signals until the Exness quote has been explicitly verified",()=>{
  assert.equal(unverified.action,"NO_TRADE");
  assert.ok(unverified.reasons.includes("exness_quote_not_verified"));
 });
-});
