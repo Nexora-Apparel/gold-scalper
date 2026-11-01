@@ -61,6 +61,26 @@ class MobileScalpingEngineTest {
         assertTrue(!noTrade.getJSONArray("reasons").toString().contains("broker_quote_parity_not_verified"))
     }
 
+
+    @Test fun brokerVerificationExpiresWithTheFreshMt5ObservationWindow() {
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { _, _, _ -> }
+        val now = System.currentTimeMillis()
+        val tick = LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true)
+        engine.onTick(tick)
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", tick.bid, tick.ask, now))
+        assertTrue(engine.hasFreshBrokerQuoteVerification(now))
+        assertTrue(!engine.hasFreshBrokerQuoteVerification(now + 2501L))
+    }
+
+    @Test fun mismatchedMt5ObservationNeverOpensProductionBrokerGate() {
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { _, _, _ -> }
+        val now = System.currentTimeMillis()
+        val tick = LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true)
+        engine.onTick(tick)
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4173.10, 4173.30, now))
+        assertTrue(!engine.hasFreshBrokerQuoteVerification(now))
+    }
+
     @Test fun recommendsCloseAtSixtySecondMaximumHoldingTime() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
         val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
