@@ -30,11 +30,30 @@ export default async function handler(req, res) {
       : await sql`SELECT event_id AS "eventId", event_type AS type, symbol, side, occurred_at AS "occurredAt", payload FROM veltrix_scalping_events ORDER BY occurred_at DESC, id DESC LIMIT ${limit}`;
     const totals = await sql`SELECT event_type AS type, COUNT(*)::int AS count FROM veltrix_scalping_events GROUP BY event_type ORDER BY event_type`;
     const totalRows = await sql`SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE event_type = 'POSITION_CLOSED')::int AS closed_positions, COUNT(*) FILTER (WHERE event_type = 'MISSED_OPPORTUNITY')::int AS missed_opportunities FROM veltrix_scalping_events`;
-    const outcomeRows = await sql`SELECT COUNT(*)::int AS settled,
-      COUNT(*) FILTER (WHERE (payload->>'realizedR')::numeric > 0)::int AS wins,
-      COALESCE(SUM((payload->>'realizedR')::numeric), 0)::float8 AS net_r,
-      AVG((payload->>'realizedR')::numeric)::float8 AS average_r
-      FROM veltrix_scalping_events WHERE event_type = 'POSITION_OUTCOME_RECORDED'`;
+    const outcomeRows = await sql`WITH outcomes AS (
+        SELECT symbol, occurred_at, id, (payload->>'realizedR')::numeric AS realized_r
+        FROM veltrix_scalping_events WHERE event_type = 'POSITION_OUTCOME_RECORDED'
+      ), curve AS (
+        SELECT *, SUM(realized_r) OVER (ORDER BY occurred_at, id) AS cumulative_r FROM outcomes
+      ), drawdown AS (
+        SELECT *, MAX(cumulative_r) OVER (ORDER BY occurred_at, id) AS peak_r FROM curve
+      )
+      SELECT COUNT(*)::int AS settled,
+        COUNT(*) FILTER (WHERE realized_r > 0)::int AS wins,
+        COUNT(*) FILTER (WHERE realized_r < 0)::int AS losses,
+        COUNT(*) FILTER (WHERE realized_r = 0)::int AS breakevens,
+        COALESCE(SUM(realized_r), 0)::float8 AS net_r,
+        AVG(realized_r)::float8 AS average_r,
+        COALESCE(MAX(peak_r - cumulative_r), 0)::float8 AS max_drawdown_r
+      FROM drawdown`;
+    const outcomesBySymbol = await sql`SELECT symbol, COUNT(*)::int AS settled,
+        COUNT(*) FILTER (WHERE (payload->>'realizedR')::numeric > 0)::int AS wins,
+        COUNT(*) FILTER (WHERE (payload->>'realizedR')::numeric < 0)::int AS losses,
+        COUNT(*) FILTER (WHERE (payload->>'realizedR')::numeric = 0)::int AS breakevens,
+        COALESCE(SUM((payload->>'realizedR')::numeric), 0)::float8 AS net_r,
+        AVG((payload->>'realizedR')::numeric)::float8 AS average_r
+      FROM veltrix_scalping_events WHERE event_type = 'POSITION_OUTCOME_RECORDED'
+      GROUP BY symbol ORDER BY symbol`;
     return res.status(200).json({
       events: rows,
       summary: {
@@ -42,9 +61,14 @@ export default async function handler(req, res) {
         closedPositions: Number(totalRows[0]?.closed_positions || 0),
         missedOpportunities: Number(totalRows[0]?.missed_opportunities || 0),
         settledTrades: Number(outcomeRows[0]?.settled || 0),
-        winRate: Number(outcomeRows[0]?.settled || 0) > 0 ? Number((Number(outcomeRows[0]?.wins || 0) / Number(outcomeRows[0].settled) * 100).toFixed(1)) : null,
+        wins: Number(outcomeRows[0]?.wins || 0),
+        losses: Number(outcomeRows[0]?.losses || 0),
+        breakevens: Number(outcomeRows[0]?.breakevens || 0),
+        winRate: Number(outcomeRows[0]?.wins || 0) + Number(outcomeRows[0]?.losses || 0) > 0 ? Number((Number(outcomeRows[0]?.wins || 0) / (Number(outcomeRows[0]?.wins || 0) + Number(outcomeRows[0]?.losses || 0)) * 100).toFixed(1)) : null,
         netR: Number(outcomeRows[0]?.net_r || 0),
         averageR: outcomeRows[0]?.average_r == null ? null : Number(Number(outcomeRows[0].average_r).toFixed(3)),
+        maxDrawdownR: Number(Number(outcomeRows[0]?.max_drawdown_r || 0).toFixed(3)),
+        bySymbol: outcomesBySymbol.map(row => ({ symbol: row.symbol, settled: Number(row.settled), wins: Number(row.wins), losses: Number(row.losses), breakevens: Number(row.breakevens), netR: Number(row.net_r), averageR: row.average_r == null ? null : Number(Number(row.average_r).toFixed(3)) })),
         counts: Object.fromEntries(totals.map(row => [row.type, Number(row.count)]))
       }
     });
