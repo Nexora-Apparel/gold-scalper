@@ -128,6 +128,15 @@ class FloatingAssistantService : Service() {
             }
         }
         mobileEngine = engine
+        if (prefs.getBoolean("position_active", false)) {
+            val savedSide = prefs.getString("active_position_side", null)
+            val savedEntry = prefs.getString("active_position_entry", null)?.toDoubleOrNull()
+            if ((savedSide == "BUY" || savedSide == "SELL") && savedEntry != null && savedEntry > 0) {
+                engine.setPosition(savedSide, savedEntry)
+                activePositionId = prefs.getString("active_position_id", null)
+                lastPositionSignature = listOf(symbol, savedSide, savedEntry.toString(), prefs.getString("active_position_volume", "0")).joinToString("|")
+            }
+        }
         hub = BiquoteHubClient(symbol, { tick ->
             engine.onTick(tick)
             lastTickAt = System.currentTimeMillis()
@@ -318,7 +327,8 @@ class FloatingAssistantService : Service() {
             }
             mobileEngine?.clearPosition()
             currentDecisionText = null
-            prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side").apply()
+            prefs.edit().putBoolean("position_active", false).remove("active_position_id").remove("active_position_side")
+                    .remove("active_position_entry").remove("active_position_volume").apply()
             activePositionId = null
             lastPositionSignature = null
             missingPositionFrames = 0
@@ -329,7 +339,9 @@ class FloatingAssistantService : Service() {
             val signature = listOf(symbol, snapshot.side, snapshot.entryPrice.toString(), snapshot.volumeLots?.toString() ?: "").joinToString("|")
             missingPositionFrames = 0
             activePositionId = activePositionId ?: prefs.getString("active_position_id", null) ?: UUID.randomUUID().toString()
-            prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId).putString("active_position_side", snapshot.side).apply()
+            prefs.edit().putBoolean("position_active", true).putString("active_position_id", activePositionId)
+                .putString("active_position_side", snapshot.side).putString("active_position_entry", snapshot.entryPrice.toString())
+                .putString("active_position_volume", snapshot.volumeLots?.toString() ?: "0").apply()
             mobileEngine?.setPosition(snapshot.side, snapshot.entryPrice)
             if (signature != lastPositionSignature) {
                 lastPositionSignature = signature
