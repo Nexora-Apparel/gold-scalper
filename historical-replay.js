@@ -1,4 +1,4 @@
-import { listArchives, exportArchive } from "./tick-archive.js";
+import { listArchives, exportArchive, saveReplayReport, listReplayReports, getReplayReport, deleteReplayReport } from "./tick-archive.js";
 import { replayScalpingSignals } from "./lib/scalping-historical-replay.js";
 import { parseHistoricalSignalLog } from "./lib/scalping-signal-dataset.js";
 
@@ -11,6 +11,7 @@ const report = $("replayReport");
 const HORIZONS = [5, 15, 30, 60];
 let selectedArchive = null;
 let lastReport = null;
+let lastReportId = null;
 let journalSignalBundle = null;
 
 function message(text, error = false) {
@@ -71,6 +72,40 @@ function renderReport(result) {
   boundary.textContent = "Research estimate only. Bid/Ask spread is embedded in executable-side entry/exit prices. " + (result.costModel.roundTripAdditionalCostPriceUnits === null ? "Additional commission/slippage costs were not supplied, so net results are unavailable. " : "The manually supplied additional round-trip cost of " + result.costModel.roundTripAdditionalCostPriceUnits + " price units was deducted; this is an estimate, not a broker-verified cost. ") + "Execution latency, partial fills and Exness fill parity are not modelled. Do not treat hit rate as validated live accuracy or profitability.";
   report.append(boundary);
 }
+function downloadReport(report, id = "replay") {
+  const blob = new Blob([JSON.stringify(report, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob), link = document.createElement("a");
+  link.href = url;
+  link.download = "veltrix-replay-" + report.archive.symbol + "-" + String(id).slice(0, 12) + ".json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+async function renderSavedReports() {
+  const container = $("savedReplayReports");
+  const items = await listReplayReports();
+  container.replaceChildren();
+  if (!items.length) {
+    const empty = document.createElement("p"); empty.className = "notice"; empty.textContent = "No saved replay reports in this browser."; container.append(empty); return;
+  }
+  for (const item of items) {
+    const card = document.createElement("article"); card.className = "partition";
+    const title = document.createElement("h3"); title.textContent = item.symbol + " · " + item.provider; card.append(title);
+    const detail = document.createElement("p"); detail.className = "notice";
+    detail.textContent = item.savedAt + " · " + item.signalCount + " signals · " + item.signalSource + " · SHA-256 " + item.id.slice(0, 16) + "…"; card.append(detail);
+    const open = document.createElement("button"); open.textContent = "OPEN";
+    open.addEventListener("click", async () => {
+      const stored = await getReplayReport(item.id);
+      if (!stored) { message("Saved replay report is missing.", true); return; }
+      lastReport = stored; lastReportId = item.id; renderReport(stored); message("Loaded saved replay report " + item.id.slice(0, 16) + "…");
+    });
+    const exportButton = document.createElement("button"); exportButton.className = "quiet"; exportButton.textContent = "EXPORT";
+    exportButton.addEventListener("click", async () => { const stored = await getReplayReport(item.id); if (stored) downloadReport(stored, item.id); });
+    const remove = document.createElement("button"); remove.className = "quiet"; remove.textContent = "DELETE";
+    remove.addEventListener("click", async () => { await deleteReplayReport(item.id); await renderSavedReports(); message("Replay report deleted from this browser."); });
+    const row = document.createElement("div"); row.className = "row"; row.append(open, exportButton, remove); card.append(row); container.append(card);
+  }
+}
+
 async function loadArchives() {
   const archives = await listArchives();
   archiveSelect.replaceChildren();
@@ -171,16 +206,21 @@ $("runReplay").addEventListener("click", async () => {
       partitions
     };
     renderReport(lastReport);
-    message("Replay complete. Training, validation and held-out test periods were processed separately.");
+    try {
+      lastReportId = await saveReplayReport(lastReport);
+      await renderSavedReports();
+      message("Replay complete and saved locally. Report SHA-256 " + lastReportId + ". Training, validation and held-out test periods were processed separately.");
+    } catch (storageError) {
+      lastReportId = null;
+      message("Replay completed, but local report storage failed: " + storageError.message + ". Export the report now to preserve it.", true);
+    }
   } catch (error) {
     message(error.message || "Replay failed.", true);
   } finally { runButton.disabled = false; }
 });
 $("exportReplay").addEventListener("click", () => {
-  if (!lastReport) { message("Run a replay before exporting.", true); return; }
-  const blob = new Blob([JSON.stringify(lastReport, null, 2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob), link = document.createElement("a");
-  link.href = url; link.download = "veltrix-replay-" + lastReport.archive.symbol + "-" + new Date().toISOString().slice(0, 10) + ".json";
-  link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  if (!lastReport) { message("Run a replay or open a saved report before exporting.", true); return; }
+  downloadReport(lastReport, lastReportId || new Date().toISOString().slice(0, 10));
 });
 loadArchives().catch((error) => message("Cannot load local archives: " + error.message, true));
+renderSavedReports().catch((error) => message("Cannot load saved replay history: " + error.message, true));
