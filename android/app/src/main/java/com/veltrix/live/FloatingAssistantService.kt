@@ -47,6 +47,7 @@ class FloatingAssistantService : Service() {
     private var mobileEngine: MobileScalpingEngine? = null
     @Volatile private var paused = false
     @Volatile private var feedHealthy = false
+    @Volatile private var exnessVerified = false
     @Volatile private var lastTickAt = 0L
     @Volatile private var latestText = "Connecting to market feed…"
     @Volatile private var currentDecisionText: String? = null
@@ -108,8 +109,8 @@ class FloatingAssistantService : Service() {
                     }
                 }
                 Handler(Looper.getMainLooper()).post {
-                    (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
-                    if (!paused && fresh && dot?.animation == null) {
+                    (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh && exnessVerified) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
+                    if (!paused && fresh && exnessVerified && dot?.animation == null) {
                         dot?.startAnimation(AlphaAnimation(0.45f, 1.0f).apply {
                             duration = 900
                             repeatMode = Animation.REVERSE
@@ -118,7 +119,7 @@ class FloatingAssistantService : Service() {
                     } else if ((paused || !fresh) && dot?.animation != null) {
                         dot?.clearAnimation()
                     }
-                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh) "LIVE FEED" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
+                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (fresh && exnessVerified) "LIVE · EXNESS VERIFIED" else if (fresh) "FEED LIVE · EXNESS CHECK" else "FEED ISSUE") + "\nTap panel to pause/resume · tap dot to hide"
                 }
                 } catch (error: Exception) {
                     if (Thread.currentThread().isInterrupted) break
@@ -136,6 +137,7 @@ class FloatingAssistantService : Service() {
     private fun connectSelectedMarket() {
         lastTickAt = 0L
         feedHealthy = false
+        exnessVerified = false
         lastQuoteState = null
         currentDecisionText = null
         criticalExitAlert = false
@@ -153,6 +155,9 @@ class FloatingAssistantService : Service() {
                 payload.put("sourceSignalRef", prefs.getString("active_position_signal_event_id", null) ?: JSONObject.NULL)
             } else if (eventType == "MISSED_OPPORTUNITY") {
                 payload.put("sourceSignalRef", pendingSignalEventId ?: prefs.getString("pending_signal_event_id", null) ?: JSONObject.NULL)
+            }
+            if (eventType == "ENGINE_STATE" && payload.has("exnessQuoteVerification")) {
+                exnessVerified = payload.optString("exnessQuoteVerification") == "MATCHED"
             }
             val journalEventId = journal.record(eventType, symbol, payload, side)
             if (eventType == "SIGNAL" && side != null) {
