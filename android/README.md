@@ -22,7 +22,7 @@ The GitHub Actions validation workflow uploads this APK as the artifact named `v
 4. Grant Android's overlay permission.
 5. Approve Android's MediaProjection screen-capture prompt. Screen frames are processed locally with ML Kit; full-screen images are not uploaded.
 6. Start the floating assistant and open Exness MT5.
-7. Copy the current Exness MT5 bid and ask into the verification fields. Signals remain blocked until both sides and spread match the current provider quote within the instrument tolerance. Verification expires after five minutes.
+7. Keep the Exness MT5 chart or Market Watch visible with the selected symbol and labelled Bid/Ask values. Local OCR attempts to match both sides and spread against the fresh provider quote. If the MT5 layout does not expose labelled Bid/Ask text, enter the current values in the manual verification fields. Signals remain blocked until a match is confirmed; verification expires after five minutes and is revoked on feed loss.
 8. Keep only one selected market and do not switch instruments while an MT5 position is detected.
 9. Any BUY/SELL/CLOSE recommendation is manual-review-only. The app never sends broker orders.
 
@@ -40,7 +40,7 @@ The GitHub Actions validation workflow uploads this APK as the artifact named `v
 
 ## Known constraints
 - biquote is a provisional external feed, not verified as the user's exact Exness execution feed. Manual spot verification is required and does not prove continuous feed parity.
-- OCR parsing must be physically validated against the installed Exness MT5 layout. The current parser tracks one detected position; multiple simultaneous positions are not yet supported.
+- OCR parsing must be physically validated against the installed Exness MT5 layout. Quote matching depends on visible, labelled Bid/Ask text or the manual verification fallback. The current parser tracks one detected position; multiple simultaneous positions are not yet supported.
 - Signal logic is experimental and intentionally fail-closed. It requires at least 15 completed contiguous M1 bars for M15 context plus completed M1 structure; early runtime may show NO_TRADE.
 - No 90% accuracy or profitability is claimed. Run at least two months on demo and record every closed trade's net realized R after fees and slippage before considering live reliance.
 - A human must physically test overlay, MediaProjection, OCR accuracy, Exness quote matching, background behavior and reconnection on the target Android device.
