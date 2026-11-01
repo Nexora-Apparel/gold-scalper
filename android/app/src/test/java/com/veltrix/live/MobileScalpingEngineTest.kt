@@ -39,6 +39,20 @@ class MobileScalpingEngineTest {
         assertTrue(engine.verifyExnessQuote(4172.50, 4172.65))
         assertTrue(!engine.verifyExnessQuote(4172.80, 4172.95))
     }
+    @Test fun recommendsCloseAtSixtySecondMaximumHoldingTime() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD") { type, _, payload -> events.add(type to payload) }
+        val openedAt = System.currentTimeMillis() - 61000L
+        engine.setPosition("BUY", 4172.50, openedAt)
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.55, 4172.65, 4172.60, 0.10, now, true))
+        val exit = events.lastOrNull { it.first == "EXIT_RECOMMENDED" }?.second
+        assertTrue(exit != null)
+        assertEquals("CLOSE_NOW", exit!!.getString("action"))
+        assertEquals("Maximum 60-second scalping holding time reached.", exit.getString("reason"))
+        assertTrue(exit.getLong("holdingTimeMs") >= 60000L)
+    }
+
     @Test fun feedFailureEventsAreDeduplicated() {
         val events = mutableListOf<String>()
         val engine = MobileScalpingEngine("XAUUSD") { type, _, _ -> events.add(type) }
