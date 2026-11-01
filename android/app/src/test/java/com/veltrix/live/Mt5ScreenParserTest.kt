@@ -22,7 +22,7 @@ class Mt5ScreenParserTest {
     }
 
     @Test fun detectsSilverSellPosition() {
-        val result = Mt5ScreenParser.parse("Trade\nXAGUSD\nSELL 0.02\nEntry Price 31.450")
+        val result = Mt5ScreenParser.parse("Trade\nXAGUSD\nSELL 0.02\nEntry Price 31.450\nProfit 0.00")
         assertEquals("XAGUSD", result.symbol)
         assertEquals("SELL", result.side)
         assertTrue(result.positionDetected)
@@ -36,7 +36,7 @@ class Mt5ScreenParserTest {
     }
 
     @Test fun parsesThousandsSeparatorInMetalPrice() {
-        val result = Mt5ScreenParser.parse("Trade\nXAUUSD\nBUY 0.01\nOpen Price 4,172.55")
+        val result = Mt5ScreenParser.parse("Trade\nXAUUSD\nBUY 0.01\nOpen Price 4,172.55\nProfit 0.00")
         assertEquals(4172.55, result.entryPrice!!, 0.0001)
         assertTrue(result.positionDetected)
     }
