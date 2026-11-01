@@ -24,7 +24,8 @@ class MobileScalpingEngine(
     private var lastFingerprint = ""
     private var lastSignalAt = 0L
     private var lastMarketFingerprint = ""
-    private var activePosition: Pair<String, Double>? = null
+    private data class ActivePosition(val side: String, val entryPrice: Double, val openedAtMillis: Long)
+    private var activePosition: ActivePosition? = null
     private var lastExitFingerprint = ""
     private var pendingSignal: PendingSignal? = null
     private var pendingExitAt = 0L
@@ -39,7 +40,7 @@ class MobileScalpingEngine(
     @Volatile private var paused = false
 
     @Synchronized
-    fun setPosition(side: String, entryPrice: Double) {
+    fun setPosition(side: String, entryPrice: Double, openedAtMillis: Long = System.currentTimeMillis()) {
         if (side !in setOf("BUY", "SELL") || !entryPrice.isFinite() || entryPrice <= 0) return
         val pending = pendingSignal
         if (pending != null) {
@@ -62,13 +63,14 @@ class MobileScalpingEngine(
             pendingSignal = null
         }
         val previousPosition = activePosition
-        if (previousPosition == null || previousPosition.first != side || previousPosition.second != entryPrice) {
+        if (previousPosition == null || previousPosition.side != side || previousPosition.entryPrice != entryPrice) {
             lastExitFingerprint = ""
             pendingExitAt = 0L
             pendingExitLogged = false
             pendingExitReason = ""
         }
-        activePosition = Pair(side, entryPrice)
+        val preservedOpenedAt = previousPosition?.takeIf { it.side == side && it.entryPrice == entryPrice }?.openedAtMillis
+        activePosition = ActivePosition(side, entryPrice, (preservedOpenedAt ?: openedAtMillis).coerceAtMost(System.currentTimeMillis()))
     }
 
     @Synchronized
@@ -130,7 +132,7 @@ class MobileScalpingEngine(
         val position = activePosition
         if (position != null && pendingExitAt > 0 && !pendingExitLogged && now - pendingExitAt >= 5000L) {
             pendingExitLogged = true
-            onEvent("EXIT_NOT_CONFIRMED", position.first, JSONObject()
+            onEvent("EXIT_NOT_CONFIRMED", position.side, JSONObject()
                 .put("reason", pendingExitReason)
                 .put("confirmationDelayMs", now - pendingExitAt)
                 .put("manualMT5ConfirmationRequired", true))
@@ -152,7 +154,7 @@ class MobileScalpingEngine(
         onEvent("EXIT_RECOMMENDED", position.first, JSONObject()
             .put("action", "HOLD_UNVERIFIED")
             .put("reason", "Market-data stream is stale or disconnected. Verify the position directly in MT5.")
-            .put("entryPrice", position.second)
+            .put("entryPrice", position.entryPrice)
             .put("executionEnabled", false))
     }
 
@@ -369,8 +371,9 @@ class MobileScalpingEngine(
 
     private fun evaluatePositionExit(tick: LiveTick, volatility: String, spreadMultiple: Double, direction: String?, pressure: Double) {
         val position = activePosition ?: return
-        val side = position.first
-        val entry = position.second
+        val side = position.side
+        val entry = position.entryPrice
+        val heldMs = (System.currentTimeMillis() - position.openedAtMillis).coerceAtLeast(0L)
         val opposite = if (side == "BUY") "DOWN" else "UP"
         val exitPrice = if (side == "BUY") tick.bid else tick.ask
         val move = if (side == "BUY") exitPrice - entry else entry - exitPrice
@@ -379,9 +382,10 @@ class MobileScalpingEngine(
         when {
             !tick.live -> { action = "HOLD_UNVERIFIED"; reason = "Live quote unavailable; refresh MT5 manually." }
             requireBrokerQuoteParity && System.currentTimeMillis() > exnessVerifiedUntil -> { action = "HOLD_UNVERIFIED"; reason = "Broker quote parity expired; verify MT5 before acting." }
+            heldMs >= 60000L -> { action = "CLOSE_NOW"; reason = "Maximum 60-second scalping holding time reached." }
             volatility == "SPIKE" -> { action = "CLOSE_NOW"; reason = "Short-window volatility spike detected." }
             spreadMultiple >= 3.0 -> { action = "CLOSE_NOW"; reason = "Spread expanded to at least three times its recent baseline." }
-            direction == opposite && abs(pressure) >= 0.35 && ((side == "BUY" && pressure < 0) || (side == "SELL" && pressure > 0)) -> {
+            heldMs >= 5000L && direction == opposite && abs(pressure) >= 0.35 && ((side == "BUY" && pressure < 0) || (side == "SELL" && pressure > 0)) -> {
                 action = "CLOSE_NOW"; reason = "Short-term momentum and tick pressure reversed against the position."
             }
             else -> { action = "HOLD"; reason = "No emergency exit condition confirmed." }
@@ -406,6 +410,8 @@ class MobileScalpingEngine(
         onEvent("EXIT_RECOMMENDED", side, JSONObject()
             .put("action", action).put("reason", reason).put("entryPrice", entry)
             .put("indicativeExitPrice", exitPrice).put("move", move)
+            .put("holdingTimeMs", heldMs).put("maximumHoldingTimeMs", 60000L)
+            .put("minimumNormalHoldingTimeMs", 5000L)
             .put("executionEnabled", false).put("manualMT5ActionRequired", action == "CLOSE_NOW"))
     }
 
