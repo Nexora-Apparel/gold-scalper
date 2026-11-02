@@ -119,6 +119,45 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom))!important}
 @media(max-width:390px){.nav-tab{font-size:7px!important;letter-spacing:-.15px}.nav-icon{font-size:14px!important}.top-actions .pill{display:inline-flex!important;font-size:7px!important;padding:6px 5px!important}.install-btn{font-size:8px!important;padding:7px 7px!important}}
 @media(prefers-reduced-motion:reduce){.nav-tab,.card{animation:none!important;transition:none!important}}
 
+
+/* VELTRIX LIVE — focused operations interface; supersedes legacy dashboard styling */
+.ops-overview{margin:0 0 22px;padding:0;background:transparent;border:0;box-shadow:none}
+.ops-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin:0 0 22px}
+.ops-heading h1{font-size:clamp(25px,3vw,34px);letter-spacing:-1.1px;margin:8px 0 7px;font-weight:800}
+.ops-heading p{color:#91a0b5;font-size:13px;line-height:1.55;max-width:620px;margin:0}
+.eyebrow,.ops-tile-head,.ops-panel-title{font-size:10px;font-weight:800;letter-spacing:1.25px;color:#8493a8}
+.ops-mode{border:1px solid #6d5830;background:#211c12;color:#e5c477;border-radius:7px;padding:9px 11px;font-size:10px;font-weight:850;white-space:nowrap}
+.ops-mode i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e5b94e;margin-right:6px}
+.ops-market-switch{display:flex;align-items:center;gap:9px;border-bottom:1px solid #29364a;padding:0 0 13px;margin-bottom:14px;color:#8493a8;font-size:11px}
+.ops-market-switch>span:not(.ops-updated){padding:8px 10px;border:1px solid transparent;border-radius:6px}
+.ops-market-switch .market-active{color:#f2d58c;background:#292315;border-color:#67542d;font-weight:800}
+.ops-market-switch small{font-size:8px;letter-spacing:.7px;opacity:.7;margin-left:5px}
+.ops-updated{margin-left:auto;font-size:10px;color:#7f8da1}
+.ops-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.ops-tile,.ops-panel{min-width:0;background:linear-gradient(145deg,#151f30,#101826);border:1px solid #29384e;border-radius:11px;padding:16px}
+.ops-tile{min-height:176px;display:flex;flex-direction:column}
+.ops-tile-head{display:flex;justify-content:space-between;align-items:center;gap:7px;font-size:9px;letter-spacing:.8px}
+.state{font-size:8px;letter-spacing:.6px;border-radius:4px;padding:5px 6px;border:1px solid #526074;color:#b7c4d5;white-space:nowrap}
+.state-ok{color:#70dfb2;border-color:#246b54;background:#102a25}.state-block{color:#ff9cac;border-color:#743747;background:#2b1720}.state-warn{color:#f3cb70;border-color:#715a2d;background:#2a2315}.state-wait{color:#a6b2c3;border-color:#46566d;background:#182333}
+.ops-tile>strong{font-size:17px;letter-spacing:-.35px;margin:19px 0 6px;overflow-wrap:anywhere}
+.ops-tile p{font-size:11px;line-height:1.5;color:#8e9db2;margin:0 0 14px;min-height:32px}
+.ops-metric,.ops-row{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #28364a;padding-top:10px;margin-top:auto;font-size:10px;color:#8190a5}
+.ops-metric b,.ops-row b{font-size:10px;color:#dbe4f0;text-align:right}
+.ops-gate{border-color:#6e3947;background:linear-gradient(145deg,#251a25,#151923)}
+.ops-gate>strong{color:#ff9cac;letter-spacing:1px}
+.ops-lower{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.ops-panel{min-height:180px}
+.ops-panel-title{display:flex;justify-content:space-between;border-bottom:1px solid #29384e;padding-bottom:12px;margin-bottom:4px}
+.ops-row{padding:11px 0;margin:0;border-top:1px solid #253246;font-size:11px}
+.ops-quote{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
+.ops-quote small{font-size:9px;color:#8493a8;letter-spacing:.8px}
+.ops-quote strong{font-size:20px;font-variant-numeric:tabular-nums;color:#e8edf5}
+.ops-foot{display:flex;justify-content:space-between;gap:12px;margin-top:12px;color:#65758b;font-size:8px;letter-spacing:.55px;line-height:1.5}
+#dashboardStatus .ops-row b.good{color:#70dfb2}#dashboardStatus .ops-row b.bad{color:#ff9cac}#dashboardStatus .ops-row b.warn{color:#f3cb70}
+@media(max-width:1100px){.ops-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){main{padding:88px 13px 30px 13px}.top{left:0;padding:0 14px}.nav-tabs{display:flex;flex-direction:row;left:0;right:0;top:auto;bottom:0;width:auto;height:auto;padding:7px 5px calc(7px + env(safe-area-inset-bottom));border-top:1px solid #263449;border-right:0;justify-content:space-around}.nav-tab{flex:1;font-size:9px}.ops-heading{display:block}.ops-mode{display:inline-block;margin-top:13px}.ops-grid{gap:8px}.ops-tile{padding:12px;min-height:180px}.ops-tile>strong{font-size:15px}.ops-lower{grid-template-columns:1fr}.ops-foot{display:block}.ops-foot span{display:block;margin-top:5px}.ops-market-switch{gap:3px}.ops-updated{font-size:9px}}
+@media(max-width:370px){.ops-grid{grid-template-columns:1fr}.ops-tile{min-height:150px}}
+
 </style></head>
 <body><main>
 <header class="top"><div class="top-heading"><div class="brand"><span class="gold">◆</span> AUTOMATON <span class="brand-divider">/</span> VELTRIX LIVE</div><div class="sub">Metals intelligence · execution oversight</div></div><div class="top-actions"><button class="install-btn" id="installApp" type="button" aria-label="Install Gold Scalper app">＋ INSTALL</button><a class="pill" href="/tick-archive.html" aria-label="Open historical tick archive lab" style="text-decoration:none;color:var(--gold)">TICK DATA</a><a class="pill" href="/historical-replay.html" aria-label="Open historical replay console" style="text-decoration:none;color:var(--gold)">REPLAY</a><div class="pill safe-mode-pill" id="modePill"><span class="safe-mode-dot"></span> SAFE MODE</div></div></header>
@@ -135,16 +174,20 @@ main{padding-bottom:calc(112px + env(safe-area-inset-bottom))!important}
 <button class="nav-tab" type="button" data-tab="control"><span class="nav-icon">⏻</span><span>System Control</span></button>
 <div class="nav-footer"><span class="nav-footer-dot"></span><span>MANUAL EXECUTION ONLY</span></div>
 </nav>
-<section class="card" id="dashboardStatus" data-view="dashboard"><h2>Dashboard overview</h2>
-<div class="status"><span class="label">Application</span><span class="value" id="appStatus"><i class="dot"></i>Checking</span></div>
-<div class="status"><span class="label">Gold market data</span><span class="value" id="marketStatus"><i class="dot"></i>Not verified</span></div>
-
-
-<div class="status"><span class="label">Chart</span><span class="value" id="chartStatus"><i class="dot"></i>TradingView widget</span></div>
-<div class="status"><span class="label">Bot mode</span><span class="value" id="engineStatus"><i class="dot"></i>Checking</span></div>
-<div class="status"><span class="label">Current activity</span><span class="value" id="activityStatus"><span class="activity-badge" data-state="paused"><i class="dot"></i>CHECKING</span></span></div>
-<div class="status"><span class="label">Last recorded scan</span><span class="value" id="lastScanStatus">Not recorded</span></div>
-<div class="status"><span class="label">Scheduler heartbeat</span><span class="value" id="schedulerStatus"><i class="dot"></i>Checking</span></div>
+<section class="ops-overview" id="dashboardStatus" data-view="dashboard" aria-live="polite">
+  <div class="ops-heading"><div><span class="eyebrow">LIVE OPERATIONS / METALS</span><h1>Market integrity</h1><p>Independent feed, MT5 observation and price-parity controls. A green state requires fresh verified evidence.</p></div><span class="ops-mode"><i></i> MANUAL · FAIL-CLOSED</span></div>
+  <div class="ops-market-switch"><span class="market-active">XAUUSD <small>PRIMARY</small></span><span>XAGUSD <small>SECONDARY</small></span><span class="ops-updated" id="opsUpdated">Updating telemetry…</span></div>
+  <div class="ops-grid">
+    <article class="ops-tile"><div class="ops-tile-head"><span>01 / REFERENCE FEED</span><b id="refFeedBadge" class="state state-wait">CHECKING</b></div><strong id="refFeedValue">Checking Biquote</strong><p id="refFeedDetail">Awaiting a fresh bid/ask snapshot.</p><div class="ops-metric"><span>Quote age</span><b id="refFeedAge">—</b></div></article>
+    <article class="ops-tile"><div class="ops-tile-head"><span>02 / MT5 SCREEN OBSERVATION</span><b id="mt5Badge" class="state state-wait">NOT VERIFIED</b></div><strong id="mt5Value">No recent observation</strong><p id="mt5Detail">Open MT5 with XAUUSD and visible Bid / Ask values. Android OCR runs locally.</p><div class="ops-metric"><span>Last observed</span><b id="mt5Age">—</b></div></article>
+    <article class="ops-tile"><div class="ops-tile-head"><span>03 / PRICE PARITY</span><b id="parityBadge" class="state state-wait">UNVERIFIED</b></div><strong id="parityValue">Awaiting broker quote</strong><p id="parityDetail">MT5 quote must be fresh and within the configured reference tolerance.</p><div class="ops-metric"><span>Observed spread</span><b id="mt5Spread">—</b></div></article>
+    <article class="ops-tile ops-gate"><div class="ops-tile-head"><span>04 / SIGNAL PERMISSION</span><b id="gateBadge" class="state state-block">BLOCKED</b></div><strong id="gateValue">NO TRADE</strong><p id="gateDetail">Signals remain blocked until reference data and broker parity are independently verified.</p><div class="ops-metric"><span>Execution</span><b>MANUAL ONLY</b></div></article>
+  </div>
+  <div class="ops-lower">
+    <article class="ops-panel"><div class="ops-panel-title"><span>PLATFORM HEALTH</span><span id="platformHealth">CHECKING</span></div><div class="ops-row"><span>Web application</span><b id="appStatus">Checking</b></div><div class="ops-row"><span>Database</span><b id="dbStatus">Checking</b></div><div class="ops-row"><span>Scheduler</span><b id="schedulerStatus">Checking</b></div><div class="ops-row"><span>Emergency stop</span><b id="emergencyStatus">Checking</b></div></article>
+    <article class="ops-panel"><div class="ops-panel-title"><span>QUOTE SNAPSHOT</span><span id="snapshotSource">BIQUOTE · REST</span></div><div class="ops-quote"><small>XAUUSD BID</small><strong id="xauBid">—</strong></div><div class="ops-quote"><small>XAUUSD ASK</small><strong id="xauAsk">—</strong></div><div class="ops-row"><span>Reference spread</span><b id="xauSpread">—</b></div><div class="ops-row"><span>Market session</span><b id="marketSession">Checking</b></div></article>
+  </div>
+  <div class="ops-foot"><span>TELEMETRY IS OBSERVATIONAL · NO BROKER ORDERS CAN BE PLACED FROM THIS DASHBOARD</span><span id="telemetryError">Waiting for first health check.</span></div>
 </section>
 <section class="card dashboard-chart-card" data-view="dashboard"><div class="section-heading"><div><h2>Market workspace</h2><p class="section-caption">Live chart access · XAUUSD analysis</p></div><span class="live-tag"><i></i> MARKET VIEW</span></div><div class="mini-chart-preview"><div class="mini-chart-grid"></div><div class="mini-chart-label"><strong>XAUUSD</strong><span>Open full chart workspace</span></div><div class="mini-chart-line"></div></div><button class="btn chart-launch-btn" id="dashboardChartLaunch" type="button">OPEN MARKET CHART <span>↗</span></button></section>
 <section class="card" id="newsPanel" data-view="news">
@@ -300,7 +343,68 @@ let lastAnalysisVerification=null;
 let currentTask=null;
 function setActivityState(label,state){const el=$("activityStatus");if(!el)return;el.innerHTML='<span class="activity-badge" data-state="'+state+'"><i class="dot '+(state==="working"?"pulse":"")+'"></i>'+label+"</span>"}
 function showEngineActivity(engine,emergencyStop){if(currentTask)return;if(emergencyStop){setActivityState("EMERGENCY STOP","stopped");return}if(engine==="RUNNING"){setActivityState("MONITORING ENABLED · WAITING FOR SCAN","working")}else{setActivityState("PAUSED · NO NEW SCANS","paused")}}
-async function refresh(){try{const s=await api('/api/status');if($('activity').textContent.startsWith('Status check failed:'))$('activity').textContent='Connection restored. Backend status check successful. No trading action was executed.';setStatus('appStatus',s.application||'ONLINE',s.application==='ONLINE'&&s.database==='CONNECTED');setStatus('marketStatus',lastAnalysisVerification===true?'Verified on last analysis':lastAnalysisVerification===false?'Last analysis unverified':(s.marketData||'Not verified'),lastAnalysisVerification===true);setStatus('chartStatus','TradingView embedded',true);setStatus('engineStatus',s.engine||'PAUSED',s.engine==='RUNNING');showEngineActivity(s.engine||'PAUSED',s.emergencyStop===true);const latestAt=s.lastAnalysisAt?Date.parse(s.lastAnalysisAt):0;$('lastScanStatus').textContent=latestAt?new Date(latestAt).toLocaleString()+' · Gold':'No recorded scan yet';setStatus('schedulerStatus',s.schedulerHealth==='RECENT'?'Recent · '+s.schedulerAgeMinutes+'m ago':s.schedulerHealth==='STALE'?'STALE — CHECK SCHEDULER':s.schedulerHealth==='NEVER_RUN'?'No run recorded':s.schedulerHealth==='NOT_CONFIGURED'?'Not configured':'Unverified',s.schedulerHealth==='RECENT');$('modePill').textContent=s.emergencyStop?'EMERGENCY STOP':(s.engine==='RUNNING'?'BOT RUNNING':'BOT PAUSED');$('footnote').textContent=s.database==='CONNECTED'?(lastAnalysisVerification===true?'Database connected. Fresh completed candles passed validation during the last analysis. The selected strategy/timeframe controls signal analysis; manual review only.':lastAnalysisVerification===false?'Database connected. Last analysis could not verify fresh completed candles; no signal generated. Manual review only.':'Database connected. Market feed is verified only after a successful analysis. Manual review only.'):(s.note||'Fail-closed mode.')}catch(e){setStatus('appStatus','Backend unavailable');$('activity').textContent='Status check failed: '+e.message}}
+function setOpsState(id,label,state){const el=$(id);if(!el)return;el.textContent=label;el.className="state state-"+state}
+function ageLabel(ms){if(!Number.isFinite(ms)||ms<0)return "—";return ms<1000?Math.round(ms)+" ms":(ms/1000).toFixed(1)+" s"}
+async function refresh(){
+  const now=Date.now();
+  try{
+    const [s,feed,mt5] = await Promise.all([
+      api('/api/status'),
+      fetch('/api/biquote-quotes?symbols=XAUUSD,XAGUSD',{cache:'no-store'}).then(async r=>({http:r.status,data:await r.json()})).catch(e=>({http:0,data:{ok:false,error:e.message}})),
+      fetch('/api/broker-quote-observation?symbol=XAUUSD',{cache:'no-store'}).then(async r=>({http:r.status,data:await r.json()})).catch(e=>({http:0,data:{ok:false,error:e.message}}))
+    ]);
+    $('appStatus').textContent=s.application||'UNKNOWN';
+    $('dbStatus').textContent=s.database||'UNKNOWN';
+    $('schedulerStatus').textContent=s.schedulerHealth||'UNVERIFIED';
+    $('emergencyStatus').textContent=s.emergencyStop===true?'ACTIVE':'NOT VERIFIED';
+    $('platformHealth').textContent=s.application==='ONLINE'&&s.database==='CONNECTED'?'BACKEND ONLINE':'DEGRADED';
+    $('marketSession').textContent=s.marketStatus|| (s.marketOpen?'OPEN':'CLOSED / UNKNOWN');
+    $('appStatus').className=s.application==='ONLINE'?'good':'bad';
+    $('dbStatus').className=s.database==='CONNECTED'?'good':'bad';
+    $('schedulerStatus').className=s.schedulerHealth==='RECENT'?'good':'warn';
+    $('emergencyStatus').className=s.emergencyStop===true?'bad':'warn';
+    const quotes=feed.data?.quotes||[];
+    const xau=quotes.find(q=>String(q.symbol||'').toUpperCase()==='XAUUSD');
+    const qAge=xau?.timestamp?now-Date.parse(xau.timestamp):Infinity;
+    const refOk=feed.data?.ok===true&&xau?.live===true&&Number.isFinite(qAge)&&qAge>=-1000&&qAge<=1500;
+    setOpsState('refFeedBadge',refOk?'LIVE':'UNAVAILABLE',refOk?'ok':'block');
+    $('refFeedValue').textContent=refOk?'Fresh XAUUSD ticks':'Reference feed unavailable';
+    $('refFeedDetail').textContent=feed.data?.error||xau?.reason||'Biquote REST snapshot is observational only; streaming is required for scalping.';
+    $('refFeedAge').textContent=ageLabel(qAge);
+    $('snapshotSource').textContent=feed.data?.provider?.toUpperCase()||'BIQUOTE · REST';
+    $('xauBid').textContent=Number.isFinite(Number(xau?.bid))?Number(xau.bid).toFixed(3):'—';
+    $('xauAsk').textContent=Number.isFinite(Number(xau?.ask))?Number(xau.ask).toFixed(3):'—';
+    $('xauSpread').textContent=Number.isFinite(Number(xau?.spread))?Number(xau.spread).toFixed(3):'—';
+    const obs=mt5.data?.observation;
+    const obsAge=obs?.observedAt?now-Date.parse(obs.observedAt):Infinity;
+    const mt5Ok=mt5.data?.ok===true&&Number.isFinite(obsAge)&&obsAge>=-1000&&obsAge<=2500;
+    setOpsState('mt5Badge',mt5Ok?'OBSERVED':'NOT VERIFIED',mt5Ok?'ok':'warn');
+    $('mt5Value').textContent=mt5Ok?'MT5 quote received':'No recent MT5 quote';
+    $('mt5Detail').textContent=mt5Ok?'Android observation received by the owner-session API.':'Sign in to the dashboard owner session and keep MT5 visible on XAUUSD with Bid / Ask displayed.';
+    $('mt5Age').textContent=ageLabel(obsAge);
+    $('mt5Spread').textContent=mt5Ok&&obs.quote?.spread!=null?Number(obs.quote.spread).toFixed(3):'—';
+    const parity=mt5Ok&&refOk&&Number.isFinite(Number(obs.quote?.mid))&&Number.isFinite(Number(xau?.mid))?Math.abs(Number(obs.quote.mid)-Number(xau.mid)):null;
+    const parityOk=parity!==null&&parity<=0.5;
+    setOpsState('parityBadge',parityOk?'WITHIN CHECK':'NOT VERIFIED',parityOk?'ok':'block');
+    $('parityValue').textContent=parityOk?'Reference prices aligned':'Parity cannot be certified';
+    $('parityDetail').textContent=parity===null?'Both independent quotes must be fresh before price comparison.':'Absolute mid-price difference: '+parity.toFixed(3)+' USD. Threshold: 0.500 USD; validate instrument contract and feed basis before certification.';
+    const gateOk=refOk&&mt5Ok&&parityOk&&s.emergencyStop!==true&&s.engine==='RUNNING';
+    setOpsState('gateBadge',gateOk?'ELIGIBLE FOR REVIEW':'BLOCKED',gateOk?'ok':'block');
+    $('gateValue').textContent=gateOk?'MANUAL REVIEW ONLY':'NO TRADE';
+    $('gateDetail').textContent=gateOk?'Data checks passed. This does not place or authorise a broker order.':'Feed, MT5 observation, parity or system control gate has not passed. No signal permission is granted.';
+    $('opsUpdated').textContent='UPDATED '+new Date().toLocaleTimeString();
+    $('telemetryError').textContent=feed.http===503?'Reference provider returned 503.':mt5.http===401?'Owner dashboard session required for MT5 telemetry.':feed.http===0?'Reference feed request failed.':'Live checks refreshed; REST snapshot is not a scalping stream.';
+    $('modePill').textContent=s.emergencyStop?'EMERGENCY STOP':(s.engine==='RUNNING'?'MONITORING':'PAUSED');
+    $('footnote').textContent='Manual execution only. Independent quote verification is required; no broker execution is connected.';
+  }catch(e){
+    $('appStatus').textContent='UNAVAILABLE';
+    $('dbStatus').textContent='UNVERIFIED';
+    $('platformHealth').textContent='STATUS REQUEST FAILED';
+    setOpsState('refFeedBadge','UNVERIFIED','block');setOpsState('mt5Badge','UNVERIFIED','block');setOpsState('parityBadge','UNVERIFIED','block');setOpsState('gateBadge','BLOCKED','block');
+    $('gateValue').textContent='NO TRADE';$('gateDetail').textContent='Health telemetry failed. Fail-closed state retained.';
+    $('telemetryError').textContent=e.message||'Health check failed.';
+  }
+}
 function lifecycleStatus(state){if(state==="WAITING_FOR_ENTRY")return "PENDING ENTRY — Setup identified; wait for the planned entry.";if(state==="CONFIRMED_AND_NOTIFIED")return "ENTRY CONFIRMED — Entry conditions were satisfied and recorded in the dashboard journal; still verify live price, spread and risk.";if(state==="CONFIRMED_AWAITING_TELEGRAM")return "ENTRY CONDITIONS MET — check the dashboard journal and live market before considering any entry.";if(["CONFIRMED_AWAITING_LIVE_PRICE","CONFIRMATION_PENDING_DELIVERY"].includes(state))return "CONFIRMATION CHECK IN PROGRESS — Do not enter until live-price validation and the dashboard journal confirmation is completed.";if(["INVALIDATED","EXPIRED","CONFIRMATION_EXPIRED"].includes(state))return "INVALIDATED / EXPIRED — The setup is no longer valid; do not enter.";if(state==="CANCELLED_BY_PAUSE")return "CANCELLED — The bot was paused; do not enter this setup.";if(state==="CONFIRMATION_PENDING_DELIVERY")return "CONFIRMATION CHECK IN PROGRESS — Do not enter until live-price validation and the dashboard journal confirmation are completed.";return ""}
 function renderAnalysisResult(r,symbol){const state=r.entryMonitoring?.state;const lifecycle=lifecycleStatus(state);if(lifecycle&&["INVALIDATED","EXPIRED","CONFIRMATION_EXPIRED","CANCELLED_BY_PAUSE"].includes(state))return lifecycle+"\n"+(r.entryMonitoring?.note||r.reason||"No entry is permitted.")+"\nMarket data: "+(r.marketDataVerified?"VERIFIED":"NOT VERIFIED");if(r.status==="SIGNAL_CANDIDATE"&&r.signal){const s=r.signal;const status=state==="WAITING_FOR_ENTRY"?"PENDING ENTRY":state==="CONFIRMED_AND_NOTIFIED"?"ENTRY CONFIRMED":"SIGNAL CANDIDATE";const confluence=Array.isArray(r.confluence?.components)?r.confluence.components.map(c=>(c.passed?"✓ ":"✗ ")+c.label+" "+(c.passed?c.points:0)+"/"+c.points).join("; "):"";return status+" — "+s.side+" "+symbol+"\n"+(lifecycle?lifecycle+"\n":"")+"Quality: "+r.quality+"/100"+(confluence?"\nConfluence: "+confluence:"")+"\nEntry: "+s.entry+"\nStop loss: "+s.stopLoss+"\nTake profit: "+s.takeProfit+"\nR:R 1:"+s.riskReward+"\nRisk: "+s.riskAmount+" "+s.accountCurrency+" ("+s.riskPercent+"%)\nSetup: "+s.timeframe+"\nReasons: "+(s.explanation||[]).join("; ")+"\n\nManual-review only; verify live quote, spread and news. No broker order placed.\nMarket data: "+(r.marketDataVerified?"VERIFIED":"NOT VERIFIED")+(r.latestCompletedCandle?"\nLatest completed candles (UTC): H1 "+r.latestCompletedCandle.h1+" | M15 "+r.latestCompletedCandle.m15+(r.latestCompletedCandle.m5?" | M5 "+r.latestCompletedCandle.m5:""):"")}const rejected=r.rejectedSetup?("Rejected setup: "+(r.rejectedSetup.side||"UNKNOWN")+" "+(r.rejectedSetup.setup||"setup")+"\nRejected by: "+(r.rejectedSetup.rejectedBy||"unspecified")+(r.rejectedSetup.quality!==undefined?" (quality "+r.rejectedSetup.quality+"/100)":"")+(r.rejectedSetup.zone?"\nZone: "+r.rejectedSetup.zone.type+" "+r.rejectedSetup.zone.price:"")+(r.rejectedSetup.rsi!==undefined?"\nRSI: "+r.rejectedSetup.rsi:"")):"";const d=r.strategyDiagnostics;const diagnosticText=d?("\nStrategy gates: H1="+d.h1Bias+"; MSNR BUY="+(d.msnrBullishInteraction?"YES":"NO")+"; MSNR SELL="+(d.msnrBearishInteraction?"YES":"NO")+"; BOS/CHoCH BUY="+(d.bullishStructureBreak?"YES":"NO")+"; BOS/CHoCH SELL="+(d.bearishStructureBreak?"YES":"NO")+"; liquidity sweep BUY/SELL="+(d.bullishLiquiditySweep?"YES":"NO")+"/"+(d.bearishLiquiditySweep?"YES":"NO")+"; FVG retest BUY/SELL="+(d.bullishFvgRetest?"YES":"NO")+"/"+(d.bearishFvgRetest?"YES":"NO")+"; stage="+d.stage):"";return (lifecycle?lifecycle+"\n":"NO TRADE\n")+(r.reason||r.error||r.entryMonitoring?.note||"No valid setup.")+(rejected?"\n"+rejected:"")+diagnosticText+"\nNo new entry is approved.\nMarket data: "+(r.marketDataVerified?"VERIFIED":"NOT VERIFIED")+(r.latestCompletedCandle?"\nLatest completed candles (UTC): H1 "+r.latestCompletedCandle.h1+" | M15 "+r.latestCompletedCandle.m15+(r.latestCompletedCandle.m5?" | M5 "+r.latestCompletedCandle.m5:""):"")}
 document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',async()=>{const action=b.dataset.action;if(action==='reset-emergency-stop'&&!window.confirm('Reset the emergency stop? The engine will remain paused until you press START BOT.'))return;b.disabled=true;currentTask=action;const taskLabel=action==='analyze'?'ANALYZING GOLD':action==='start'?'STARTING BOT':action==='pause'?'PAUSING BOT':action==='emergency-stop'?'STOPPING BOT':'PROCESSING '+action.toUpperCase();setActivityState(taskLabel,'working');$('activity').textContent=(action==='analyze'?'⏳ '+taskLabel+'…\nFetching and validating market data. Please wait.':'Processing '+action+'…');try{if(action==='analyze'){const symbol=b.dataset.symbol||'XAUUSD';const r=await api('/api/analyze',settings());lastAnalysisVerification=r.marketDataVerified===true?true:r.marketDataVerified===false?false:null;$('activity').textContent=renderAnalysisResult(r,symbol);}else{const r=await api('/api/control',{action});$('activity').textContent=(action==='history'||action==='risk')?JSON.stringify(r,null,2):(r.message||JSON.stringify(r,null,2))}if(action==='analyze'){setActivityState('ANALYSIS COMPLETE · METAL','done')}showView('activity');await refresh()}catch(e){$('activity').textContent='Action not completed: '+e.message+'\nNo success is assumed.'}finally{currentTask=null;b.disabled=false;await refresh()}}));
