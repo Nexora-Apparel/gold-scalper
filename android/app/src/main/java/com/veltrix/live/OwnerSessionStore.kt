@@ -10,6 +10,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import java.io.IOException
 
 class OwnerSessionStore(context: Context) {
     private val baseUrl = "https://gold-scalper-rho.vercel.app"
@@ -41,9 +42,21 @@ class OwnerSessionStore(context: Context) {
             .toRequestBody("application/json; charset=utf-8".toMediaType())
         val request = Request.Builder().url(baseUrl + "/api/login").post(body).build()
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return false
-            val cookie = response.header("Set-Cookie")?.substringBefore(";") ?: return false
-            if (!cookie.startsWith("gold_session=")) return false
+            if (!response.isSuccessful) {
+                val serverMessage = try {
+                    JSONObject(response.body?.string() ?: "{}").optString("error", "")
+                } catch (_: Exception) { "" }
+                val statusMessage = when (response.code) {
+                    401 -> "Dashboard password rejected (HTTP 401)."
+                    503 -> "Server login configuration is incomplete (HTTP 503)."
+                    404 -> "Dashboard login endpoint not found (HTTP 404)."
+                    else -> "Dashboard server returned HTTP ${response.code}."
+                }
+                throw IOException(if (serverMessage.isBlank()) statusMessage else "$statusMessage $serverMessage")
+            }
+            val cookie = response.header("Set-Cookie")?.substringBefore(";")
+                ?: throw IOException("Login response did not include a session cookie.")
+            if (!cookie.startsWith("gold_session=")) throw IOException("Login returned an unexpected session cookie.")
             prefs.edit().putString("cookie", cookie).apply()
             return true
         }
