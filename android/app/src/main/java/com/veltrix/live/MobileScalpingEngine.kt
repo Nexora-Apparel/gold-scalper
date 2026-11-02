@@ -16,7 +16,7 @@ class MobileScalpingEngine(
     private data class Bar(val time: Long, val open: Double, val high: Double, val low: Double, val close: Double)
     private data class ActiveBar(val time: Long, val open: Double, var high: Double, var low: Double, var close: Double)
     private data class PendingSignal(val side: String, val at: Long, val confidence: Double, val referencePrice: Double, val spread: Double)
-    private data class Mt5Quote(val bid: Double, val ask: Double, val spread: Double, val observedAt: Long)
+    private data class Mt5Quote(val bid: Double, val ask: Double, val spread: Double, val observedAt: Long, val receivedAt: Long)
 
     private val samples = mutableListOf<Sample>()
     private val bars = mutableListOf<Bar>()
@@ -80,12 +80,12 @@ class MobileScalpingEngine(
     }
 
     @Synchronized
-    fun updateMt5ObservedQuote(observedSymbol: String, bid: Double, ask: Double, observedAt: Long = System.currentTimeMillis()): Boolean {
+    fun updateMt5ObservedQuote(observedSymbol: String, bid: Double, ask: Double, observedAt: Long = System.currentTimeMillis(), receivedAt: Long = System.currentTimeMillis()): Boolean {
         if (observedSymbol != symbol || !bid.isFinite() || !ask.isFinite() || bid <= 0.0 || ask <= bid || observedAt <= 0L) return false
         val age = System.currentTimeMillis() - observedAt
         if (age !in -1000L..2500L) return false
         if (latestMt5Quote?.let { observedAt <= it.observedAt } == true) return false
-        latestMt5Quote = Mt5Quote(bid, ask, ask - bid, observedAt)
+        latestMt5Quote = Mt5Quote(bid, ask, ask - bid, observedAt, receivedAt)
         refreshMt5ReferenceQuoteVerification()
         return true
     }
@@ -109,10 +109,17 @@ class MobileScalpingEngine(
             it.live && now - it.timestampMillis in -1000L..1500L
         }
         val referenceFresh = reference != null
+        val bidDeviation = reference?.let { abs(quote.bid - it.bid) }
+        val askDeviation = reference?.let { abs(quote.ask - it.ask) }
+        val midDeviation = reference?.let { abs((quote.bid + quote.ask) / 2.0 - it.mid) }
+        val spreadDeviation = reference?.let { abs(quote.spread - it.spread) }
+        val timestampSkewMs = reference?.let { abs(quote.observedAt - it.timestampMillis) }
+        val ingestionLatencyMs = (quote.receivedAt - quote.observedAt).coerceAtLeast(0L)
         val matched = reference != null &&
-            abs(quote.bid - reference.bid) <= tolerance &&
-            abs(quote.ask - reference.ask) <= tolerance &&
-            abs(quote.spread - reference.spread) <= max(tolerance, reference.spread * 0.20)
+            (bidDeviation ?: Double.POSITIVE_INFINITY) <= tolerance &&
+            (askDeviation ?: Double.POSITIVE_INFINITY) <= tolerance &&
+            (spreadDeviation ?: Double.POSITIVE_INFINITY) <= max(tolerance, reference.spread * 0.20) &&
+            (timestampSkewMs ?: Long.MAX_VALUE) <= 2500L
         val status = when {
             !referenceFresh -> "REFERENCE_FEED_STALE"
             matched -> "MATCHED"
@@ -131,6 +138,14 @@ class MobileScalpingEngine(
                 .put("mt5Bid", quote.bid).put("mt5Ask", quote.ask)
                 .put("referenceBid", tick?.bid ?: JSONObject.NULL)
                 .put("referenceAsk", tick?.ask ?: JSONObject.NULL)
+                .put("bidDeviationPriceUnits", bidDeviation ?: JSONObject.NULL)
+                .put("askDeviationPriceUnits", askDeviation ?: JSONObject.NULL)
+                .put("midDeviationPriceUnits", midDeviation ?: JSONObject.NULL)
+                .put("spreadDeviationPriceUnits", spreadDeviation ?: JSONObject.NULL)
+                .put("quoteTimestampSkewMs", timestampSkewMs ?: JSONObject.NULL)
+                .put("brokerObservationAgeMs", (now - quote.observedAt).coerceAtLeast(0L))
+                .put("brokerIngestionLatencyMs", ingestionLatencyMs)
+                .put("referenceQuoteAgeMs", reference?.let { (now - it.timestampMillis).coerceAtLeast(0L) } ?: JSONObject.NULL)
                 .put("quoteSource", "mt5_screen_ocr_vs_biquote_reference")
                 .put("rawScreenUploaded", false))
         }
@@ -450,6 +465,10 @@ class MobileScalpingEngine(
                 .put("mt5ObservedSpread", observedMt5Quote?.spread ?: JSONObject.NULL)
                 .put("brokerQuoteObservedAt", freshMt5Quote?.let { java.time.Instant.ofEpochMilli(it.observedAt).toString() } ?: JSONObject.NULL)
                 .put("brokerQuoteAgeMs", freshMt5Quote?.let { (System.currentTimeMillis() - it.observedAt).coerceAtLeast(0L) } ?: JSONObject.NULL)
+                .put("brokerQuoteIngestionLatencyMs", freshMt5Quote?.let { (it.receivedAt - it.observedAt).coerceAtLeast(0L) } ?: JSONObject.NULL)
+                .put("feedToDecisionLatencyMs", (System.currentTimeMillis() - tick.timestampMillis).coerceAtLeast(0L))
+                .put("brokerReferenceMidDeviationPriceUnits", if (freshMt5Quote != null) abs((freshMt5Quote.bid + freshMt5Quote.ask) / 2.0 - tick.mid) else JSONObject.NULL)
+                .put("brokerReferenceSpreadDeviationPriceUnits", if (freshMt5Quote != null) abs(freshMt5Quote.spread - tick.spread) else JSONObject.NULL)
                 .put("spreadSource", spreadSource).put("spreadPercent", spreadPercent)
                 .put("mt5ReferenceQuoteVerification", when {
                     freshMt5Quote == null -> "NOT_OBSERVED"
