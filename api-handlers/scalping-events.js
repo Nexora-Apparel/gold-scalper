@@ -98,7 +98,26 @@ export default async function handler(req, res) {
     const events = truncated ? rows.slice(0, limit) : rows;
     if (eventType === "SIGNAL") return res.status(200).json({ events, truncated });
     const totals = await sql`SELECT event_type AS type, COUNT(*)::int AS count FROM veltrix_scalping_events GROUP BY event_type ORDER BY event_type`;
-    const totalRows = await sql`SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE event_type = 'POSITION_CLOSED')::int AS closed_positions, COUNT(*) FILTER (WHERE event_type = 'MISSED_OPPORTUNITY')::int AS missed_opportunities FROM veltrix_scalping_events`;
+    const totalRows = await sql`SELECT COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE event_type = 'POSITION_CLOSED')::int AS closed_positions,
+        COUNT(*) FILTER (WHERE event_type = 'MISSED_OPPORTUNITY')::int AS missed_opportunities,
+        COUNT(*) FILTER (WHERE event_type = 'EXIT_NOT_CONFIRMED')::int AS missed_exit_confirmations
+      FROM veltrix_scalping_events`;
+    const lifecycleRows = await sql`WITH positions AS (
+        SELECT payload->>'positionId' AS position_id,
+          BOOL_OR(event_type = 'POSITION_OPENED') AS opened,
+          BOOL_OR(event_type = 'POSITION_CLOSED') AS closed,
+          BOOL_OR(event_type = 'POSITION_OUTCOME_RECORDED') AS settled
+        FROM veltrix_scalping_events
+        WHERE event_type IN ('POSITION_OPENED', 'POSITION_CLOSED', 'POSITION_OUTCOME_RECORDED')
+          AND NULLIF(payload->>'positionId', '') IS NOT NULL
+        GROUP BY payload->>'positionId'
+      )
+      SELECT
+        COUNT(*) FILTER (WHERE opened AND NOT closed)::int AS active_positions,
+        COUNT(*) FILTER (WHERE closed AND NOT opened)::int AS orphan_closures,
+        COUNT(*) FILTER (WHERE closed AND NOT settled)::int AS closed_unsettled
+      FROM positions`;
     const outcomeRows = await sql`WITH outcomes AS (
         SELECT symbol, occurred_at, id, (payload->>'realizedR')::numeric AS realized_r
         FROM veltrix_scalping_events WHERE event_type = 'POSITION_OUTCOME_RECORDED'
@@ -130,6 +149,10 @@ export default async function handler(req, res) {
         totalEvents: Number(totalRows[0]?.total || 0),
         closedPositions: Number(totalRows[0]?.closed_positions || 0),
         missedOpportunities: Number(totalRows[0]?.missed_opportunities || 0),
+        missedExitConfirmations: Number(totalRows[0]?.missed_exit_confirmations || 0),
+        openPositions: Number(lifecycleRows[0]?.active_positions || 0),
+        orphanPositionClosures: Number(lifecycleRows[0]?.orphan_closures || 0),
+        closedAwaitingOutcome: Number(lifecycleRows[0]?.closed_unsettled || 0),
         settledTrades: Number(outcomeRows[0]?.settled || 0),
         wins: Number(outcomeRows[0]?.wins || 0),
         losses: Number(outcomeRows[0]?.losses || 0),
