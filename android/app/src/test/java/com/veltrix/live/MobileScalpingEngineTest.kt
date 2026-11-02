@@ -282,7 +282,6 @@ class MobileScalpingEngineTest {
     }
 
 
-}
 
     @Test fun pausedEngineBlocksNewSignalsAndCanResumeWithoutLosingMonitoring() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
@@ -296,3 +295,5 @@ class MobileScalpingEngineTest {
         engine.setPaused(false)
         assertTrue(events.last { it.first == "ENGINE_STATE" }.second.getBoolean("signalGenerationEnabled"))
     }
+
+}
