@@ -9,6 +9,7 @@ on:
       - "lib/**"
       - "api/**"
       - "tests/**"
+      - "scripts/**"
       - "android/**"
       - "package.json"
       - "index.html"
