@@ -49,6 +49,7 @@ class FloatingAssistantService : Service() {
     private var hub: BiquoteHubClient? = null
     private var mobileEngine: MobileScalpingEngine? = null
     @Volatile private var paused = false
+    @Volatile private var emergencyStop = false
     @Volatile private var feedHealthy = false
     @Volatile private var lastTickAt = 0L
     @Volatile private var latestText = "Connecting to market feed…"
@@ -251,6 +252,9 @@ class FloatingAssistantService : Service() {
             }
         }
         mobileEngine = engine
+        emergencyStop = prefs.getBoolean("emergency_stop", false)
+        paused = emergencyStop
+        if (emergencyStop) engine.setPaused(true)
         engine.restorePendingSignal(
             prefs.getString("pending_signal_side", null),
             prefs.getLong("pending_signal_at", 0L),
@@ -356,9 +360,13 @@ class FloatingAssistantService : Service() {
             }
         }
         panel?.setOnClickListener {
-            paused = !paused
-            mobileEngine?.setPaused(paused)
-            latestText = if (paused) "PAUSED · NO NEW SIGNALS" else "RESUMED · MONITORING"
+            if (emergencyStop) {
+                latestText = "EMERGENCY STOP ACTIVE · RESUME FROM APP"
+            } else {
+                paused = !paused
+                mobileEngine?.setPaused(paused)
+                latestText = if (paused) "PAUSED · NO NEW SIGNALS" else "RESUMED · MONITORING"
+            }
             updateNotification(latestText)
         }
         val params = WindowManager.LayoutParams(
@@ -634,6 +642,38 @@ class FloatingAssistantService : Service() {
 
     @Suppress("DEPRECATION")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "EMERGENCY_STOP") {
+            emergencyStop = true
+            paused = true
+            prefs.edit().putBoolean("emergency_stop", true).apply()
+            mobileEngine?.setPaused(true)
+            val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
+            journal.record("EMERGENCY_STOP", symbol, JSONObject()
+                .put("source", "android_owner_action")
+                .put("reason", "manual_emergency_stop")
+                .put("signalGenerationEnabled", false)
+                .put("positionMonitoringContinues", true)
+                .put("automaticOrderExecutionEnabled", false))
+            latestText = "EMERGENCY STOP · NEW SIGNALS DISABLED"
+            updateNotification(latestText)
+        }
+        if (intent?.action == "RESUME_SIGNALS") {
+            if (prefs.getBoolean("position_active", false)) {
+                latestText = "RESUME BLOCKED · CLOSE OR JOURNAL ACTIVE POSITION FIRST"
+            } else {
+                emergencyStop = false
+                paused = false
+                prefs.edit().putBoolean("emergency_stop", false).apply()
+                mobileEngine?.setPaused(false)
+                val symbol = prefs.getString("symbol", "XAUUSD") ?: "XAUUSD"
+                journal.record("ENGINE_STATE", symbol, JSONObject()
+                    .put("emergencyStop", false)
+                    .put("signalGenerationEnabled", true)
+                    .put("resumedBy", "android_owner_action"))
+                latestText = "RESUMED · MONITORING"
+            }
+            updateNotification(latestText)
+        }
         if (intent?.action == "CHANGE_SYMBOL") {
             if (prefs.getBoolean("position_active", false)) {
                 val lockedSymbol = prefs.getString("active_market_lock", null)
