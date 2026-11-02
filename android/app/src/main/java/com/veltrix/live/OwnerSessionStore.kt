@@ -84,10 +84,19 @@ class OwnerSessionStore(context: Context) {
         events.forEach { event ->
             val item = JSONObject()
                 .put("eventId", event.eventId)
+                .put("schemaVersion", 1)
+                .put("source", "android")
                 .put("type", event.type)
                 .put("symbol", event.symbol)
                 .put("occurredAt", event.occurredAt)
                 .put("payload", JSONObject(event.payload))
+            val eventPayload = JSONObject(event.payload)
+            if (event.type == "SIGNAL") item.put("signalId", event.eventId)
+            val positionId = eventPayload.optString("positionId", "").takeIf { it.isNotBlank() }
+            if (positionId != null) item.put("positionId", positionId)
+            val correlationId = eventPayload.optString("sourceSignalRef", "").takeIf { it.isNotBlank() }
+                ?: positionId ?: if (event.type == "SIGNAL") event.eventId else event.eventId
+            item.put("correlationId", correlationId)
             if (event.side == null) item.put("side", JSONObject.NULL) else item.put("side", event.side)
             batch.put(item)
         }
