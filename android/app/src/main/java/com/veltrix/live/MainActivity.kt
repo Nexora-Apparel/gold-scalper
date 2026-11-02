@@ -26,7 +26,7 @@ class MainActivity : Activity() {
         }
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(28, 40, 28, 24); setBackgroundColor(0xFF08090D.toInt()) }
         root.addView(TextView(this).apply { text = "VELTRIX LIVE"; textSize = 24f; setTextColor(0xFFF2C85B.toInt()); gravity = Gravity.CENTER })
-        root.addView(TextView(this).apply { text = "Tick-stream companion · Manual Exness MT5 execution only"; textSize = 14f; setTextColor(0xFFE5E7EB.toInt()); gravity = Gravity.CENTER; setPadding(0, 18, 0, 24) })
+        root.addView(TextView(this).apply { text = "GOLD & SILVER · MT5 SCREEN COMPANION · MANUAL TRADING ONLY"; textSize = 14f; setTextColor(0xFFE5E7EB.toInt()); gravity = Gravity.CENTER; setPadding(0, 18, 0, 24) })
         val selector = Spinner(this)
         selector.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf("XAUUSD · Gold", "XAGUSD · Silver"))
         selector.setSelection(if (prefs.getString("symbol", "XAUUSD") == "XAGUSD") 1 else 0)
@@ -49,13 +49,13 @@ class MainActivity : Activity() {
         }
         root.addView(selector, LinearLayout.LayoutParams(-1, -2))
         val passwordInput = EditText(this).apply {
-            hint = "Dashboard password"
+            hint = "VELTRIX dashboard password (not Exness password)"
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
             setSingleLine(true)
         }
         root.addView(passwordInput, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 16 })
         root.addView(Button(this).apply {
-            text = "CONNECT SECURE DASHBOARD SESSION"
+            text = "STEP 1 · CONNECT VELTRIX DASHBOARD"
             setOnClickListener {
                 val password = passwordInput.text.toString()
                 if (password.isBlank()) {
@@ -72,7 +72,7 @@ class MainActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, -2))
         root.addView(TextView(this).apply {
-            text = "Broker quote verification is automatic. Authorise local MT5 screen observation to enable signals; manual quote entry is disabled."
+            text = "CONNECTION GUIDE\\n1. Enter your VELTRIX dashboard password above. This is not your Exness password.\\n2. Tap START DOT and approve Android screen capture.\\n3. Switch to Exness MT5 and open the selected symbol with Bid and Ask visible.\\n4. The floating dot turns GREEN only after the app reads a valid MT5 quote. RED means not verified. Tap the dot for its status panel.\\n5. Keep MT5 visible. Screen text is processed on this phone; screenshots are not uploaded."
             setTextColor(0xFFE5E7EB.toInt())
             setPadding(0, 18, 0, 4)
         })
@@ -135,11 +135,11 @@ class MainActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 8 })
         root.addView(Button(this).apply {
-            text = "ENABLE FLOATING ASSISTANT"
+            text = "STEP 2 · START DOT & ALLOW SCREEN READING"
             setOnClickListener { if (!Settings.canDrawOverlays(this@MainActivity)) startActivityForResult(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)), 401) else startAssistant() }
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 20 })
         root.addView(Button(this).apply {
-            text = "STOP FLOATING ASSISTANT"
+            text = "STOP SCREEN READING"
             setOnClickListener {
                 if (prefs.getBoolean("position_active", false)) {
                     Toast.makeText(this@MainActivity, "Close or manually confirm the MT5 position before stopping monitoring.", Toast.LENGTH_LONG).show()
@@ -149,7 +149,7 @@ class MainActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 10 })
         root.addView(TextView(this).apply {
-            text = "The Android system will request screen-capture permission. Frames are processed locally to read MT5 trade details; full-screen images are never uploaded. Only structured events sync after owner login. The assistant never places, modifies, or closes orders. Verify every quote against Exness MT5."
+            text = "LIVE STATUS KEY\\nRED DOT · Screen reading not verified / no fresh MT5 quote.\\nGREEN DOT · A valid quote was read from the selected MT5 symbol. It does not mean a trade is approved.\\nDashboard connection is required for cloud quote telemetry and journal sync. The assistant never places, modifies, or closes orders."
             textSize = 12f; setTextColor(0xFF9CA3AF.toInt()); setPadding(0, 24, 0, 0)
         })
         setContentView(android.widget.ScrollView(this).apply { addView(root) })
