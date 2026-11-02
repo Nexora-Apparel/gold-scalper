@@ -309,7 +309,7 @@ class FloatingAssistantService : Service() {
             typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
-                setColor(0xFFE53935.toInt()); setStroke(2, 0xFFFFFFFF.toInt())
+                setColor(if (prefs.getBoolean("mt5_quote_active", false)) 0xFF16A34A.toInt() else 0xFFE53935.toInt()); setStroke(2, 0xFFFFFFFF.toInt())
             }
         }
         dotParams = WindowManager.LayoutParams(
@@ -445,7 +445,8 @@ class FloatingAssistantService : Service() {
                 metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 reader.surface, null, handler
             )
-            latestText = "LOCAL MT5 OCR ACTIVE · " + (prefs.getString("symbol", "XAUUSD") ?: "XAUUSD")
+            prefs.edit().putBoolean("screen_ocr_active", true).putBoolean("mt5_quote_active", false).apply()
+            latestText = "SCREEN READING ACTIVE · OPEN MT5 ON " + (prefs.getString("symbol", "XAUUSD") ?: "XAUUSD")
             updateNotification(latestText)
             journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenObservation", "user_authorized_local_ocr_active"))
         } catch (error: Exception) {
@@ -483,6 +484,8 @@ class FloatingAssistantService : Service() {
             val observedAt = frameObservedAt
             val accepted = mobileEngine?.updateMt5ObservedQuote(symbol, snapshot.bid, snapshot.ask, observedAt) == true
             if (accepted) {
+                prefs.edit().putBoolean("screen_ocr_active", true).putBoolean("mt5_quote_active", true).apply()
+                dot?.background = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(0xFF16A34A.toInt()); setStroke(2, 0xFFFFFFFF.toInt()) }
                 if (ownerSession.hasSession() && !brokerQuotePublishInFlight) {
                     brokerQuotePublishInFlight = true
                     try {
@@ -749,7 +752,8 @@ class FloatingAssistantService : Service() {
         if (resultCode == Activity.RESULT_OK && projectionData != null && mediaProjection == null) {
             startScreenObservation(resultCode, projectionData)
         } else if (mediaProjection == null && intent?.action == null) {
-            latestText = "SCREEN OCR REQUIRES USER RE-AUTHORIZATION"
+            prefs.edit().putBoolean("screen_ocr_active", false).putBoolean("mt5_quote_active", false).apply()
+            latestText = "SCREEN READING OFF · TAP ENABLE TO AUTHORIZE"
             journal.record("ENGINE_STATE", prefs.getString("symbol", "XAUUSD") ?: "XAUUSD", JSONObject().put("screenObservation", "permission_reauthorization_required"))
         }
         return START_STICKY
