@@ -531,7 +531,7 @@ class FloatingAssistantService : Service() {
                     lastSpreadJournalAt = observedAt
                     lastJournalledMt5Spread = spread
                 }
-                latestText = latestMt5SpreadText ?: latestText
+                latestText = "SCREEN LIVE · MT5 QUOTE READ · " + (latestMt5SpreadText ?: latestText)
                 updateNotification(latestText)
             }
         }
