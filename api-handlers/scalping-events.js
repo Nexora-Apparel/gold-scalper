@@ -27,11 +27,20 @@ export default async function handler(req, res) {
           WHERE payload->>'positionId' = ANY(${positionIds}::text[])
           ORDER BY occurred_at ASC, id ASC`;
         const priorIds = new Set(priorRows.map(row => row.eventId));
+        const priorOutcomeIds = new Set(priorRows
+          .filter(row => row.type === "POSITION_OUTCOME_RECORDED")
+          .map(row => row.payload?.positionId)
+          .filter(Boolean));
         const prior = priorRows.map(row => ({
           ...row,
           envelope: row.payload?._envelope || null
         }));
-        const freshIncoming = checked.value.filter(event => !priorIds.has(event.eventId));
+        // Repeated settlement attempts remain idempotent: the existing
+        // outcome is counted/skipped below rather than turning a retry into 409.
+        const freshIncoming = checked.value.filter(event =>
+          !priorIds.has(event.eventId) &&
+          !(event.type === "POSITION_OUTCOME_RECORDED" && priorOutcomeIds.has(event.payload.positionId))
+        );
         const lifecycle = validateScalpingEventTransitions(freshIncoming, prior);
         if (!lifecycle.ok) {
           return res.status(409).json({
