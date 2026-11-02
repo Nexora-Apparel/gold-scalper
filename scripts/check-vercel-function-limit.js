@@ -1,7 +1,9 @@
 import { readdirSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const API_ROOT = new URL("../api/", import.meta.url);
+const PROJECT_ROOT = fileURLToPath(new URL("../", import.meta.url));
+const API_ROOT = join(PROJECT_ROOT, "api");
 const MAX_FUNCTIONS = 12;
 
 function collectFunctions(directory) {
@@ -9,7 +11,7 @@ function collectFunctions(directory) {
     const absolute = join(directory, entry.name);
     if (entry.isDirectory()) return collectFunctions(absolute);
     return entry.isFile() && entry.name.endsWith(".js")
-      ? [relative(new URL("../", import.meta.url).pathname, absolute).replaceAll("\\\\", "/")]
+      ? [relative(PROJECT_ROOT, absolute).replaceAll("\\\\", "/")]
       : [];
   }).sort();
 }
