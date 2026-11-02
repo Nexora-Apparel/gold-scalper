@@ -165,3 +165,18 @@ test("reconstructs position transitions across separate sync batches", () => {
   }).value;
   assert.equal(validateScalpingEventTransitions([closed], [opened]).ok, true);
 });
+
+
+test("derives signal linkage from sourceSignalRef and rejects conflicting identifiers", () => {
+  const linked = validateScalpingEvent({
+    eventId: "position-linked", type: "POSITION_OPENED", symbol: "XAUUSD", side: "BUY",
+    payload: { positionId: "mt5-linked", sourceSignalRef: "signal-original" }
+  });
+  assert.equal(linked.ok, true);
+  assert.equal(linked.value.envelope.signalId, "signal-original");
+  assert.equal(linked.value.envelope.correlationId, "signal-original");
+  assert.equal(validateScalpingEvent({
+    eventId: "position-conflict", type: "POSITION_OPENED", symbol: "XAUUSD", side: "BUY",
+    signalId: "signal-a", payload: { positionId: "mt5-conflict", sourceSignalRef: "signal-b" }
+  }).ok, false);
+});
