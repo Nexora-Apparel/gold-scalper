@@ -72,7 +72,7 @@ class MainActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, -2))
         root.addView(TextView(this).apply {
-            text = "CONNECTION GUIDE\\n1. Enter your VELTRIX dashboard password above. This is not your Exness password.\\n2. Tap START DOT and approve Android screen capture.\\n3. Switch to Exness MT5 and open the selected symbol with Bid and Ask visible.\\n4. The floating dot turns GREEN only after the app reads a valid MT5 quote. RED means not verified. Tap the dot for its status panel.\\n5. Keep MT5 visible. Screen text is processed on this phone; screenshots are not uploaded."
+            text = "CONNECTION GUIDE\n1. Enter your VELTRIX dashboard password above. This is not your Exness password.\n2. Tap START DOT and approve Android screen capture.\n3. Switch to Exness MT5 and open the selected symbol with Bid and Ask visible.\n4. The floating dot turns GREEN only after the app reads a valid MT5 quote. RED means not verified. Tap the dot for its status panel.\n5. Keep MT5 visible. Screen text is processed on this phone; screenshots are not uploaded."
             setTextColor(0xFFE5E7EB.toInt())
             setPadding(0, 18, 0, 4)
         })
@@ -149,7 +149,7 @@ class MainActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 10 })
         root.addView(TextView(this).apply {
-            text = "LIVE STATUS KEY\\nRED DOT · Screen reading not verified / no fresh MT5 quote.\\nGREEN DOT · A valid quote was read from the selected MT5 symbol. It does not mean a trade is approved.\\nDashboard connection is required for cloud quote telemetry and journal sync. The assistant never places, modifies, or closes orders."
+            text = "LIVE STATUS KEY\nRED DOT · Screen reading not verified / no fresh MT5 quote.\nGREEN DOT · A valid quote was read from the selected MT5 symbol. It does not mean a trade is approved.\nDashboard connection is required for cloud quote telemetry and journal sync. The assistant never places, modifies, or closes orders."
             textSize = 12f; setTextColor(0xFF9CA3AF.toInt()); setPadding(0, 24, 0, 0)
         })
         setContentView(android.widget.ScrollView(this).apply { addView(root) })
