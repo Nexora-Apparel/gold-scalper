@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateScalpingEvent, validateScalpingEventBatch, summarizeScalpingEvents } from "../lib/scalping-events.js";
+import { validateScalpingEvent, validateScalpingEventBatch, summarizeScalpingEvents, validateScalpingEventTransitions } from "../lib/scalping-events.js";
 
 test("validates and normalizes a scalping event", () => {
   const result = validateScalpingEvent({ eventId: "evt-1", type: "signal", symbol: "xauusd", side: "BUY", payload: { confidence: 0.81 } });
@@ -112,4 +112,56 @@ test("rejects unsupported envelope versions, sources and malformed identifiers",
   assert.equal(validateScalpingEvent({ ...base, schemaVersion: 2 }).ok, false);
   assert.equal(validateScalpingEvent({ ...base, source: "unknown-client" }).ok, false);
   assert.equal(validateScalpingEvent({ ...base, signalId: "x".repeat(161) }).ok, false);
+});
+
+
+test("accepts a complete position lifecycle in chronological order", () => {
+  const base = { symbol: "XAUUSD", side: "BUY" };
+  const events = [
+    { ...base, eventId: "open-1", type: "POSITION_OPENED", occurredAt: "2026-11-02T09:00:00.000Z", payload: { positionId: "mt5-1" } },
+    { ...base, eventId: "exit-1", type: "EXIT_RECOMMENDED", occurredAt: "2026-11-02T09:00:10.000Z", payload: { positionId: "mt5-1" } },
+    { ...base, eventId: "close-1", type: "POSITION_CLOSED", occurredAt: "2026-11-02T09:00:20.000Z", payload: { positionId: "mt5-1" } },
+    { ...base, eventId: "outcome-1", type: "POSITION_OUTCOME_RECORDED", occurredAt: "2026-11-02T09:00:21.000Z", payload: { positionId: "mt5-1", realizedR: 1.2 } }
+  ].map(event => validateScalpingEvent(event).value);
+  assert.equal(validateScalpingEventTransitions(events).ok, true);
+});
+
+test("rejects close and outcome events without valid preceding position states", () => {
+  const closed = validateScalpingEvent({
+    eventId: "close-orphan", type: "POSITION_CLOSED", symbol: "XAUUSD",
+    occurredAt: "2026-11-02T09:00:20.000Z", payload: { positionId: "mt5-orphan" }
+  }).value;
+  assert.equal(validateScalpingEventTransitions([closed]).ok, false);
+  const opened = validateScalpingEvent({
+    eventId: "open-late", type: "POSITION_OPENED", symbol: "XAUUSD",
+    occurredAt: "2026-11-02T09:00:30.000Z", payload: { positionId: "mt5-orphan" }
+  }).value;
+  assert.equal(validateScalpingEventTransitions([closed], [opened]).ok, false);
+});
+
+test("rejects duplicate opens, duplicate closes and exit events after closure", () => {
+  const make = (eventId, type, time) => validateScalpingEvent({
+    eventId, type, symbol: "XAGUSD", occurredAt: time,
+    payload: { positionId: "mt5-duplicate", ...(type === "POSITION_OUTCOME_RECORDED" ? { realizedR: 0.5 } : {}) }
+  }).value;
+  const opened = make("open-a", "POSITION_OPENED", "2026-11-02T09:00:00.000Z");
+  const duplicateOpen = make("open-b", "POSITION_OPENED", "2026-11-02T09:00:01.000Z");
+  assert.equal(validateScalpingEventTransitions([opened, duplicateOpen]).ok, false);
+  const closed = make("close-a", "POSITION_CLOSED", "2026-11-02T09:00:02.000Z");
+  const duplicateClose = make("close-b", "POSITION_CLOSED", "2026-11-02T09:00:03.000Z");
+  assert.equal(validateScalpingEventTransitions([opened, closed, duplicateClose]).ok, false);
+  const exitAfterClose = make("exit-late", "EXIT_RECOMMENDED", "2026-11-02T09:00:04.000Z");
+  assert.equal(validateScalpingEventTransitions([opened, closed, exitAfterClose]).ok, false);
+});
+
+test("reconstructs position transitions across separate sync batches", () => {
+  const opened = validateScalpingEvent({
+    eventId: "open-persisted", type: "POSITION_OPENED", symbol: "XAUUSD",
+    occurredAt: "2026-11-02T09:00:00.000Z", payload: { positionId: "mt5-persisted" }
+  }).value;
+  const closed = validateScalpingEvent({
+    eventId: "close-incoming", type: "POSITION_CLOSED", symbol: "XAUUSD",
+    occurredAt: "2026-11-02T09:00:10.000Z", payload: { positionId: "mt5-persisted" }
+  }).value;
+  assert.equal(validateScalpingEventTransitions([closed], [opened]).ok, true);
 });
