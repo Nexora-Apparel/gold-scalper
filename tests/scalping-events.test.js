@@ -208,3 +208,17 @@ test("does not let legacy duplicate opens prevent a new valid close transition",
   }).value;
   assert.equal(validateScalpingEventTransitions([close], prior).ok, true);
 });
+
+
+test("normalizes top-level positionId into the persisted payload and rejects conflicts", () => {
+  const normalized = validateScalpingEvent({
+    eventId: "position-top-level", type: "POSITION_OPENED", symbol: "XAUUSD",
+    positionId: "mt5-top-level", payload: { entryPrice: 2650 }
+  });
+  assert.equal(normalized.ok, true);
+  assert.equal(normalized.value.payload.positionId, "mt5-top-level");
+  assert.equal(validateScalpingEvent({
+    eventId: "position-id-conflict", type: "POSITION_OPENED", symbol: "XAUUSD",
+    positionId: "mt5-a", payload: { positionId: "mt5-b" }
+  }).ok, false);
+});
