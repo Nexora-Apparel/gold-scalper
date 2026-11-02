@@ -62,10 +62,15 @@ class MainActivity : Activity() {
                     Toast.makeText(this@MainActivity, "Enter the dashboard password.", Toast.LENGTH_SHORT).show()
                 } else {
                     Executors.newSingleThreadExecutor().execute {
-                        val connected = try { OwnerSessionStore(this@MainActivity).login(password) } catch (_: Exception) { false }
+                        val loginMessage = try {
+                            if (OwnerSessionStore(this@MainActivity).login(password)) "Dashboard session connected."
+                            else "Login failed without a server response. Check network access."
+                        } catch (error: Exception) {
+                            error.message?.take(220) ?: "Dashboard connection failed. Check network access."
+                        }
                         runOnUiThread {
                             passwordInput.text.clear()
-                            Toast.makeText(this@MainActivity, if (connected) "Dashboard session connected." else "Login failed. Check password and server configuration.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, loginMessage, Toast.LENGTH_LONG).show()
                         }
                     }
                 }
