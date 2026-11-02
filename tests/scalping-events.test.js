@@ -195,3 +195,16 @@ test("filters repeated event IDs and already-settled outcome retries without sup
   ];
   assert.deepEqual(filterIdempotentLifecycleEvents(incoming, prior).map(event => event.eventId), ["close-new", "outcome-new"]);
 });
+
+
+test("does not let legacy duplicate opens prevent a new valid close transition", () => {
+  const prior = [
+    { eventId: "legacy-open-a", type: "POSITION_OPENED", symbol: "XAUUSD", occurredAt: "2026-11-02T09:00:00.000Z", payload: { positionId: "mt5-legacy-dup" } },
+    { eventId: "legacy-open-b", type: "POSITION_OPENED", symbol: "XAUUSD", occurredAt: "2026-11-02T09:00:01.000Z", payload: { positionId: "mt5-legacy-dup" } }
+  ];
+  const close = validateScalpingEvent({
+    eventId: "legacy-position-close", type: "POSITION_CLOSED", symbol: "XAUUSD",
+    occurredAt: "2026-11-02T09:00:10.000Z", payload: { positionId: "mt5-legacy-dup" }
+  }).value;
+  assert.equal(validateScalpingEventTransitions([close], prior).ok, true);
+});
