@@ -296,8 +296,6 @@ class MobileScalpingEngineTest {
         assertTrue(events.last { it.first == "ENGINE_STATE" }.second.getBoolean("signalGenerationEnabled"))
     }
 
-}
-
 
     @Test fun parityTelemetryRecordsPriceDeviationTimestampSkewAndIngestionLatency() {
         val events = mutableListOf<Pair<String, org.json.JSONObject>>()
@@ -312,3 +310,5 @@ class MobileScalpingEngineTest {
         assertEquals(45L, parity.getLong("brokerIngestionLatencyMs"))
         assertEquals(0.0, parity.getDouble("spreadDeviationPriceUnits"), 0.000001)
     }
+
+}
