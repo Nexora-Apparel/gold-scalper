@@ -2,7 +2,7 @@
   "id": "/",
   "name": "VELTRIX LIVE — Signal Desk",
   "short_name": "VELTRIX LIVE",
-  "description": "Personal XAUUSD and BTCUSD signal monitoring dashboard.",
+  "description": "Personal XAUUSD and XAGUSD trading analysis and event-journal dashboard.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
