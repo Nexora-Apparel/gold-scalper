@@ -20,11 +20,16 @@ const results = await Promise.all(API_ROUTE_NAMES.map(async (route) => {
       redirect: "manual",
       signal: AbortSignal.timeout(10000)
     });
-    const accepted = response.status !== 404 && response.status < 500;
+    // A 503 is an expected, observable degraded state for routes whose
+    // backing provider or database is temporarily unavailable. It is not a
+    // routing failure; report it separately so operators can distinguish
+    // infrastructure reachability from dependency health.
+    const degraded = response.status === 503;
+    const accepted = degraded || (response.status !== 404 && response.status < 500);
     return {
       route,
       status: response.status,
-      result: accepted ? (response.status === 503 ? "DEGRADED" : "REACHABLE") : "FAILED"
+      result: degraded ? "DEGRADED" : accepted ? "REACHABLE" : "FAILED"
     };
   } catch (error) {
     return { route, status: null, result: "FAILED", error: error?.message || "request failed" };
