@@ -1,6 +1,6 @@
 import { hasOwnerSession } from "../lib/auth.js";
 import { ensureStorage } from "../lib/storage.js";
-import { validateScalpingEventBatch } from "../lib/scalping-events.js";
+import { validateScalpingEventBatch, validateScalpingEventTransitions } from "../lib/scalping-events.js";
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
@@ -16,6 +16,32 @@ export default async function handler(req, res) {
       if (!checked.ok) return res.status(400).json({ error: checked.error });
       let inserted = 0;
       let duplicateOutcomes = 0;
+      const positionIds = [...new Set(checked.value
+        .filter(event => ["POSITION_OPENED", "EXIT_RECOMMENDED", "EXIT_NOT_CONFIRMED", "EXIT_RECOMMENDATION_CLEARED", "POSITION_CLOSED", "POSITION_OUTCOME_RECORDED"].includes(event.type))
+        .map(event => event.payload?.positionId || event.envelope?.positionId)
+        .filter(value => typeof value === "string" && value.trim()))];
+      if (positionIds.length) {
+        const priorRows = await sql`SELECT event_id AS "eventId", event_type AS type,
+            occurred_at AS "occurredAt", payload
+          FROM veltrix_scalping_events
+          WHERE payload->>'positionId' = ANY(${positionIds}::text[])
+          ORDER BY occurred_at ASC, id ASC`;
+        const priorIds = new Set(priorRows.map(row => row.eventId));
+        const prior = priorRows.map(row => ({
+          ...row,
+          envelope: row.payload?._envelope || null
+        }));
+        const freshIncoming = checked.value.filter(event => !priorIds.has(event.eventId));
+        const lifecycle = validateScalpingEventTransitions(freshIncoming, prior);
+        if (!lifecycle.ok) {
+          return res.status(409).json({
+            error: "Position lifecycle transition rejected.",
+            reason: lifecycle.error,
+            positionId: lifecycle.positionId,
+            eventId: lifecycle.eventId
+          });
+        }
+      }
       const outcomeIds = checked.value.filter(event => event.type === "POSITION_OUTCOME_RECORDED").map(event => event.payload.positionId);
       const existingOutcomeIds = new Set();
       for (const positionId of outcomeIds) {
