@@ -99,7 +99,6 @@ export default async function handler(req, res) {
     if (eventType === "SIGNAL") return res.status(200).json({ events, truncated });
     const totals = await sql`SELECT event_type AS type, COUNT(*)::int AS count FROM veltrix_scalping_events GROUP BY event_type ORDER BY event_type`;
     const totalRows = await sql`SELECT COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE event_type = 'POSITION_CLOSED')::int AS closed_positions,
         COUNT(*) FILTER (WHERE event_type = 'MISSED_OPPORTUNITY')::int AS missed_opportunities,
         COUNT(*) FILTER (WHERE event_type = 'EXIT_NOT_CONFIRMED')::int AS missed_exit_confirmations
       FROM veltrix_scalping_events`;
@@ -114,6 +113,7 @@ export default async function handler(req, res) {
         GROUP BY payload->>'positionId'
       )
       SELECT
+        COUNT(*) FILTER (WHERE closed)::int AS closed_positions,
         COUNT(*) FILTER (WHERE opened AND NOT closed)::int AS active_positions,
         COUNT(*) FILTER (WHERE closed AND NOT opened)::int AS orphan_closures,
         COUNT(*) FILTER (WHERE closed AND NOT settled)::int AS closed_unsettled
@@ -147,7 +147,7 @@ export default async function handler(req, res) {
       truncated,
       summary: {
         totalEvents: Number(totalRows[0]?.total || 0),
-        closedPositions: Number(totalRows[0]?.closed_positions || 0),
+        closedPositions: Number(lifecycleRows[0]?.closed_positions || 0),
         missedOpportunities: Number(totalRows[0]?.missed_opportunities || 0),
         missedExitConfirmations: Number(totalRows[0]?.missed_exit_confirmations || 0),
         openPositions: Number(lifecycleRows[0]?.active_positions || 0),
