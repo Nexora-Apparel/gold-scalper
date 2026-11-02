@@ -1,6 +1,7 @@
 import { listArchives, exportArchive, saveReplayReport, listReplayReports, getReplayReport, deleteReplayReport } from "./tick-archive.js";
 import { replayScalpingSignals } from "./lib/scalping-historical-replay.js";
 import { parseHistoricalSignalLog } from "./lib/scalping-signal-dataset.js";
+import { isWithinTimePartition } from "./lib/time-partitions.js";
 
 const $ = (id) => document.getElementById(id);
 const status = $("replayStatus");
@@ -19,15 +20,11 @@ function message(text, error = false) {
   status.textContent = text;
   status.dataset.error = String(error);
 }
-function partitionQuotes(quotes, start, end) {
-  return quotes.filter((q) => {
-    const t = Date.parse(q.timestamp);
-    return t >= Date.parse(start) && t <= Date.parse(end);
-  });
+function partitionQuotes(quotes, start, end, includeEnd = false) {
+  return quotes.filter((q) => isWithinTimePartition(q.timestamp, start, end, { includeEnd }));
 }
-function partitionSignals(signals, start, end) {
-  const a = Date.parse(start), b = Date.parse(end);
-  return signals.filter((s) => s.timestampMs >= a && s.timestampMs <= b);
+function partitionSignals(signals, start, end, includeEnd = false) {
+  return signals.filter((s) => isWithinTimePartition(s.timestampMs, start, end, { includeEnd }));
 }
 function addCell(row, value, header = false) {
   const cell = document.createElement(header ? "th" : "td");
@@ -188,8 +185,9 @@ $("runReplay").addEventListener("click", async () => {
     const partitions = {};
     for (const key of ["train", "validation", "heldOutTest"]) {
       const bounds = manifest.partitions[key];
-      const quotes = partitionQuotes(selectedArchive.quotes, bounds.startAt, bounds.endAt);
-      const signals = partitionSignals(parsed.signals, bounds.startAt, bounds.endAt);
+      const includeEnd = key === "heldOutTest";
+      const quotes = partitionQuotes(selectedArchive.quotes, bounds.startAt, bounds.endAt, includeEnd);
+      const signals = partitionSignals(parsed.signals, bounds.startAt, bounds.endAt, includeEnd);
       const latencyScenarios = {};
       for (const entryLatencyMs of LATENCY_SCENARIOS_MS) {
         const replay = replayScalpingSignals({
