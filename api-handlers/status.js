@@ -58,6 +58,7 @@ export default async function handler(req, res) {
     }
     const latestRows = await sql`SELECT status, result, created_at AS "createdAt"
       FROM gold_scalper_history WHERE symbol = 'XAUUSD' ORDER BY created_at DESC, id DESC LIMIT 1`;
+    const health = marketHealth(latestRows[0], keyConfigured);
     const schedulerRows = await sql`SELECT created_at AS "createdAt" FROM gold_scalper_history ORDER BY created_at DESC, id DESC LIMIT 1`;
     const schedulerTelemetry = getSchedulerHealth(schedulerRows[0]?.createdAt, Date.now());
     const activeSignalNeedsMonitoring = Boolean(activeSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(activeSignal.state) || (["CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE", "INVALIDATED", "EXPIRED"].includes(activeSignal.state) && activeSignal.candidateNotification?.sent === true && activeSignal.lifecycleNotification?.sent !== true)));
