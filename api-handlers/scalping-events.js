@@ -1,6 +1,6 @@
 import { hasOwnerSession } from "../lib/auth.js";
 import { ensureStorage } from "../lib/storage.js";
-import { validateScalpingEventBatch, validateScalpingEventTransitions } from "../lib/scalping-events.js";
+import { validateScalpingEventBatch, validateScalpingEventTransitions, filterIdempotentLifecycleEvents } from "../lib/scalping-events.js";
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
@@ -26,21 +26,13 @@ export default async function handler(req, res) {
           FROM veltrix_scalping_events
           WHERE payload->>'positionId' = ANY(${positionIds}::text[])
           ORDER BY occurred_at ASC, id ASC`;
-        const priorIds = new Set(priorRows.map(row => row.eventId));
-        const priorOutcomeIds = new Set(priorRows
-          .filter(row => row.type === "POSITION_OUTCOME_RECORDED")
-          .map(row => row.payload?.positionId)
-          .filter(Boolean));
         const prior = priorRows.map(row => ({
           ...row,
           envelope: row.payload?._envelope || null
         }));
         // Repeated settlement attempts remain idempotent: the existing
         // outcome is counted/skipped below rather than turning a retry into 409.
-        const freshIncoming = checked.value.filter(event =>
-          !priorIds.has(event.eventId) &&
-          !(event.type === "POSITION_OUTCOME_RECORDED" && priorOutcomeIds.has(event.payload.positionId))
-        );
+        const freshIncoming = filterIdempotentLifecycleEvents(checked.value, prior);
         const lifecycle = validateScalpingEventTransitions(freshIncoming, prior);
         if (!lifecycle.ok) {
           return res.status(409).json({
