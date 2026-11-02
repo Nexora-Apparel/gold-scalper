@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import handler from "../api/biquote-quotes.js";
+import handler from "../api-handlers/biquote-quotes.js";
 
 function response(){
   return {headers:{},statusCode:200,body:null,

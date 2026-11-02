@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bearerMatches } from "../api/scheduler-dispatch.js";
+import { bearerMatches } from "../api-handlers/scheduler-dispatch.js";
 import { getSchedulerHealth } from "../lib/scheduler-health.js";
 
 test("scheduler relay accepts the configured bearer token", () => {

@@ -1,9 +1,17 @@
 {
   "version": 2,
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    }
+    { "source": "/api/analyze", "destination": "/api/index?route=analyze" },
+    { "source": "/api/biquote-quotes", "destination": "/api/index?route=biquote-quotes" },
+    { "source": "/api/broker-quote-observation", "destination": "/api/index?route=broker-quote-observation" },
+    { "source": "/api/control", "destination": "/api/index?route=control" },
+    { "source": "/api/login", "destination": "/api/index?route=login" },
+    { "source": "/api/market-data", "destination": "/api/index?route=market-data" },
+    { "source": "/api/news", "destination": "/api/index?route=news" },
+    { "source": "/api/outcomes", "destination": "/api/index?route=outcomes" },
+    { "source": "/api/scalping-events", "destination": "/api/index?route=scalping-events" },
+    { "source": "/api/scheduler-dispatch", "destination": "/api/index?route=scheduler-dispatch" },
+    { "source": "/api/settings", "destination": "/api/index?route=settings" },
+    { "source": "/api/status", "destination": "/api/index?route=status" }
   ]
 }
