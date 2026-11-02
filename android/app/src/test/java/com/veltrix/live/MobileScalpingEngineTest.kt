@@ -297,3 +297,18 @@ class MobileScalpingEngineTest {
     }
 
 }
+
+
+    @Test fun parityTelemetryRecordsPriceDeviationTimestampSkewAndIngestionLatency() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = true) { type, _, payload -> events.add(type to payload) }
+        val now = System.currentTimeMillis()
+        val tick = LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true)
+        engine.onTick(tick)
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.51, 4172.66, now, now + 45L))
+        val parity = events.last { it.first == "ENGINE_STATE" && it.second.has("midDeviationPriceUnits") }.second
+        assertEquals(0.01, parity.getDouble("midDeviationPriceUnits"), 0.000001)
+        assertEquals(0.0, parity.getDouble("quoteTimestampSkewMs"), 0.0)
+        assertEquals(45L, parity.getLong("brokerIngestionLatencyMs"))
+        assertEquals(0.0, parity.getDouble("spreadDeviationPriceUnits"), 0.000001)
+    }
