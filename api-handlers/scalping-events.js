@@ -29,7 +29,7 @@ export default async function handler(req, res) {
           continue;
         }
         const rows = await sql`INSERT INTO veltrix_scalping_events (event_id, event_type, symbol, side, occurred_at, payload)
-          VALUES (${event.eventId}, ${event.type}, ${event.symbol}, ${event.side}, ${event.occurredAt}, ${JSON.stringify(event.payload)}::jsonb)
+          VALUES (${event.eventId}, ${event.type}, ${event.symbol}, ${event.side}, ${event.occurredAt}, ${JSON.stringify({ ...event.payload, _envelope: event.envelope })}::jsonb)
           ON CONFLICT DO NOTHING RETURNING event_id`;
         inserted += rows.length;
         if (!rows.length && event.type === "POSITION_OUTCOME_RECORDED") duplicateOutcomes += 1;
