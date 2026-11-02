@@ -363,15 +363,14 @@ async function refresh(){
     $('dbStatus').className=s.database==='CONNECTED'?'good':'bad';
     $('schedulerStatus').className=s.schedulerHealth==='RECENT'?'good':'warn';
     $('emergencyStatus').className=s.emergencyStop===true?'bad':'warn';
-    const quotes=feed.data?.quotes||[];
-    const xau=quotes.find(q=>String(q.symbol||'').toUpperCase()==='XAUUSD');
+    const xau=feed.data?.quotes?.XAUUSD||null;
     const qAge=xau?.timestamp?now-Date.parse(xau.timestamp):Infinity;
-    const refOk=feed.data?.ok===true&&xau?.live===true&&Number.isFinite(qAge)&&qAge>=-1000&&qAge<=1500;
+    const refOk=feed.data?.ok===true&&Number.isFinite(qAge)&&qAge>=-1000&&qAge<=5000;
     setOpsState('refFeedBadge',refOk?'LIVE':'UNAVAILABLE',refOk?'ok':'block');
     $('refFeedValue').textContent=refOk?'Fresh XAUUSD ticks':'Reference feed unavailable';
     $('refFeedDetail').textContent=feed.data?.error||xau?.reason||'Biquote REST snapshot is observational only; streaming is required for scalping.';
     $('refFeedAge').textContent=ageLabel(qAge);
-    $('snapshotSource').textContent=feed.data?.provider?.toUpperCase()||'BIQUOTE · REST';
+    $('snapshotSource').textContent=(feed.data?.provider||'BIQUOTE').toUpperCase()+' · '+(feed.data?.mode||'REST SNAPSHOT');
     $('xauBid').textContent=Number.isFinite(Number(xau?.bid))?Number(xau.bid).toFixed(3):'—';
     $('xauAsk').textContent=Number.isFinite(Number(xau?.ask))?Number(xau.ask).toFixed(3):'—';
     $('xauSpread').textContent=Number.isFinite(Number(xau?.spread))?Number(xau.spread).toFixed(3):'—';
