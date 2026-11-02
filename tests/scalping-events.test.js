@@ -88,3 +88,28 @@ test("rejects malformed or mislabelled Android broker quote observations", () =>
     ...base, payload: { ...base.payload, bid: 2650.1, ask: 2650.3, rawScreenUploaded: true }
   }).ok, false);
 });
+
+test("normalizes versioned event envelopes and stable signal correlation", () => {
+  const signal = validateScalpingEvent({
+    eventId: "signal-42", type: "SIGNAL", symbol: "XAUUSD", source: "android",
+    schemaVersion: 1, payload: { confidence: 0.84 }
+  });
+  assert.equal(signal.ok, true);
+  assert.deepEqual(signal.value.envelope, {
+    schemaVersion: 1, source: "android", correlationId: "signal-42",
+    signalId: "signal-42", positionId: null
+  });
+  const opened = validateScalpingEvent({
+    eventId: "opened-42", type: "POSITION_OPENED", symbol: "XAUUSD",
+    source: "android", signalId: "signal-42", positionId: "mt5-9001",
+    payload: { positionId: "mt5-9001" }
+  });
+  assert.equal(opened.value.envelope.correlationId, "signal-42");
+  assert.equal(opened.value.envelope.positionId, "mt5-9001");
+});
+test("rejects unsupported envelope versions, sources and malformed identifiers", () => {
+  const base = { eventId: "evt-envelope", type: "NO_TRADE", symbol: "XAUUSD" };
+  assert.equal(validateScalpingEvent({ ...base, schemaVersion: 2 }).ok, false);
+  assert.equal(validateScalpingEvent({ ...base, source: "unknown-client" }).ok, false);
+  assert.equal(validateScalpingEvent({ ...base, signalId: "x".repeat(161) }).ok, false);
+});
