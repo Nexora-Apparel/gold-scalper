@@ -92,10 +92,10 @@ class OwnerSessionStore(context: Context) {
                 .put("payload", JSONObject(event.payload))
             val eventPayload = JSONObject(event.payload)
             if (event.type == "SIGNAL") item.put("signalId", event.eventId)
-            val positionId = eventPayload.optString("positionId", "").takeIf { it.isNotBlank() }
+            val positionId = eventPayload.optString("positionId", "").takeIf { it.isNotBlank() && it != "null" }
             if (positionId != null) item.put("positionId", positionId)
             val correlationId = eventPayload.optString("sourceSignalRef", "").takeIf { it.isNotBlank() }
-                ?: positionId ?: if (event.type == "SIGNAL") event.eventId else event.eventId
+                ?: positionId ?: event.eventId
             item.put("correlationId", correlationId)
             if (event.side == null) item.put("side", JSONObject.NULL) else item.put("side", event.side)
             batch.put(item)
