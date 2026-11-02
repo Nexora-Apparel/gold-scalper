@@ -109,6 +109,22 @@ class MainActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, -2))
         root.addView(Button(this).apply {
+            text = "EMERGENCY STOP · DISABLE NEW SIGNALS"
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFF9F2438.toInt())
+            setOnClickListener {
+                startService(Intent(this@MainActivity, FloatingAssistantService::class.java).setAction("EMERGENCY_STOP"))
+                Toast.makeText(this@MainActivity, "Emergency stop latched. New signals disabled; existing MT5 positions are not closed and must still be monitored manually.", Toast.LENGTH_LONG).show()
+            }
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 16 })
+        root.addView(Button(this).apply {
+            text = "RESUME SIGNAL GENERATION"
+            setOnClickListener {
+                startService(Intent(this@MainActivity, FloatingAssistantService::class.java).setAction("RESUME_SIGNALS"))
+                Toast.makeText(this@MainActivity, "Resume request sent. Active positions block signal resumption.", Toast.LENGTH_LONG).show()
+            }
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 8 })
+        root.addView(Button(this).apply {
             text = "ENABLE FLOATING ASSISTANT"
             setOnClickListener { if (!Settings.canDrawOverlays(this@MainActivity)) startActivityForResult(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)), 401) else startAssistant() }
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 20 })
