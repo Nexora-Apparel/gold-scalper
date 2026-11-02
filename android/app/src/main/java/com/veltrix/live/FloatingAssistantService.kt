@@ -124,7 +124,7 @@ class FloatingAssistantService : Service() {
                     } else if ((paused || !fresh || !brokerVerified) && dot?.animation != null) {
                         dot?.clearAnimation()
                     }
-                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + (latestMt5SpreadText ?: "MT5 QUOTE UNAVAILABLE · SIGNALS BLOCKED") + "\n" + latestText + "\n" + (if (paused) "PAUSED" else if (!fresh) "FEED ISSUE" else if (brokerVerified) "BROKER VERIFIED" else "WAITING FOR MT5 QUOTE MATCH") + "\nTap panel to pause/resume · tap dot to hide"
+                    panel?.text = "VELTRIX LIVE\n" + prefs.getString("symbol", "XAUUSD") + "\n" + (latestMt5SpreadText ?: "MT5 QUOTE UNAVAILABLE · SIGNALS BLOCKED") + "\n" + latestText + "\n" + (if (emergencyStop) "EMERGENCY STOP ACTIVE" else if (paused) "PAUSED" else if (!fresh) "FEED ISSUE" else if (brokerVerified) "BROKER VERIFIED" else "WAITING FOR MT5 QUOTE MATCH") + "\nTap panel to pause/resume · tap dot to hide"
                 }
                 Thread.sleep(1000)
             }
