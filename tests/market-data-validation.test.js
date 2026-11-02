@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateCandles, isWithinSession, isSignalRiskValidationError } from "../api/analyze.js";
+import { validateCandles, isWithinSession, isSignalRiskValidationError } from "../api-handlers/analyze.js";
 
 const HOUR = 60 * 60 * 1000;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
