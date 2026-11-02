@@ -12,7 +12,7 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 class OwnerSessionStore(context: Context) {
-    private val baseUrl = "https://gold-scalper-p0gwzz63j-nexora-apparel.vercel.app"
+    private val baseUrl = "https://gold-scalper-rho.vercel.app"
     private val client = OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(12, TimeUnit.SECONDS)
