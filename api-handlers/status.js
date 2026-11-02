@@ -45,10 +45,14 @@ export default async function handler(req, res) {
   if (req.method !== "GET") { res.setHeader("Allow", "GET"); return res.status(405).json({ error: "Method not allowed" }); }
   const keyConfigured = Boolean(process.env.TWELVEDATA_API_KEY);
   const cronSecretConfigured = Boolean(process.env.CRON_SECRET);
+  let stage = "storage_initialization";
   try {
     const sql = await ensureStorage();
+    stage = "control_state";
     const control = await getControlState(sql);
+    stage = "settings";
     const settings = await getStoredSettings(sql);
+    stage = "active_signal";
     let activeSignal = await getActiveSignal(sql);
     if (activeSignal?.state === "CONFIRMED_AND_NOTIFIED" && activeSignal.result?.signal?.signalRef) {
       const outcome = await getRecordedOutcome(sql, activeSignal.result.signal.signalRef);
@@ -56,9 +60,11 @@ export default async function handler(req, res) {
         activeSignal = { ...activeSignal, state: "CLOSED_WITH_OUTCOME", recordedOutcome: outcome.outcome };
       }
     }
+    stage = "market_health";
     const latestRows = await sql`SELECT status, result, created_at AS "createdAt"
       FROM gold_scalper_history WHERE symbol = 'XAUUSD' ORDER BY created_at DESC, id DESC LIMIT 1`;
-    const health = marketHealth(latestRows[0], keyConfigured);
+    const marketHealthState = marketHealth(latestRows[0], keyConfigured);
+    stage = "scheduler_health";
     const schedulerRows = await sql`SELECT created_at AS "createdAt" FROM gold_scalper_history ORDER BY created_at DESC, id DESC LIMIT 1`;
     const schedulerTelemetry = getSchedulerHealth(schedulerRows[0]?.createdAt, Date.now());
     const activeSignalNeedsMonitoring = Boolean(activeSignal && (["WAITING_FOR_ENTRY", "CONFIRMATION_PENDING_DELIVERY", "CONFIRMED_AND_NOTIFIED"].includes(activeSignal.state) || (["CONFIRMATION_EXPIRED", "CANCELLED_BY_PAUSE", "INVALIDATED", "EXPIRED"].includes(activeSignal.state) && activeSignal.candidateNotification?.sent === true && activeSignal.lifecycleNotification?.sent !== true)));
@@ -67,7 +73,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       application: "ONLINE",
       database: "CONNECTED",
-      ...health,
+      ...marketHealthState,
       schedulerHealth: !cronSecretConfigured ? "NOT_CONFIGURED" : schedulerTelemetry.status,
       schedulerLastRunAt: schedulerTelemetry.lastRunAt,
       schedulerAgeMinutes: schedulerTelemetry.ageMinutes,
@@ -96,7 +102,7 @@ export default async function handler(req, res) {
       note: "Market connectivity reflects the most recent analysis result and expires after 45 minutes without fresh-candle verification. Manual review only; no broker execution."
     });
   } catch (error) {
-    console.error("Status storage failure:", error?.message || "unknown error");
+    console.error("Status storage failure:", stage, error?.stack || error?.message || "unknown error");
     return res.status(503).json({
       application: "DEGRADED",
       database: "UNAVAILABLE",
