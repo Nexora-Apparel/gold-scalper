@@ -73,7 +73,7 @@ test("confirms parity only when fresh MT5 and reference quotes meet configured t
   assert.equal(result.operatorActionable, true);
   assert.equal(result.executableForBroker, false);
   assert.equal(result.ingestionLatencyMs, 120);
-  assert.equal(result.midDeviation, 0.01);
+  assert.ok(Math.abs(result.midDeviation - 0.01) < 1e-9);
 });
 
 test("fails closed when tolerance is missing, quote is stale, or prices diverge", () => {
