@@ -39,7 +39,7 @@ class MobileScalpingEngineTest {
         engine.onTick(tick)
         assertTrue(engine.updateMt5ObservedQuote("XAUUSD", tick.bid, tick.ask, now))
         assertTrue(engine.hasFreshBrokerQuoteVerification())
-        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.80, 4172.95, System.currentTimeMillis()))
+        assertTrue(engine.updateMt5ObservedQuote("XAUUSD", 4172.80, 4172.95, now + 1L))
         assertTrue(!engine.hasFreshBrokerQuoteVerification())
     }
 
