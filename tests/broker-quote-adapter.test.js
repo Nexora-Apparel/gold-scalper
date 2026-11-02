@@ -52,3 +52,46 @@ test("rejects string-coerced, non-finite and non-positive prices", () => {
     assert.ok(result.reasons.includes("invalid_broker_bid_ask"));
   }
 });
+
+
+import { evaluateBrokerQuoteParity } from "../lib/broker-quote-adapter.js";
+
+test("confirms parity only when fresh MT5 and reference quotes meet configured tolerances", () => {
+  const broker = {
+    observedAt: new Date(now).toISOString(),
+    receivedAt: new Date(now + 120).toISOString(),
+    quote: { symbol: "XAUUSD", bid: 2650.1, ask: 2650.3 }
+  };
+  const reference = {
+    symbol: "XAUUSD", bid: 2650.11, ask: 2650.31,
+    timestamp: new Date(now).toISOString(), marketState: "open", stale: false
+  };
+  const result = evaluateBrokerQuoteParity(broker, reference, {
+    now: now + 200, maxMidDeviation: 0.05, maxSpreadDeviation: 0.01
+  });
+  assert.equal(result.passed, true);
+  assert.equal(result.operatorActionable, true);
+  assert.equal(result.executableForBroker, false);
+  assert.equal(result.ingestionLatencyMs, 120);
+  assert.equal(result.midDeviation, 0.01);
+});
+
+test("fails closed when tolerance is missing, quote is stale, or prices diverge", () => {
+  const broker = {
+    observedAt: new Date(now).toISOString(),
+    quote: { symbol: "XAGUSD", bid: 31.1, ask: 31.12 }
+  };
+  const reference = {
+    symbol: "XAGUSD", bid: 31.3, ask: 31.32,
+    timestamp: new Date(now).toISOString(), marketState: "open", stale: false
+  };
+  const missingTolerance = evaluateBrokerQuoteParity(broker, reference, { now });
+  assert.equal(missingTolerance.passed, false);
+  assert.ok(missingTolerance.reasons.includes("parity_tolerance_not_configured"));
+  const divergence = evaluateBrokerQuoteParity(broker, reference, { now, maxMidDeviation: 0.05 });
+  assert.ok(divergence.reasons.includes("mid_price_deviation_exceeded"));
+  const stale = evaluateBrokerQuoteParity(broker, { ...reference, timestamp: new Date(now - 2000).toISOString() }, {
+    now, maxMidDeviation: 0.5
+  });
+  assert.ok(stale.reasons.includes("reference_quote_stale_or_closed"));
+});
