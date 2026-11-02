@@ -49,3 +49,16 @@ The GitHub Actions validation workflow uploads this APK as the artifact named `v
 
 
 MT5 OCR reads visible symbol/timeframe and rejects screen observations that conflict with the selected instrument. It only confirms positions when the Trade tab, side and entry price are explicit.
+
+
+## VELTRIX LIVE Android build and dot states
+
+The floating indicator is deliberately explicit:
+- **RED** — screen capture is not authorized, stopped, or no current MT5 quote has been read.
+- **AMBER** — screen capture is active, but a valid quote has not been read recently.
+- **GREEN** — a valid Bid/Ask quote for the selected MT5 symbol was read from a recent locally processed screen frame.
+- **GREY** — monitoring is paused.
+
+Green confirms screen OCR only. Broker quote parity and the signal gate are separate checks; a green dot never authorizes a trade. The app does not place, modify, or close MT5 orders.
+
+Android builds run through `.github/workflows/veltrix-android-build.yml` and publish a short-lived debug APK artifact after compile and unit-test success.
