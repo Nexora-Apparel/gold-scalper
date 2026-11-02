@@ -8,6 +8,7 @@ on:
     paths:
       - "lib/**"
       - "api/**"
+      - "api-handlers/**"
       - "tests/**"
       - "scripts/**"
       - "android/**"
