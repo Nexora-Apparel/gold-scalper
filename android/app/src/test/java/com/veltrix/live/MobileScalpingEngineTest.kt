@@ -283,3 +283,16 @@ class MobileScalpingEngineTest {
 
 
 }
+
+    @Test fun pausedEngineBlocksNewSignalsAndCanResumeWithoutLosingMonitoring() {
+        val events = mutableListOf<Pair<String, org.json.JSONObject>>()
+        val engine = MobileScalpingEngine("XAUUSD", requireBrokerQuoteParity = false) { type, _, payload -> events.add(type to payload) }
+        engine.setPaused(true)
+        val now = System.currentTimeMillis()
+        engine.onTick(LiveTick("XAUUSD", 4172.50, 4172.65, 4172.575, 0.15, now, true))
+        val pausedDecision = events.last { it.first == "NO_TRADE" }.second
+        assertTrue(pausedDecision.getJSONArray("reasons").toString().contains("engine_paused_exit_monitoring_remains_active"))
+        assertTrue(events.none { it.first == "SIGNAL" })
+        engine.setPaused(false)
+        assertTrue(events.last { it.first == "ENGINE_STATE" }.second.getBoolean("signalGenerationEnabled"))
+    }
