@@ -65,6 +65,7 @@ class FloatingAssistantService : Service() {
     private var ocrThread: HandlerThread? = null
     private var lastOcrAt = 0L
     @Volatile private var lastMt5SpreadAt = 0L
+    @Volatile private var lastMt5QuoteAt = 0L
     @Volatile private var latestMt5SpreadText: String? = null
     private var lastSpreadJournalAt = 0L
     private var lastJournalledMt5Spread: Double? = null
@@ -114,7 +115,14 @@ class FloatingAssistantService : Service() {
                     }
                 }
                 Handler(Looper.getMainLooper()).post {
-                    (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (paused) 0xFF737373.toInt() else if (fresh && brokerVerified) 0xFFE53935.toInt() else 0xFFFFB300.toInt())
+                    (dot?.background as? android.graphics.drawable.GradientDrawable)?.setColor(
+                        when {
+                            paused -> 0xFF737373.toInt()
+                            prefs.getBoolean("screen_ocr_active", false) && now - lastMt5QuoteAt <= 2500L && prefs.getBoolean("mt5_quote_active", false) -> 0xFF16A34A.toInt()
+                            prefs.getBoolean("screen_ocr_active", false) -> 0xFFFFB300.toInt()
+                            else -> 0xFFE53935.toInt()
+                        }
+                    )
                     if (!paused && fresh && brokerVerified && dot?.animation == null) {
                         dot?.startAnimation(AlphaAnimation(0.45f, 1.0f).apply {
                             duration = 900
@@ -445,6 +453,7 @@ class FloatingAssistantService : Service() {
                 metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 reader.surface, null, handler
             )
+            lastMt5QuoteAt = 0L
             prefs.edit().putBoolean("screen_ocr_active", true).putBoolean("mt5_quote_active", false).apply()
             latestText = "SCREEN READING ACTIVE · OPEN MT5 ON " + (prefs.getString("symbol", "XAUUSD") ?: "XAUUSD")
             updateNotification(latestText)
@@ -485,6 +494,7 @@ class FloatingAssistantService : Service() {
             val accepted = mobileEngine?.updateMt5ObservedQuote(symbol, snapshot.bid, snapshot.ask, observedAt) == true
             if (accepted) {
                 prefs.edit().putBoolean("screen_ocr_active", true).putBoolean("mt5_quote_active", true).apply()
+                lastMt5QuoteAt = System.currentTimeMillis()
                 dot?.background = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(0xFF16A34A.toInt()); setStroke(2, 0xFFFFFFFF.toInt()) }
                 if (ownerSession.hasSession() && !brokerQuotePublishInFlight) {
                     brokerQuotePublishInFlight = true
@@ -616,6 +626,8 @@ class FloatingAssistantService : Service() {
         imageReader = null
         val projection = mediaProjection
         mediaProjection = null
+        lastMt5QuoteAt = 0L
+        prefs.edit().putBoolean("screen_ocr_active", false).putBoolean("mt5_quote_active", false).apply()
         try { projection?.stop() } catch (_: Exception) {}
         try { ocrThread?.quitSafely() } catch (_: Exception) {}
         ocrThread = null
