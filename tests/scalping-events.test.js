@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateScalpingEvent, validateScalpingEventBatch, summarizeScalpingEvents, validateScalpingEventTransitions } from "../lib/scalping-events.js";
+import { validateScalpingEvent, validateScalpingEventBatch, summarizeScalpingEvents, validateScalpingEventTransitions, filterIdempotentLifecycleEvents } from "../lib/scalping-events.js";
 
 test("validates and normalizes a scalping event", () => {
   const result = validateScalpingEvent({ eventId: "evt-1", type: "signal", symbol: "xauusd", side: "BUY", payload: { confidence: 0.81 } });
@@ -179,4 +179,19 @@ test("derives signal linkage from sourceSignalRef and rejects conflicting identi
     eventId: "position-conflict", type: "POSITION_OPENED", symbol: "XAUUSD", side: "BUY",
     signalId: "signal-a", payload: { positionId: "mt5-conflict", sourceSignalRef: "signal-b" }
   }).ok, false);
+});
+
+
+test("filters repeated event IDs and already-settled outcome retries without suppressing new lifecycle events", () => {
+  const prior = [
+    { eventId: "open-existing", type: "POSITION_OPENED", payload: { positionId: "mt5-idempotent" } },
+    { eventId: "outcome-existing", type: "POSITION_OUTCOME_RECORDED", payload: { positionId: "mt5-settled" } }
+  ];
+  const incoming = [
+    { eventId: "open-existing", type: "POSITION_OPENED", payload: { positionId: "mt5-idempotent" } },
+    { eventId: "outcome-retry", type: "POSITION_OUTCOME_RECORDED", payload: { positionId: "mt5-settled", realizedR: 1 } },
+    { eventId: "close-new", type: "POSITION_CLOSED", payload: { positionId: "mt5-idempotent" } },
+    { eventId: "outcome-new", type: "POSITION_OUTCOME_RECORDED", payload: { positionId: "mt5-idempotent", realizedR: -0.5 } }
+  ];
+  assert.deepEqual(filterIdempotentLifecycleEvents(incoming, prior).map(event => event.eventId), ["close-new", "outcome-new"]);
 });
